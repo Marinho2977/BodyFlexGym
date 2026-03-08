@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bodyflex Gym — Más de 10 años contigo. Tu salud, nuestra prioridad.</title>
+    <meta name="description" content="Gimnasio Bodyflex: instalaciones de primer nivel, instructores certificados y más de una década ayudando a Guatemala a alcanzar sus metas de fitness.">
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        /* ═══════════════════════════════════════════════════════════════
+           BODYFLEX GYM — Sitio corporativo · Confianza · Profesional
+           ═══════════════════════════════════════════════════════════════ */
+
+        /* ── NAVBAR CORPORATIVA ── */
+        .navbar {
+            padding: 0 48px;
+            height: 72px;
+            background: rgba(15,15,15,0.97);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border);
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            z-index: 200;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .navbar .logo { font-size: 22px; text-decoration: none; color: inherit; }
+        .nav-links { display: flex; gap: 36px; align-items: center; }
+        .nav-link {
+            color: var(--muted);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            transition: color .2s;
+        }
+        .nav-link:hover { color: var(--accent); }
+        .nav-btn {
+            background: var(--accent);
+            color: #fff;
+            padding: 10px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            font-family: 'DM Sans', sans-serif;
+            text-decoration: none;
+            transition: all .25s;
+        }
+        .nav-btn:hover {
+            background: #FF8C42;
+            box-shadow: 0 4px 20px rgba(255,107,0,0.35);
+        }
+
+        /* ── HERO CORPORATIVO ── */
+        .hero {
+            min-height: 85vh;
+            display: flex;
+            align-items: center;
+            padding: 120px 48px 80px;
+            position: relative;
+            overflow: hidden;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: -30%; right: -15%;
+            width: 700px; height: 700px;
+            background: radial-gradient(circle, rgba(255,107,0,0.08) 0%, transparent 55%);
+            pointer-events: none;
+        }
+        .hero-content { max-width: 640px; z-index: 10; }
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255,107,0,0.12);
+            border: 1px solid rgba(255,107,0,0.25);
+            color: var(--accent);
+            padding: 8px 18px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            margin-bottom: 24px;
+        }
+        .hero-title {
+            font-family: 'Syne', sans-serif;
+            font-size: 56px;
+            font-weight: 800;
+            line-height: 1.1;
+            letter-spacing: -2px;
+            margin-bottom: 20px;
+            color: var(--text);
+        }
+        .hero-title span { color: var(--accent); }
+        .hero-p {
+            font-size: 18px;
+            color: var(--muted);
+            line-height: 1.75;
+            margin-bottom: 36px;
+            max-width: 520px;
+        }
+        .hero-btns { display: flex; gap: 14px; flex-wrap: wrap; }
+        .btn-hero-primary {
+            background: var(--accent);
+            color: #fff;
+            padding: 14px 32px;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all .25s;
+        }
+        .btn-hero-primary:hover {
+            background: #FF8C42;
+            box-shadow: 0 6px 24px rgba(255,107,0,0.4);
+        }
+        .btn-hero-secondary {
+            background: transparent;
+            color: var(--text);
+            border: 1px solid var(--border);
+            padding: 14px 28px;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all .25s;
+        }
+        .btn-hero-secondary:hover { border-color: var(--accent); color: var(--accent); }
+
+        /* ── TRUST BAR (empresa establecida) ── */
+        .trust-bar {
+            background: var(--surface);
+            border-top: 1px solid var(--border);
+            border-bottom: 1px solid var(--border);
+            padding: 32px 48px;
+            margin: 0 auto;
+            max-width: 1200px;
+        }
+        .trust-inner {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 32px;
+            text-align: center;
+        }
+        .trust-item { padding: 0 16px; }
+        .trust-value {
+            font-family: 'Syne', sans-serif;
+            font-size: 32px;
+            font-weight: 800;
+            color: var(--accent);
+            margin-bottom: 4px;
+        }
+        .trust-label {
+            font-size: 13px;
+            color: var(--muted);
+            font-weight: 500;
+        }
+
+        /* ── SECCIONES GENÉRICAS ── */
+        .section {
+            padding: 80px 48px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .section-header { text-align: center; margin-bottom: 48px; }
+        .section-label {
+            display: inline-block;
+            background: rgba(255,107,0,0.12);
+            color: var(--accent);
+            padding: 6px 14px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            margin-bottom: 14px;
+        }
+        .section-title {
+            font-family: 'Syne', sans-serif;
+            font-size: 36px;
+            font-weight: 800;
+            letter-spacing: -1px;
+            margin-bottom: 12px;
+        }
+        .section-title span { color: var(--accent); }
+        .section-subtitle {
+            font-size: 16px;
+            color: var(--muted);
+            max-width: 560px;
+            margin: 0 auto;
+            line-height: 1.65;
+        }
+
+        /* ── POR QUÉ NOSOTROS (confianza) ── */
+        .why-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 24px;
+            margin-top: 40px;
+        }
+        .why-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 28px 24px;
+            text-align: center;
+            transition: border-color .2s, box-shadow .2s;
+        }
+        .why-card:hover {
+            border-color: rgba(255,107,0,0.35);
+            box-shadow: 0 12px 40px rgba(0,0,0,0.2);
+        }
+        .why-icon {
+            width: 52px; height: 52px;
+            background: rgba(255,107,0,0.12);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            margin: 0 auto 16px;
+        }
+        .why-title {
+            font-family: 'Syne', sans-serif;
+            font-size: 17px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+        .why-desc { font-size: 14px; color: var(--muted); line-height: 1.6; }
+
+        /* ── CLASES ── */
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 20px;
+        }
+        .class-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 28px 24px;
+            text-align: center;
+            transition: all .25s;
+        }
+        .class-card:hover {
+            border-color: rgba(255,107,0,0.4);
+            box-shadow: 0 12px 32px rgba(0,0,0,0.2);
+        }
+        .class-icon {
+            width: 56px; height: 56px;
+            background: rgba(255,107,0,0.12);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            margin: 0 auto 14px;
+        }
+        .class-name { font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+        .class-desc { font-size: 14px; color: var(--muted); line-height: 1.55; }
+
+        /* ── GALERÍA INSTALACIONES ── */
+        .gallery-section {
+            padding: 80px 48px;
+            max-width: 1200px;
+            margin: 0 auto;
+            background: var(--surface);
+        }
+        .gallery-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            margin-top: 40px;
+        }
+        .gallery-item {
+            aspect-ratio: 4/3;
+            border-radius: 12px;
+            overflow: hidden;
+            background: var(--card);
+            position: relative;
+        }
+        .gallery-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform .4s ease;
+        }
+        .gallery-item:hover img { transform: scale(1.05); }
+        .gallery-item span {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 12px 16px;
+            background: linear-gradient(transparent, rgba(0,0,0,0.75));
+            color: #fff;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        /* ── PRECIOS ── */
+        .pricing-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+        }
+        .price-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 32px 28px;
+            text-align: center;
+            transition: all .25s;
+        }
+        .price-card:hover { border-color: rgba(255,107,0,0.35); }
+        .price-card.featured {
+            border-color: var(--accent);
+            background: linear-gradient(180deg, rgba(255,107,0,0.06), var(--card));
+        }
+        .price-badge {
+            display: inline-block;
+            background: var(--accent);
+            color: #fff;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 700;
+            margin-bottom: 12px;
+        }
+        .price-name { font-size: 16px; font-weight: 600; color: var(--muted); margin-bottom: 8px; }
+        .price-amount { font-family: 'Syne', sans-serif; font-size: 42px; font-weight: 800; color: var(--accent); }
+        .price-period { font-size: 13px; color: var(--muted); margin-bottom: 20px; }
+        .price-features { list-style: none; text-align: left; margin-bottom: 24px; }
+        .price-features li {
+            padding: 8px 0;
+            border-bottom: 1px solid var(--border);
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .price-features li:last-child { border-bottom: none; }
+        .price-features .check { color: var(--green); font-weight: 700; }
+        .btn-price {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            text-decoration: none;
+            text-align: center;
+            transition: all .2s;
+        }
+        .btn-price-primary { background: var(--accent); color: #fff; }
+        .btn-price-primary:hover { background: #FF8C42; }
+        .btn-price-ghost { background: transparent; border: 1px solid var(--border); color: var(--text); }
+        .btn-price-ghost:hover { border-color: var(--accent); color: var(--accent); }
+
+        /* ── HORARIOS ── */
+        .schedule-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+        }
+        .schedule-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 24px;
+            text-align: center;
+        }
+        .schedule-title { font-family: 'Syne', sans-serif; font-size: 17px; font-weight: 700; margin-bottom: 6px; color: var(--accent); }
+        .schedule-time { font-size: 14px; color: var(--muted); }
+
+        /* ── UBICACIÓN + MAPA ── */
+        .location-section {
+            padding: 80px 48px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .location-wrap {
+            display: grid;
+            grid-template-columns: 1fr 1.2fr;
+            gap: 40px;
+            align-items: start;
+            margin-top: 40px;
+        }
+        .location-info h3 {
+            font-family: 'Syne', sans-serif;
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 16px;
+        }
+        .location-info p {
+            font-size: 15px;
+            color: var(--muted);
+            line-height: 1.8;
+            margin-bottom: 12px;
+        }
+        .location-info a {
+            color: var(--accent);
+            text-decoration: none;
+            font-weight: 500;
+        }
+        .location-info a:hover { text-decoration: underline; }
+        .map-container {
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid var(--border);
+            height: 380px;
+        }
+        .map-container iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            display: block;
+        }
+
+        /* ── CTA FINAL ── */
+        .cta-section {
+            padding: 80px 48px;
+            text-align: center;
+            background: var(--surface);
+        }
+        .cta-title { font-family: 'Syne', sans-serif; font-size: 40px; font-weight: 800; margin-bottom: 14px; }
+        .cta-title span { color: var(--accent); }
+        .cta-p { font-size: 16px; color: var(--muted); margin-bottom: 28px; max-width: 480px; margin-left: auto; margin-right: auto; }
+        .cta-btn {
+            display: inline-block;
+            background: var(--accent);
+            color: #fff;
+            padding: 16px 40px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all .25s;
+        }
+        .cta-btn:hover { background: #FF8C42; box-shadow: 0 6px 24px rgba(255,107,0,0.35); }
+
+        /* ── FOOTER CORPORATIVO ── */
+        .footer {
+            border-top: 1px solid var(--border);
+            padding: 48px 48px 28px;
+            background: var(--surface);
+        }
+        .footer-grid {
+            max-width: 1200px;
+            margin: 0 auto 40px;
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr;
+            gap: 48px;
+        }
+        .footer-brand .logo { font-size: 20px; margin-bottom: 12px; display: inline-block; }
+        .footer-brand p {
+            font-size: 14px;
+            color: var(--muted);
+            line-height: 1.7;
+            max-width: 280px;
+        }
+        .footer-col h4 {
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--muted);
+            margin-bottom: 16px;
+        }
+        .footer-col a, .footer-col span {
+            display: block;
+            font-size: 14px;
+            color: var(--text);
+            text-decoration: none;
+            margin-bottom: 10px;
+            transition: color .2s;
+        }
+        .footer-col a:hover { color: var(--accent); }
+        .footer-bottom {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding-top: 24px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+        .footer-copy { font-size: 13px; color: var(--muted); }
+        .footer-legal { display: flex; gap: 24px; }
+        .footer-legal a { color: var(--muted); font-size: 13px; text-decoration: none; }
+        .footer-legal a:hover { color: var(--accent); }
+
+        /* ── RESPONSIVE ── */
+        @media (max-width: 1024px) {
+            .trust-inner { grid-template-columns: repeat(2, 1fr); }
+            .why-grid { grid-template-columns: repeat(2, 1fr); }
+            .pricing-grid { grid-template-columns: 1fr; }
+            .location-wrap { grid-template-columns: 1fr; }
+            .footer-grid { grid-template-columns: 1fr 1fr; }
+        }
+        @media (max-width: 768px) {
+            .navbar { padding: 0 20px; }
+            .nav-links { gap: 16px; }
+            .nav-link:not(.nav-btn) { display: none; }
+            .hero { padding: 100px 20px 60px; }
+            .hero-title { font-size: 38px; }
+            .trust-bar { padding: 24px 20px; }
+            .trust-inner { grid-template-columns: 1fr; gap: 20px; }
+            .section { padding: 60px 20px; }
+            .gallery-section { padding: 60px 20px; }
+            .gallery-grid { grid-template-columns: 1fr 1fr; }
+            .why-grid { grid-template-columns: 1fr; }
+            .schedule-grid { grid-template-columns: 1fr; }
+            .location-section { padding: 60px 20px; }
+            .location-wrap { margin-top: 24px; }
+            .map-container { height: 280px; }
+            .cta-title { font-size: 28px; }
+            .footer { padding: 36px 20px 24px; }
+            .footer-grid { grid-template-columns: 1fr; gap: 32px; text-align: center; }
+            .footer-brand p { max-width: none; }
+            .footer-bottom { flex-direction: column; text-align: center; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- NAVBAR CORPORATIVA                                             -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<nav class="navbar">
+    <a href="/" class="logo">BODYFLEX<span>GYM</span></a>
+    <div class="nav-links">
+        <a href="#clases" class="nav-link">Clases</a>
+        <a href="#precios" class="nav-link">Precios</a>
+        <a href="#galeria" class="nav-link">Galería</a>
+        <a href="#ubicacion" class="nav-link">Ubicación</a>
+        <a href="/login" class="nav-link">Ya soy miembro</a>
+        <a href="/registro" class="nav-btn">Unirme</a>
+    </div>
+</nav>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- HERO — Mensaje de confianza                                     -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<section class="hero">
+    <div class="hero-content">
+        <div class="hero-badge">Líder en fitness desde 2010</div>
+        <h1 class="hero-title">Tu salud,<br><span>nuestra prioridad.</span></h1>
+        <p class="hero-p">
+            En Bodyflex Gym llevamos más de una década ayudando a miles de personas a alcanzar sus metas. 
+            Instalaciones de primer nivel, entrenadores certificados y un compromiso real con tu bienestar.
+        </p>
+        <div class="hero-btns">
+            <a href="/registro" class="btn-hero-primary">Comenzar ahora</a>
+            <a href="#galeria" class="btn-hero-secondary">Ver instalaciones</a>
+        </div>
+    </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- BARRA DE CONFIANZA — Empresa establecida                        -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div class="trust-bar">
+    <div class="trust-inner">
+        <div class="trust-item">
+            <div class="trust-value">10+</div>
+            <div class="trust-label">Años de experiencia</div>
+        </div>
+        <div class="trust-item">
+            <div class="trust-value">5,000+</div>
+            <div class="trust-label">Socios han confiado en nosotros</div>
+        </div>
+        <div class="trust-item">
+            <div class="trust-value">98%</div>
+            <div class="trust-label">Satisfacción de nuestros miembros</div>
+        </div>
+        <div class="trust-item">
+            <div class="trust-value">4</div>
+            <div class="trust-label">Áreas de entrenamiento especializadas</div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- POR QUÉ ELEGIRNOS                                               -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<section class="section" id="nosotros">
+    <div class="section-header">
+        <div class="section-label">Por qué Bodyflex</div>
+        <h2 class="section-title">Razones para <span>confiar en nosotros</span></h2>
+        <p class="section-subtitle">
+            No somos un gimnasio más. Somos una empresa con trayectoria que cuida cada detalle de tu experiencia.
+        </p>
+    </div>
+    <div class="why-grid">
+        <div class="why-card">
+            <div class="why-icon">🏆</div>
+            <div class="why-title">Trayectoria comprobada</div>
+            <p class="why-desc">Más de 10 años operando con estándares profesionales y resultados visibles.</p>
+        </div>
+        <div class="why-card">
+            <div class="why-icon">🏋️</div>
+            <div class="why-title">Instalaciones premium</div>
+            <p class="why-desc">Equipo de última generación, vestuarios amplios y zonas climatizadas.</p>
+        </div>
+        <div class="why-card">
+            <div class="why-icon">👨‍⚕️</div>
+            <div class="why-title">Instructores certificados</div>
+            <p class="why-desc">Personal capacitado para guiarte de forma segura y efectiva.</p>
+        </div>
+        <div class="why-card">
+            <div class="why-icon">🤝</div>
+            <div class="why-title">Comunidad activa</div>
+            <p class="why-desc">Un ambiente de apoyo donde te sentirás parte de algo más grande.</p>
+        </div>
+    </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- CLASES                                                          -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<section class="section" id="clases">
+    <div class="section-header">
+        <div class="section-label">Nuestras clases</div>
+        <h2 class="section-title">Entrena a <span>tu ritmo</span></h2>
+        <p class="section-subtitle">
+            Disciplinas para todos los objetivos. Todas incluidas según tu plan, con instructores certificados.
+        </p>
+    </div>
+    <div class="cards-grid">
+        <div class="class-card">
+            <div class="class-icon">🚴</div>
+            <div class="class-name">Spinning</div>
+            <p class="class-desc">Alta intensidad sobre bicicleta estática. Ideal para cardio y resistencia.</p>
+        </div>
+        <div class="class-card">
+            <div class="class-icon">🔥</div>
+            <div class="class-name">Crossfit</div>
+            <p class="class-desc">Entrenamiento funcional que combina fuerza, cardio y agilidad.</p>
+        </div>
+        <div class="class-card">
+            <div class="class-icon">💪</div>
+            <div class="class-name">Pesas</div>
+            <p class="class-desc">Zona equipada con máquinas y peso libre para ganar fuerza.</p>
+        </div>
+        <div class="class-card">
+            <div class="class-icon">⚡</div>
+            <div class="class-name">Funcional</div>
+            <p class="class-desc">Movimientos del día a día: equilibrio, coordinación y resistencia.</p>
+        </div>
+    </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- GALERÍA — Fotos del gimnasio                                   -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<section class="gallery-section" id="galeria">
+    <div class="section-header">
+        <div class="section-label">Nuestras instalaciones</div>
+        <h2 class="section-title">Conoce <span>nuestro gimnasio</span></h2>
+        <p class="section-subtitle">
+            Espacios amplios, equipo de calidad y un ambiente pensado para que te enfoques en tus metas.
+        </p>
+    </div>
+    <div class="gallery-grid">
+        <div class="gallery-item">
+            <img src="https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&q=80" alt="Área de pesas">
+            <span>Área de pesas</span>
+        </div>
+        <div class="gallery-item">
+            <img src="https://images.unsplash.com/photo-1583454110551-21f2fa2afe61?w=800&q=80" alt="Cardio">
+            <span>Zona cardio</span>
+        </div>
+        <div class="gallery-item">
+            <img src="https://images.unsplash.com/photo-1540497077202-7c8a3999166f?w=800&q=80" alt="Entrenamiento">
+            <span>Entrenamiento funcional</span>
+        </div>
+        <div class="gallery-item">
+            <img src="https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=800&q=80" alt="Gimnasio">
+            <span>Vista general</span>
+        </div>
+        <div class="gallery-item">
+            <img src="https://images.unsplash.com/photo-1581009146145-b5ef050c149e?w=800&q=80" alt="Clases">
+            <span>Área de clases</span>
+        </div>
+        <div class="gallery-item">
+            <img src="https://images.unsplash.com/photo-1549060279-7e168fcee0c2?w=800&q=80" alt="Instalaciones">
+            <span>Instalaciones</span>
+        </div>
+    </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- PRECIOS                                                         -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<section class="section" id="precios">
+    <div class="section-header">
+        <div class="section-label">Membresías</div>
+        <h2 class="section-title">Planes que se <span>adaptan a ti</span></h2>
+        <p class="section-subtitle">
+            Sin contratos engañosos. Elige la duración que prefieras y cancela cuando quieras.
+        </p>
+    </div>
+    <div class="pricing-grid">
+        <div class="price-card">
+            <div class="price-name">Mensual</div>
+            <div class="price-amount">Q225</div>
+            <div class="price-period">por mes</div>
+            <ul class="price-features">
+                <li><span class="check">✓</span> Acceso a todas las áreas</li>
+                <li><span class="check">✓</span> 1 clase incluida</li>
+                <li><span class="check">✓</span> Casillero personal</li>
+                <li><span class="check">✓</span> Sin contrato</li>
+            </ul>
+            <a href="/registro" class="btn-price btn-price-ghost">Elegir plan</a>
+        </div>
+        <div class="price-card featured">
+            <div class="price-badge">Recomendado</div>
+            <div class="price-name">Trimestral</div>
+            <div class="price-amount">Q600</div>
+            <div class="price-period">3 meses — ahorras Q75</div>
+            <ul class="price-features">
+                <li><span class="check">✓</span> Todo lo del plan mensual</li>
+                <li><span class="check">✓</span> Todas las clases incluidas</li>
+                <li><span class="check">✓</span> Evaluación física gratis</li>
+                <li><span class="check">✓</span> Descuento del 11%</li>
+            </ul>
+            <a href="/registro" class="btn-price btn-price-primary">Elegir plan</a>
+        </div>
+        <div class="price-card">
+            <div class="price-name">Semestral</div>
+            <div class="price-amount">Q1,100</div>
+            <div class="price-period">6 meses — ahorras Q250</div>
+            <ul class="price-features">
+                <li><span class="check">✓</span> Todo lo del trimestral</li>
+                <li><span class="check">✓</span> Plan de nutrición</li>
+                <li><span class="check">✓</span> 1 invitado al mes gratis</li>
+                <li><span class="check">✓</span> Descuento del 18%</li>
+            </ul>
+            <a href="/registro" class="btn-price btn-price-ghost">Elegir plan</a>
+        </div>
+    </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- HORARIOS                                                        -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<section class="section" id="horarios">
+    <div class="section-header">
+        <div class="section-label">Horarios</div>
+        <h2 class="section-title">Abiertos cuando <span>tú lo necesitas</span></h2>
+        <p class="section-subtitle">
+            Tres turnos para que encajes el gimnasio en tu rutina.
+        </p>
+    </div>
+    <div class="schedule-grid">
+        <div class="schedule-card">
+            <div class="schedule-title">Mañana</div>
+            <div class="schedule-time">5:00 AM – 11:00 AM</div>
+        </div>
+        <div class="schedule-card">
+            <div class="schedule-title">Tarde</div>
+            <div class="schedule-time">11:00 AM – 5:00 PM</div>
+        </div>
+        <div class="schedule-card">
+            <div class="schedule-title">Noche</div>
+            <div class="schedule-time">5:00 PM – 10:00 PM</div>
+        </div>
+    </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- UBICACIÓN + MAPA                                                -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<section class="location-section" id="ubicacion">
+    <div class="section-header">
+        <div class="section-label">Visítanos</div>
+        <h2 class="section-title">Dónde <span>estamos</span></h2>
+        <p class="section-subtitle">
+            Ven a conocernos. Estamos en un lugar accesible con estacionamiento disponible.
+        </p>
+    </div>
+    <div class="location-wrap">
+        <div class="location-info">
+            <h3>Bodyflex Gym</h3>
+            <p><strong>Dirección:</strong><br>
+            Zona 10, Ciudad de Guatemala<br>
+            (Actualiza esta dirección con tu ubicación real)</p>
+            <p><strong>Teléfono:</strong><br>
+            <a href="tel:+50212345678">+502 1234-5678</a></p>
+            <p><strong>Horario de atención:</strong><br>
+            Lun – Dom: 5:00 AM a 10:00 PM</p>
+            <p>
+                <a href="https://www.google.com/maps/place/Bodyflex+Gym" target="_blank" rel="noopener">Abrir en Google Maps →</a>
+            </p>
+        </div>
+        <div class="map-container">
+            <!-- Reemplaza el src con el enlace de inserción de Google Maps de tu gimnasio -->
+            <iframe
+            src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3669.130133816431!2d-90.50275892512629!3d14.648791085843307!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x8589a3c2042805cf%3A0x8151a922e8d246ca!2sBodyflex%20Gym!5e1!3m2!1ses-419!2sgt!4v1772990869452!5m2!1ses-419!2sgt" width="600" height="450" style="border:0;" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"
+                title="Ubicación Bodyflex Gym">
+            </iframe>
+        </div>
+    </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- CTA FINAL                                                       -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<section class="cta-section">
+    <h2 class="cta-title">¿Listo para empezar?</h2>
+    <p class="cta-p">Únete a miles de personas que ya confían en Bodyflex Gym. Tu primera visita nos conoce.</p>
+    <a href="/registro" class="cta-btn">Crear mi cuenta</a>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- FOOTER CORPORATIVO                                             -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<footer class="footer">
+    <div class="footer-grid">
+        <div class="footer-brand">
+            <div class="logo">BODYFLEX<span>GYM</span></div>
+            <p>Más de 10 años siendo parte de tu rutina. Instalaciones de primer nivel, profesionales certificados y un compromiso real con tu salud.</p>
+        </div>
+        <div class="footer-col">
+            <h4>Enlaces</h4>
+            <a href="#clases">Clases</a>
+            <a href="#precios">Precios</a>
+            <a href="#galeria">Galería</a>
+            <a href="#ubicacion">Ubicación</a>
+            <a href="/login">Iniciar sesión</a>
+            <a href="/registro">Registrarse</a>
+        </div>
+        <div class="footer-col">
+            <h4>Contacto</h4>
+            <span>Zona 10, Guatemala</span>
+            <a href="tel:+50212345678">+502 1234-5678</a>
+            <a href="mailto:info@bodyflexgym.com">info@bodyflexgym.com</a>
+        </div>
+    </div>
+    <div class="footer-bottom">
+        <div class="footer-copy">© 2025 Bodyflex Gym. Todos los derechos reservados.</div>
+        <div class="footer-legal">
+            <a href="#">Aviso legal</a>
+            <a href="#">Privacidad</a>
+        </div>
+    </div>
+</footer>
+
+<script>
+document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+    anchor.addEventListener('click', function(e) {
+        e.preventDefault();
+        const target = document.querySelector(this.getAttribute('href'));
+        if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+});
+</script>
+
+</body>
+</html>

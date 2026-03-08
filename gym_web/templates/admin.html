@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel Admin — Bodyflex Gym</title>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg:       #0f0f0f;
+            --surface:  #1a1a1a;
+            --card:     #222222;
+            --border:   #2e2e2e;
+            --accent:   #FF6B00;
+            --blue:     #60a5fa;
+            --green:    #22c55e;
+            --red:      #ef4444;
+            --orange:   #FF6B00;
+            --text:     #f5f5f5;
+            --muted:    #9ca3af;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'DM Sans', sans-serif;
+            min-height: 100vh;
+        }
+
+        /* TOPBAR */
+        .topbar {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 0 32px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .logo {
+            font-family: 'Syne', sans-serif;
+            font-weight: 800;
+            font-size: 18px;
+            letter-spacing: -.5px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .logo span { color: var(--accent); }
+
+        .badge-admin {
+            background: rgba(96,165,250,0.15); color: var(--blue);
+            border: 1px solid rgba(96,165,250,0.3);
+            padding: 3px 10px; border-radius: 20px;
+            font-size: 11px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase;
+        }
+
+        .topbar-left { display: flex; align-items: center; gap: 12px; }
+        .topbar-right { display: flex; align-items: center; gap: 16px; }
+        .topbar-nombre { color: var(--muted); font-size: 13px; }
+
+        .btn-logout {
+            background: transparent; border: 1px solid var(--border); color: var(--muted);
+            padding: 6px 14px; border-radius: 6px; font-size: 13px; cursor: pointer;
+            text-decoration: none; transition: all .2s;
+        }
+        .btn-logout:hover { border-color: var(--red); color: var(--red); }
+
+        /* LAYOUT */
+        .main { max-width: 1300px; margin: 0 auto; padding: 32px 24px; }
+
+        .section-header {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 20px;
+        }
+
+        .section-title {
+            font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 700;
+        }
+
+        .section-title small {
+            font-size: 13px; color: var(--muted); font-weight: 400; margin-left: 8px;
+        }
+
+        /* FLASHES */
+        .flash { padding: 12px 16px; border-radius: 8px; margin-bottom: 20px; font-size: 14px; }
+        .flash-success { background: rgba(34,197,94,0.15); border: 1px solid rgba(34,197,94,0.3); color: var(--green); }
+        .flash-error   { background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.3); color: var(--red); }
+
+        /* STATS */
+        .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; margin-bottom: 28px; }
+        .stat-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; }
+        .stat-label { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 6px; }
+        .stat-value { font-family: 'Syne', sans-serif; font-size: 24px; font-weight: 700; }
+        .stat-value.green  { color: var(--green); }
+        .stat-value.yellow { color: var(--accent); }
+        .stat-value.red    { color: var(--red); }
+        .stat-value.blue   { color: var(--blue); }
+
+        /* FILTROS */
+        .filtros { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; align-items: center; }
+
+        .filtros form { display: flex; gap: 8px; flex: 1; min-width: 260px; }
+
+        .filtros input {
+            flex: 1; background: var(--card); border: 1px solid var(--border); color: var(--text);
+            padding: 9px 14px; border-radius: 8px; font-size: 14px; font-family: 'DM Sans', sans-serif;
+            outline: none; transition: border-color .2s;
+        }
+        .filtros input:focus { border-color: var(--accent); }
+
+        .btn { padding: 9px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; font-family: 'DM Sans', sans-serif; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; transition: opacity .2s; }
+        .btn:hover { opacity: .85; }
+        .btn-yellow { background: var(--accent); color: #fff; }
+        .btn-ghost  { background: transparent; border: 1px solid var(--border); color: var(--muted); }
+        .btn-green  { background: #15401a; color: var(--green); border: 1px solid #2a5c2a; }
+        .btn-red    { background: #401515; color: var(--red);   border: 1px solid #5c2a2a; }
+        .btn-blue   { background: #0d1f40; color: var(--blue);  border: 1px solid #1a3a6e; }
+        .btn-orange { background: #3d1e08; color: var(--orange); border: 1px solid #6e3a12; }
+        .btn-sm     { padding: 5px 11px; font-size: 12px; }
+
+        /* TABLA */
+        .tabla-wrap { background: var(--card); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin-bottom: 40px; }
+
+        table { width: 100%; border-collapse: collapse; }
+
+        thead th {
+            background: var(--surface); padding: 11px 14px; text-align: left;
+            font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: var(--muted);
+            font-weight: 600; border-bottom: 1px solid var(--border);
+        }
+
+        tbody tr { border-bottom: 1px solid var(--border); transition: background .15s; }
+        tbody tr:last-child { border-bottom: none; }
+        tbody tr:hover { background: rgba(255,255,255,0.03); }
+
+        td { padding: 12px 14px; font-size: 13px; vertical-align: middle; }
+
+        .socio-nombre { font-weight: 500; font-size: 14px; }
+        .socio-email  { color: var(--muted); font-size: 12px; }
+
+        /* BADGES */
+        .badge { display: inline-block; padding: 3px 9px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+        .badge-activo   { background: #0d2b0d; color: var(--green); border: 1px solid #2a5c2a; }
+        .badge-inactivo { background: #2b0d0d; color: var(--red);   border: 1px solid #5c2a2a; }
+        .badge-aldía    { background: #0d2b0d; color: var(--green); }
+        .badge-vencido  { background: #2b0d0d; color: var(--red); }
+        .badge-sinpago  { background: #1a1a1a; color: var(--muted); }
+        .badge-admin-rol { background: rgba(96,165,250,0.15); color: var(--blue); border: 1px solid rgba(96,165,250,0.3); }
+        .badge-emp-rol  { background: rgba(255,107,0,0.15); color: var(--orange); border: 1px solid rgba(255,107,0,0.35); }
+
+        .acciones { display: flex; gap: 6px; flex-wrap: wrap; }
+
+        .pago-form { display: flex; align-items: center; gap: 6px; }
+        .pago-form input[type="number"] {
+            width: 55px; background: var(--surface); border: 1px solid var(--border);
+            color: var(--text); padding: 6px 8px; border-radius: 6px; font-size: 13px;
+            text-align: center; outline: none; font-family: 'DM Sans', sans-serif;
+        }
+
+        .empty { text-align: center; padding: 50px; color: var(--muted); font-size: 14px; }
+
+        hr.sep { border: none; border-top: 1px solid var(--border); margin: 40px 0; }
+    </style>
+</head>
+<body>
+
+<div class="topbar">
+    <div class="topbar-left">
+        <div class="logo">BODYFLEX<span>GYM</span></div>
+        <div class="badge-admin">Admin</div>
+    </div>
+    <div class="topbar-right">
+        <span class="topbar-nombre">{{ session.nombre }}</span>
+        <a href="/logout" class="btn-logout">Cerrar sesión</a>
+    </div>
+</div>
+
+<div class="main">
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}{% for category, message in messages %}
+            <div class="flash flash-{{ category }}">{{ message }}</div>
+        {% endfor %}{% endif %}
+    {% endwith %}
+
+    <!-- ══════════════════════════════════════ -->
+    <!-- SECCIÓN 1: SOCIOS / CLIENTES           -->
+    <!-- ══════════════════════════════════════ -->
+
+    <div class="section-header">
+        <div class="section-title">Socios <small>clientes del gimnasio</small></div>
+    </div>
+
+    <!-- STATS SOCIOS -->
+    <div class="stats-row">
+        <div class="stat-card">
+            <div class="stat-label">Total socios</div>
+            <div class="stat-value yellow">{{ usuarios | length }}</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Al día</div>
+            <div class="stat-value green">
+                {{ usuarios | selectattr("ultimo_vencimiento") | list | length }}
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Vencidos</div>
+            <div class="stat-value red">
+                {% set venc = [] %}
+                {% for u in usuarios %}
+                    {% if u.ultimo_vencimiento and u.ultimo_vencimiento < fecha_hoy %}
+                        {% set _ = venc.append(1) %}
+                    {% endif %}
+                {% endfor %}
+                {{ venc | length }}
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Sin pagos</div>
+            <div class="stat-value" style="color:var(--muted);">
+                {{ usuarios | rejectattr("ultimo_vencimiento") | list | length }}
+            </div>
+        </div>
+    </div>
+
+    <!-- FILTROS SOCIOS -->
+    <div class="filtros">
+        <form method="GET" action="/admin">
+            <input type="text" name="buscar" placeholder="Buscar por nombre..." value="{{ request.args.get('buscar','') }}">
+            <button type="submit" class="btn btn-yellow">Buscar</button>
+        </form>
+        <a href="/admin?filtro=activos"  class="btn btn-green">✓ Al día</a>
+        <a href="/admin?filtro=vencidos" class="btn btn-red">✗ Vencidos</a>
+        <a href="/admin" class="btn btn-ghost">Todos</a>
+    </div>
+
+    <!-- TABLA SOCIOS -->
+    <div class="tabla-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Socio</th>
+                    <th>Datos físicos</th>
+                    <th>Entrenamiento</th>
+                    <th>Estado pago</th>
+                    <th>Registrar pago (Q{{ precio_mensual }}/mes)</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for u in usuarios %}
+                <tr>
+                    <td>
+                        <div class="socio-nombre">{{ u.nombre }} {{ u.apellido }}</div>
+                        <div class="socio-email">{{ u.email }}</div>
+                        <div class="socio-email" style="margin-top:2px;">
+                            {% if u.estado.lower() == "activo" %}
+                                <span class="badge badge-activo">Activo</span>
+                            {% else %}
+                                <span class="badge badge-inactivo">Inactivo</span>
+                            {% endif %}
+                        </div>
+                    </td>
+                    <td>
+                        {% if u.edad %}
+                            {{ u.edad }} años · {{ u.peso }} lb · {{ u.altura }} m<br>
+                            <span style="color:var(--muted); font-size:12px;">{{ u.objetivo }}</span>
+                        {% else %}
+                            <span style="color:var(--muted);">Sin perfil</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if u.clase %}
+                            {{ u.clase }}<br>
+                            <span style="color:var(--muted); font-size:12px;">{{ u.horario }}</span>
+                        {% else %}
+                            <span style="color:var(--muted);">—</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if u.ultimo_vencimiento %}
+                            {% set dias = (u.ultimo_vencimiento - fecha_hoy).days %}
+                            {% if dias >= 0 %}
+                                <span class="badge badge-aldía">Al día · {{ dias }}d</span>
+                            {% else %}
+                                <span class="badge badge-vencido">Vencido {{ dias * -1 }}d</span>
+                            {% endif %}
+                        {% else %}
+                            <span class="badge badge-sinpago">Sin pagos</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <form action="/admin/registrar_pago/{{ u.id_usuario }}" method="POST" class="pago-form">
+                            <input type="number" name="meses" min="1" max="12" value="1" required>
+                            <button type="submit" class="btn btn-yellow btn-sm">Registrar</button>
+                        </form>
+                        <a href="/admin/pagos/{{ u.id_usuario }}" class="btn btn-ghost btn-sm" style="margin-top:5px;">Ver historial</a>
+                    </td>
+                    <td>
+                        <div class="acciones">
+                            {% if u.estado.lower() == "activo" %}
+                                <form action="/admin/desactivar/{{ u.id_usuario }}" method="POST"
+                                      onsubmit="return confirm('¿Desactivar a {{ u.nombre }}?')">
+                                    <button type="submit" class="btn btn-red btn-sm">Desactivar</button>
+                                </form>
+                            {% else %}
+                                <form action="/admin/reactivar/{{ u.id_usuario }}" method="POST">
+                                    <button type="submit" class="btn btn-green btn-sm">Reactivar</button>
+                                </form>
+                            {% endif %}
+
+                            <form action="/admin/hacer_empleado/{{ u.id_usuario }}" method="POST">
+                                <button type="submit" class="btn btn-orange btn-sm">→ Empleado</button>
+                            </form>
+
+                            <form action="/admin/hacer_admin/{{ u.id_usuario }}" method="POST">
+                                <button type="submit" class="btn btn-blue btn-sm">→ Admin</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+
+                {% if not usuarios %}
+                <tr><td colspan="6" class="empty">No hay socios registrados</td></tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+
+    <hr class="sep">
+
+    <!-- ══════════════════════════════════════ -->
+    <!-- SECCIÓN 2: EMPLEADOS                   -->
+    <!-- ══════════════════════════════════════ -->
+
+    <div class="section-header">
+        <div class="section-title">Empleados <small>pueden registrar pagos</small></div>
+    </div>
+
+    <div class="tabla-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Empleado</th>
+                    <th>Email</th>
+                    <th>Estado cuenta</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for e in empleados %}
+                <tr>
+                    <td>
+                        <div class="socio-nombre">{{ e.nombre }} {{ e.apellido }}</div>
+                        <span class="badge badge-emp-rol">Empleado</span>
+                    </td>
+                    <td style="color:var(--muted);">{{ e.email }}</td>
+                    <td>
+                        {% if e.estado.lower() == "activo" %}
+                            <span class="badge badge-activo">Activo</span>
+                        {% else %}
+                            <span class="badge badge-inactivo">Inactivo</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="acciones">
+                            {% if e.estado.lower() == "activo" %}
+                                <form action="/admin/desactivar/{{ e.id_usuario }}" method="POST"
+                                      onsubmit="return confirm('¿Desactivar cuenta de {{ e.nombre }}?')">
+                                    <button type="submit" class="btn btn-red btn-sm">Desactivar</button>
+                                </form>
+                            {% else %}
+                                <form action="/admin/reactivar/{{ e.id_usuario }}" method="POST">
+                                    <button type="submit" class="btn btn-green btn-sm">Reactivar</button>
+                                </form>
+                            {% endif %}
+                            <form action="/admin/quitar_empleado/{{ e.id_usuario }}" method="POST"
+                                  onsubmit="return confirm('¿Quitar rol empleado a {{ e.nombre }}?')">
+                                <button type="submit" class="btn btn-ghost btn-sm">→ Usuario</button>
+                            </form>
+                            <form action="/admin/hacer_admin/{{ e.id_usuario }}" method="POST">
+                                <button type="submit" class="btn btn-blue btn-sm">→ Admin</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+
+                {% if not empleados %}
+                <tr>
+                    <td colspan="4" class="empty">
+                        No hay empleados registrados. Puedes promover un socio usando el botón "→ Empleado" en la tabla de arriba.
+                    </td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+
+</div>
+</body>
+</html>
