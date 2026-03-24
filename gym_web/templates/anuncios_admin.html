@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Anuncios — Bodyflex Gym</title>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0f0f0f; --surface: #1a1a1a; --card: #222222;
+            --border: #2e2e2e; --accent: #FF6B00; --blue: #60a5fa;
+            --green: #22c55e; --red: #ef4444; --yellow: #eab308;
+            --text: #f5f5f5; --muted: #9ca3af;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; min-height: 100vh; }
+
+        /* TOPBAR */
+        .topbar { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 32px; height: 60px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+        .logo { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 18px; letter-spacing: -.5px; }
+        .logo span { color: var(--accent); }
+        .topbar-left { display: flex; align-items: center; gap: 12px; }
+        .topbar-right { display: flex; align-items: center; gap: 14px; }
+        .btn-back { background: transparent; border: 1px solid var(--border); color: var(--muted); padding: 6px 14px; border-radius: 6px; font-size: 13px; text-decoration: none; transition: all .2s; }
+        .btn-back:hover { border-color: var(--accent); color: var(--accent); }
+
+        .main { max-width: 1100px; margin: 0 auto; padding: 32px 24px; }
+
+        /* Animaciones */
+        @keyframes fadeInUp { from { opacity:0; transform: translateY(16px); } to { opacity:1; transform: translateY(0); } }
+
+        /* FLASH */
+        .flash { padding: 12px 16px; border-radius: 8px; margin-bottom: 20px; font-size: 13px; }
+        .flash-success { background: rgba(34,197,94,0.15); border: 1px solid rgba(34,197,94,0.3); color: var(--green); }
+        .flash-error   { background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.3); color: var(--red); }
+
+        /* HEADER */
+        .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 28px; }
+        .page-title { font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 700; }
+        .page-title small { font-size: 13px; color: var(--muted); font-weight: 400; margin-left: 8px; }
+
+        /* CREATE FORM */
+        .create-card {
+            background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+            padding: 24px; margin-bottom: 32px;
+            animation: fadeInUp 0.4s ease both;
+        }
+        .create-card h3 { font-family: 'Syne', sans-serif; font-size: 16px; font-weight: 700; margin-bottom: 18px; color: var(--accent); }
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+        .form-full { margin-bottom: 14px; }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+        label { display: block; font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 7px; }
+        input[type="text"], input[type="date"], textarea, select {
+            width: 100%; background: var(--surface); border: 1px solid var(--border);
+            color: var(--text); padding: 10px 14px; border-radius: 8px; font-size: 13px;
+            font-family: 'DM Sans', sans-serif; outline: none; transition: border-color .2s, box-shadow .2s;
+        }
+        textarea { resize: vertical; min-height: 80px; }
+        input:focus, textarea:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(255,107,0,0.15); }
+        select option { background: var(--card); }
+
+        .btn { padding: 10px 18px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; font-family: 'DM Sans', sans-serif; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; transition: all 0.2s; position: relative; overflow: hidden; }
+        .btn:hover { opacity: .88; transform: translateY(-1px); }
+        .btn-accent { background: var(--accent); color: #fff; }
+        .btn-ghost  { background: transparent; border: 1px solid var(--border); color: var(--muted); }
+        .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+        .btn-green  { background: rgba(34,197,94,0.12); color: var(--green); border: 1px solid rgba(34,197,94,0.3); }
+        .btn-red    { background: rgba(239,68,68,0.12); color: var(--red); border: 1px solid rgba(239,68,68,0.3); }
+        .btn-sm     { padding: 5px 11px; font-size: 12px; }
+
+        /* Ripple */
+        .ripple { position: absolute; border-radius: 50%; background: rgba(255,255,255,0.25); transform: scale(0); animation: ripple-anim 0.6s linear; pointer-events: none; }
+        @keyframes ripple-anim { to { transform: scale(4); opacity: 0; } }
+
+        /* TABLA */
+        .tabla-wrap { background: var(--card); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; animation: fadeInUp 0.5s ease both 0.1s; }
+        table { width: 100%; border-collapse: collapse; }
+        thead th { background: var(--surface); padding: 11px 14px; text-align: left; font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); font-weight: 600; border-bottom: 1px solid var(--border); }
+        tbody tr { border-bottom: 1px solid var(--border); transition: background .15s; }
+        tbody tr:last-child { border-bottom: none; }
+        tbody tr:hover { background: rgba(255,255,255,0.02); }
+        td { padding: 12px 14px; font-size: 13px; vertical-align: middle; }
+
+        /* Badges de tipo */
+        .tipo-badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; letter-spacing: 0.5px; }
+        .tipo-info  { background: rgba(96,165,250,0.15); color: #60a5fa; border: 1px solid rgba(96,165,250,0.3); }
+        .tipo-promo { background: rgba(255,107,0,0.15);  color: #FF6B00; border: 1px solid rgba(255,107,0,0.3); }
+        .tipo-aviso { background: rgba(234,179,8,0.12);  color: #eab308; border: 1px solid rgba(234,179,8,0.3); }
+        .badge-activo   { background: rgba(34,197,94,0.12); color: var(--green); border: 1px solid rgba(34,197,94,0.3); padding: 3px 9px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+        .badge-inactivo { background: rgba(239,68,68,0.12); color: var(--red); border: 1px solid rgba(239,68,68,0.3); padding: 3px 9px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+        .acciones { display: flex; gap: 6px; flex-wrap: wrap; }
+        .empty { text-align: center; padding: 50px; color: var(--muted); }
+
+        /* MODAL EDITAR */
+        .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 999; align-items: center; justify-content: center; }
+        .modal-overlay.show { display: flex; }
+        .modal-box { background: #1a1a1a; border: 1px solid #333; border-radius: 16px; padding: 28px 32px; width: 520px; max-width: 95vw; animation: fadeInUp 0.3s ease; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .modal-title { font-family: 'Syne', sans-serif; font-size: 16px; font-weight: 700; }
+        .modal-close { background: none; border: none; color: var(--muted); font-size: 22px; cursor: pointer; line-height: 1; }
+    </style>
+</head>
+<body>
+
+<div class="topbar">
+    <div class="topbar-left">
+        <div class="logo">BODYFLEX<span>GYM</span></div>
+    </div>
+    <div class="topbar-right">
+        {% if session.rol == 'admin' %}
+        <a href="/admin" class="btn-back">← Panel Admin</a>
+        {% else %}
+        <a href="/empleado" class="btn-back">← Panel Empleado</a>
+        {% endif %}
+    </div>
+</div>
+
+<div class="main">
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}{% for category, message in messages %}
+            <div class="flash flash-{{ category }}">{{ message }}</div>
+        {% endfor %}{% endif %}
+    {% endwith %}
+
+    <div class="page-header">
+        <div class="page-title">📢 Anuncios <small>visibles para los socios</small></div>
+    </div>
+
+    <!-- CREAR ANUNCIO -->
+    <div class="create-card">
+        <h3>+ Crear nuevo anuncio</h3>
+        <form action="/admin/anuncios/crear" method="POST">
+            <div class="form-grid">
+                <div>
+                    <label>Título</label>
+                    <input type="text" name="titulo" placeholder="Ej: ¡Promoción de Marzo!" required>
+                </div>
+                <div>
+                    <label>Tipo</label>
+                    <select name="tipo">
+                        <option value="info">ℹ️ Info (azul)</option>
+                        <option value="promo">🔥 Promo (naranja)</option>
+                        <option value="aviso">⚠️ Aviso (amarillo)</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-full">
+                <label>Contenido</label>
+                <textarea name="contenido" placeholder="Escribe el mensaje completo del anuncio..." required></textarea>
+            </div>
+            <div class="form-row">
+                <div>
+                    <label>Fecha inicio</label>
+                    <input type="date" name="fecha_inicio" required>
+                </div>
+                <div>
+                    <label>Fecha fin</label>
+                    <input type="date" name="fecha_fin" required>
+                </div>
+                <div style="display:flex; align-items:flex-end;">
+                    <button type="submit" class="btn btn-accent" style="width:100%;" onclick="addRipple(event, this)">Publicar anuncio</button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- TABLA ANUNCIOS -->
+    <div class="tabla-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Título</th>
+                    <th>Tipo</th>
+                    <th>Contenido</th>
+                    <th>Vigencia</th>
+                    <th>Estado</th>
+                    <th>Creado por</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for a in anuncios %}
+                <tr>
+                    <td style="font-weight:600; max-width:150px;">{{ a.titulo }}</td>
+                    <td>
+                        <span class="tipo-badge tipo-{{ a.tipo }}">
+                            {% if a.tipo == 'info' %}ℹ️ Info{% elif a.tipo == 'promo' %}🔥 Promo{% else %}⚠️ Aviso{% endif %}
+                        </span>
+                    </td>
+                    <td style="color:var(--muted); font-size:12px; max-width:200px;">{{ a.contenido[:80] }}{% if a.contenido|length > 80 %}...{% endif %}</td>
+                    <td style="font-size:12px; color:var(--muted);">
+                        {{ a.fecha_inicio.strftime('%d/%m/%Y') if a.fecha_inicio else '—' }}<br>
+                        → {{ a.fecha_fin.strftime('%d/%m/%Y') if a.fecha_fin else '—' }}
+                    </td>
+                    <td>
+                        {% if a.activo %}
+                        <span class="badge-activo">Activo</span>
+                        {% else %}
+                        <span class="badge-inactivo">Inactivo</span>
+                        {% endif %}
+                    </td>
+                    <td style="font-size:12px; color:var(--muted);">{{ a.nombre }} {{ a.apellido }}</td>
+                    <td>
+                        <div class="acciones">
+                            <button class="btn btn-ghost btn-sm edit-btn" data-id="{{ a.id }}" data-titulo="{{ a.titulo|tojson }}" data-contenido="{{ a.contenido|tojson }}" data-tipo="{{ a.tipo|tojson }}" data-fecha-inicio="{{ a.fecha_inicio|tojson }}" data-fecha-fin="{{ a.fecha_fin|tojson }}">Editar</button>
+                            <form action="/admin/anuncios/{{ a.id }}/toggle" method="POST">
+                                <button type="submit" class="btn btn-sm {% if a.activo %}btn-red{% else %}btn-green{% endif %}">
+                                    {{ 'Desactivar' if a.activo else 'Activar' }}
+                                </button>
+                            </form>
+                            <form action="/admin/anuncios/{{ a.id }}/eliminar" method="POST"
+                                  onsubmit='return confirm("¿Eliminar este anuncio?")'>
+                                <button type="submit" class="btn btn-red btn-sm">Eliminar</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+                {% if not anuncios %}
+                <tr><td colspan="7" class="empty">No hay anuncios aún. ¡Crea el primero!</td></tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+
+</div>
+
+<!-- MODAL EDITAR -->
+<div class="modal-overlay" id="modalEditar">
+    <div class="modal-box">
+        <div class="modal-header">
+            <div class="modal-title">Editar anuncio</div>
+            <button class="modal-close" onclick="cerrarEditar()">✕</button>
+        </div>
+        <form id="formEditar" method="POST">
+            <div class="form-grid" style="margin-bottom:14px;">
+                <div>
+                    <label>Título</label>
+                    <input type="text" name="titulo" id="editTitulo" required>
+                </div>
+                <div>
+                    <label>Tipo</label>
+                    <select name="tipo" id="editTipo">
+                        <option value="info">ℹ️ Info (azul)</option>
+                        <option value="promo">🔥 Promo (naranja)</option>
+                        <option value="aviso">⚠️ Aviso (amarillo)</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-full">
+                <label>Contenido</label>
+                <textarea name="contenido" id="editContenido" required></textarea>
+            </div>
+            <div class="form-grid" style="margin-bottom:18px;">
+                <div>
+                    <label>Fecha inicio</label>
+                    <input type="date" name="fecha_inicio" id="editFechaIni" required>
+                </div>
+                <div>
+                    <label>Fecha fin</label>
+                    <input type="date" name="fecha_fin" id="editFechaFin" required>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-accent" style="width:100%;" onclick="addRipple(event, this)">Guardar cambios</button>
+        </form>
+    </div>
+</div>
+
+<script>
+function abrirEditar(id, titulo, contenido, tipo, fechaIni, fechaFin) {
+    document.getElementById('formEditar').action = `/admin/anuncios/${id}/editar`;
+    document.getElementById('editTitulo').value = titulo;
+    document.getElementById('editContenido').value = contenido;
+    document.getElementById('editTipo').value = tipo;
+    document.getElementById('editFechaIni').value = fechaIni;
+    document.getElementById('editFechaFin').value = fechaFin;
+    document.getElementById('modalEditar').classList.add('show');
+}
+function cerrarEditar() {
+    document.getElementById('modalEditar').classList.remove('show');
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') cerrarEditar(); });
+
+function addRipple(e, btn) {
+    const rect = btn.getBoundingClientRect();
+    const d = Math.max(rect.width, rect.height);
+    const span = document.createElement('span');
+    span.className = 'ripple';
+    span.style.cssText = `width:${d}px;height:${d}px;left:${e.clientX-rect.left-d/2}px;top:${e.clientY-rect.top-d/2}px`;
+    btn.appendChild(span);
+    setTimeout(() => span.remove(), 700);
+}
+
+// Set default dates
+document.addEventListener('DOMContentLoaded', () => {
+    const today = new Date().toISOString().split('T')[0];
+    const ini = document.querySelector('input[name="fecha_inicio"]');
+    const fin = document.querySelector('input[name="fecha_fin"]');
+    if (ini && !ini.value) ini.value = today;
+    if (fin && !fin.value) {
+        const d = new Date(); d.setDate(d.getDate() + 30);
+        fin.value = d.toISOString().split('T')[0];
+    }
+
+    // Event listeners for edit buttons
+    document.querySelectorAll('.edit-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const id = btn.dataset.id;
+            const titulo = btn.dataset.titulo;
+            const contenido = btn.dataset.contenido;
+            const tipo = btn.dataset.tipo;
+            const fechaInicio = btn.dataset.fechaInicio;
+            const fechaFin = btn.dataset.fechaFin;
+            abrirEditar(id, titulo, contenido, tipo, fechaInicio, fechaFin);
+        });
+    });
+});
+</script>
+</body>
+</html>
