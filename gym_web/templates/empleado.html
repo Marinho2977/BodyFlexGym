@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel Empleado — Bodyflex Gym</title>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        :root {
+            --bg:       #0f0f0f;
+            --surface:  #1a1a1a;
+            --card:     #222222;
+            --border:   #2e2e2e;
+            --accent:   #FF6B00;
+            --green:    #22c55e;
+            --red:      #ef4444;
+            --text:     #f5f5f5;
+            --muted:    #9ca3af;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'DM Sans', sans-serif;
+            min-height: 100vh;
+        }
+
+        /* TOPBAR */
+        .topbar {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 0 32px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .topbar-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo {
+            font-family: 'Syne', sans-serif;
+            font-weight: 800;
+            font-size: 18px;
+            letter-spacing: -0.5px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .logo span { color: var(--accent); }
+
+        .badge-rol {
+            background: rgba(255,107,0,0.15);
+            color: var(--accent);
+            border: 1px solid rgba(255,107,0,0.35);
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .topbar-right {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .topbar-nombre {
+            color: var(--muted);
+            font-size: 13px;
+        }
+
+        .btn-logout {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--muted);
+            padding: 6px 14px;
+            border-radius: 6px;
+            font-size: 13px;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all .2s;
+        }
+
+        .btn-logout:hover {
+            border-color: var(--red);
+            color: var(--red);
+        }
+
+        /* MAIN */
+        .main {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 32px 24px;
+        }
+
+        .page-title {
+            font-family: 'Syne', sans-serif;
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .page-sub {
+            color: var(--muted);
+            font-size: 14px;
+            margin-bottom: 28px;
+        }
+
+        /* FLASHES */
+        .flash {
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+
+        .flash-success { background: rgba(34,197,94,0.15); border: 1px solid rgba(34,197,94,0.3); color: var(--green); }
+        .flash-error   { background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.3); color: var(--red); }
+
+        /* BUSCADOR */
+        .search-bar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 24px;
+        }
+
+        .search-bar input {
+            flex: 1;
+            background: var(--card);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 10px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: 'DM Sans', sans-serif;
+            outline: none;
+            transition: border-color .2s;
+        }
+
+        .search-bar input:focus { border-color: var(--accent); }
+
+        .btn-buscar {
+            background: var(--accent);
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            font-family: 'DM Sans', sans-serif;
+        }
+
+        .btn-limpiar {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--muted);
+            padding: 10px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+        }
+
+        /* TABLA */
+        .tabla-wrap {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead th {
+            background: var(--surface);
+            padding: 12px 16px;
+            text-align: left;
+            font-size: 11px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: var(--muted);
+            font-weight: 600;
+            border-bottom: 1px solid var(--border);
+        }
+
+        tbody tr {
+            border-bottom: 1px solid var(--border);
+            transition: background .15s;
+        }
+
+        tbody tr:last-child { border-bottom: none; }
+        tbody tr:hover { background: rgba(255,255,255,0.03); }
+
+        td {
+            padding: 14px 16px;
+            font-size: 14px;
+            vertical-align: middle;
+        }
+
+        .socio-num {
+            font-family: 'Syne', sans-serif;
+            font-size: 12px;
+            color: var(--muted);
+        }
+
+        .socio-nombre {
+            font-weight: 500;
+        }
+
+        /* BADGES DE ESTADO */
+        .badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .badge-activo   { background: #0d2b0d; color: var(--green); border: 1px solid #2a5c2a; }
+        .badge-inactivo { background: #2b0d0d; color: var(--red);   border: 1px solid #5c2a2a; }
+        .badge-aldía    { background: #0d2b0d; color: var(--green); }
+        .badge-vencido  { background: #2b0d0d; color: var(--red);   }
+        .badge-sinpago  { background: #1a1a1a; color: var(--muted); }
+
+        /* FORM PAGO INLINE */
+        .pago-form {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .pago-form input[type="number"] {
+            width: 60px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 7px 10px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-family: 'DM Sans', sans-serif;
+            text-align: center;
+            outline: none;
+        }
+
+        .btn-pago {
+            background: var(--accent);
+            color: #000;
+            border: none;
+            padding: 7px 14px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: 'DM Sans', sans-serif;
+            white-space: nowrap;
+        }
+
+        .btn-pago:hover { background: #FF8C42; box-shadow: 0 4px 15px rgba(255,107,0,0.3); }
+
+        .empty {
+            text-align: center;
+            padding: 60px;
+            color: var(--muted);
+            font-size: 15px;
+        }
+
+        /* RESUMEN */
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 16px;
+            margin-bottom: 28px;
+        }
+
+        .stat-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 18px 20px;
+        }
+
+        .stat-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--muted);
+            margin-bottom: 6px;
+        }
+
+        .stat-value {
+            font-family: 'Syne', sans-serif;
+            font-size: 26px;
+            font-weight: 700;
+        }
+
+        .stat-value.green { color: var(--green); }
+        .stat-value.yellow { color: var(--accent); }
+        .stat-value.red { color: var(--red); }
+    </style>
+</head>
+<body>
+
+<div class="topbar">
+    <div class="topbar-left">
+        <div class="logo">BODYFLEX<span>GYM</span></div>
+        <div class="badge-rol">Empleado</div>
+    </div>
+    <div class="topbar-right">
+        <span class="topbar-nombre">{{ session.nombre }}</span>
+        <a href="/logout" class="btn-logout">Cerrar sesión</a>
+    </div>
+</div>
+
+<div class="main">
+
+    <div class="page-title">Registro de Pagos</div>
+    <div class="page-sub">Registra mensualidades de los socios activos</div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="flash flash-{{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <!-- STATS -->
+    {% set total = usuarios | length %}
+    {% set al_dia = usuarios | selectattr("ultimo_vencimiento") | list %}
+    <div class="stats-row">
+        <div class="stat-card">
+            <div class="stat-label">Total socios</div>
+            <div class="stat-value yellow">{{ total }}</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Al día</div>
+            <div class="stat-value green">
+                {{ usuarios | selectattr("ultimo_vencimiento") | list | selectattr("ultimo_vencimiento", "ge", fecha_hoy) | list | length }}
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Precio mensual</div>
+            <div class="stat-value yellow">Q{{ "%.0f"|format(precio_mensual) }}</div>
+        </div>
+    </div>
+
+    <!-- BUSCADOR -->
+    <form method="GET" action="/empleado" class="search-bar">
+        <input type="text" name="buscar" placeholder="Buscar por nombre o número de socio..." value="{{ buscar }}">
+        <button type="submit" class="btn-buscar">Buscar</button>
+        {% if buscar %}
+            <a href="/empleado" class="btn-limpiar">✕ Limpiar</a>
+        {% endif %}
+    </form>
+
+    <!-- TABLA -->
+    <div class="tabla-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Socio</th>
+                    <th>Estado</th>
+                    <th>Vencimiento</th>
+                    <th>Registrar Pago</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for u in usuarios %}
+                <tr>
+                    <td>
+                        <div class="socio-nombre">{{ u.nombre }} {{ u.apellido }}</div>
+                        <div class="socio-num">{{ u.numero_socio }}</div>
+                    </td>
+                    <td>
+                        {% if u.estado.lower() == "activo" %}
+                            <span class="badge badge-activo">Activo</span>
+                        {% else %}
+                            <span class="badge badge-inactivo">Inactivo</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if u.ultimo_vencimiento %}
+                            {% set dias = (u.ultimo_vencimiento - fecha_hoy).days %}
+                            {% if dias >= 0 %}
+                                <span class="badge badge-aldía">Al día · {{ dias }}d restantes</span>
+                            {% else %}
+                                <span class="badge badge-vencido">Vencido hace {{ dias * -1 }}d</span>
+                            {% endif %}
+                        {% else %}
+                            <span class="badge badge-sinpago">Sin pagos</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if u.estado.lower() == "activo" %}
+                        <button class="btn-pago btn-abrir-pago" data-id="{{ u.id_usuario }}" data-nombre="{{ u.nombre }} {{ u.apellido }}">+ Registrar pago</button>
+                        {% else %}
+                            <span style="color:var(--muted); font-size:13px;">Cuenta inactiva</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+
+                {% if not usuarios %}
+                <tr>
+                    <td colspan="4" class="empty">
+                        {% if buscar %}No se encontraron socios con "{{ buscar }}"{% else %}No hay socios registrados{% endif %}
+                    </td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+
+</div>
+
+<!-- ── MODAL REGISTRAR PAGO ── -->
+<div id="modalPago" data-precio="{{ precio_mensual }}" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.7); z-index:999; align-items:center; justify-content:center;">
+    <div style="background:#1a1a1a; border:1px solid #333; border-radius:18px; padding:28px 32px; width:420px; max-width:95vw; box-shadow:0 20px 60px rgba(0,0,0,.5);">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+            <div>
+                <div style="font-size:11px; text-transform:uppercase; letter-spacing:1px; color:#888;">Registrar pago</div>
+                <div id="modalNombre" style="font-size:18px; font-weight:700; color:#fff; margin-top:2px;"></div>
+            </div>
+            <button onclick="cerrarPago()" style="background:none; border:none; color:#888; font-size:22px; cursor:pointer; line-height:1;">✕</button>
+        </div>
+
+        <form id="formPago" method="POST">
+            <div style="margin-bottom:16px;">
+                <label style="font-size:12px; color:#888; display:block; margin-bottom:6px;">AÑO</label>
+                <select id="anioModal" onchange="actualizarResumen()" style="width:100%; padding:10px 12px; border-radius:10px; background:#252525; color:#fff; border:1px solid #333; font-size:14px;">
+                    <option value="2024">2024</option>
+                    <option value="2025">2025</option>
+                    <option value="2026" selected>2026</option>
+                    <option value="2027">2027</option>
+                </select>
+            </div>
+
+            <div style="margin-bottom:16px;">
+                <label style="font-size:12px; color:#888; display:block; margin-bottom:8px;">MESES A PAGAR</label>
+                <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:8px;">
+                    {% for m, nombre in [(1,'Enero'),(2,'Febrero'),(3,'Marzo'),(4,'Abril'),(5,'Mayo'),(6,'Junio'),(7,'Julio'),(8,'Agosto'),(9,'Septiembre'),(10,'Octubre'),(11,'Noviembre'),(12,'Diciembre')] %}
+                    <label style="display:flex; align-items:center; gap:6px; background:#252525; border:1px solid #333; border-radius:8px; padding:8px 10px; cursor:pointer; font-size:13px; transition:border .15s;" id="lbl-{{ m }}">
+                        <input type="checkbox" name="meses_sel" value="{{ m }}" data-mes="{{ m }}" style="accent-color:#f97316;">
+                        {{ nombre }}
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div id="resumenPago" style="background:#252525; border-radius:10px; padding:12px 16px; margin-bottom:18px; font-size:13px; color:#888; min-height:42px;">
+                Selecciona al menos un mes
+            </div>
+
+            <input type="hidden" name="anio_sel" id="anioHidden">
+            <input type="hidden" name="meses_lista" id="mesesHidden">
+
+            <button type="button" onclick="submitPago()" style="width:100%; background:#f97316; color:#000; font-weight:700; font-size:15px; border:none; border-radius:12px; padding:13px; cursor:pointer;">
+                Registrar pago
+            </button>
+        </form>
+    </div>
+</div>
+
+<style>
+#modalPago.show { display:flex !important; }
+</style>
+
+<script>
+const PRECIO = parseFloat(document.getElementById('modalPago').dataset.precio);
+const MESES_NOMBRES = ['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+
+document.addEventListener('click', function(e) {
+    const btn = e.target.closest('.btn-abrir-pago');
+    if (btn) abrirPago(btn.dataset.id, btn.dataset.nombre);
+});
+
+document.addEventListener('change', function(e) {
+    if (e.target.name === 'meses_sel') {
+        const m = e.target.dataset.mes;
+        toggleLbl(m, e.target.checked);
+        actualizarResumen();
+    }
+});
+
+function abrirPago(id, nombre) {
+    document.getElementById('modalNombre').textContent = nombre;
+    document.getElementById('formPago').action = '/admin/registrar_pago/' + id;
+    document.querySelectorAll('input[name="meses_sel"]').forEach(c => {
+        c.checked = false;
+        toggleLbl(c.value, false);
+    });
+    actualizarResumen();
+    document.getElementById('modalPago').classList.add('show');
+}
+function cerrarPago() { document.getElementById('modalPago').classList.remove('show'); }
+function toggleLbl(m, checked) {
+    const lbl = document.getElementById('lbl-' + m);
+    if (lbl) lbl.style.borderColor = checked ? '#f97316' : '#333';
+}
+function actualizarResumen() {
+    const checks = [...document.querySelectorAll('input[name="meses_sel"]:checked')];
+    const anio   = document.getElementById('anioModal').value;
+    const resumen = document.getElementById('resumenPago');
+    if (checks.length === 0) { resumen.innerHTML = '<span style="color:#888">Selecciona al menos un mes</span>'; return; }
+    const nombres = checks.map(c => MESES_NOMBRES[parseInt(c.value)]).join(', ');
+    const total   = (checks.length * PRECIO).toFixed(2);
+    resumen.innerHTML = `<span style="color:#fff;font-weight:600;">${nombres} ${anio}</span><br><span style="color:#f97316;font-weight:700;">Total: Q${total}</span> <span style="color:#888;">(${checks.length} mes${checks.length>1?'es':''})</span>`;
+}
+function submitPago() {
+    const checks = [...document.querySelectorAll('input[name="meses_sel"]:checked')];
+    if (checks.length === 0) { alert('Selecciona al menos un mes'); return; }
+    document.getElementById('anioHidden').value  = document.getElementById('anioModal').value;
+    document.getElementById('mesesHidden').value = checks.map(c => c.value).join(',');
+    document.getElementById('formPago').submit();
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') cerrarPago(); });
+</script>
+</body>
+</html>

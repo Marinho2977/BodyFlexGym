@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registro — Bodyflex Gym</title>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        :root {
+            --bg:       #0f0f0f;
+            --surface:  #1a1a1a;
+            --card:     #222222;
+            --border:   #2e2e2e;
+            --accent:   #FF6B00;
+            --green:    #22c55e;
+            --red:      #ef4444;
+            --text:     #f5f5f5;
+            --muted:    #9ca3af;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'DM Sans', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 32px 24px;
+        }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(24px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            bottom: -200px; right: -200px;
+            width: 600px; height: 600px;
+            background: radial-gradient(circle, rgba(255,107,0,0.1) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .wrapper {
+            width: 100%;
+            max-width: 440px;
+        }
+
+        .logo {
+            font-family: 'Syne', sans-serif;
+            font-weight: 800;
+            font-size: 28px;
+            letter-spacing: -1px;
+            text-align: center;
+            margin-bottom: 8px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        .logo span { color: var(--accent); }
+
+        .tagline {
+            text-align: center;
+            color: var(--muted);
+            font-size: 13px;
+            margin-bottom: 36px;
+        }
+
+        .card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 32px;
+            animation: fadeInUp 0.5s ease both;
+            transition: box-shadow 0.3s ease, transform 0.3s ease;
+        }
+        .card:hover {
+            box-shadow: 0 16px 40px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,107,0,0.1);
+            transform: translateY(-2px);
+        }
+
+        .card-title {
+            font-family: 'Syne', sans-serif;
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 24px;
+        }
+
+        /* Flash */
+        .flash {
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 13px;
+        }
+        .flash-success { background: rgba(34,197,94,0.15); border: 1px solid rgba(34,197,94,0.3); color: var(--green); }
+        .flash-error   { background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.3); color: var(--red); }
+
+        /* Grid de 2 columnas para nombre/apellido */
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+        }
+
+        .field { margin-bottom: 18px; }
+
+        label {
+            display: block;
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            margin-bottom: 8px;
+        }
+
+        .input-wrap { position: relative; }
+
+        input {
+            width: 100%;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 12px 16px;
+            border-radius: 10px;
+            font-size: 14px;
+            font-family: 'DM Sans', sans-serif;
+            outline: none;
+            transition: border-color .2s, box-shadow .2s;
+        }
+        .input-wrap input { padding-right: 44px; }
+
+        input:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(255,107,0,0.2);
+        }
+
+        input::placeholder { color: var(--muted); }
+
+        .eye-btn {
+            position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+            background: none; border: none; cursor: pointer; color: var(--muted);
+            padding: 4px; display: flex; align-items: center; transition: color 0.2s ease;
+        }
+        .eye-btn:hover { color: var(--accent); }
+        .eye-btn svg { width: 18px; height: 18px; }
+
+        /* Hint de contraseña */
+        .hint {
+            font-size: 11px;
+            color: var(--muted);
+            margin-top: 6px;
+        }
+
+        .requisitos {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 12px 16px;
+            margin-top: 8px;
+        }
+        .req-title { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 8px; font-weight: 600; }
+        .req-item { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); margin-bottom: 5px; transition: color .2s; }
+        .req-item:last-child { margin-bottom: 0; }
+        .req-item.ok { color: var(--green); }
+
+        .strength-bar { height: 4px; border-radius: 4px; background: var(--border); overflow: hidden; margin-top: 8px; }
+        .strength-fill { height: 100%; border-radius: 4px; transition: width .3s, background .3s; width: 0%; }
+        .strength-label { font-size: 11px; margin-top: 5px; color: var(--muted); }
+
+        .btn-submit {
+            width: 100%;
+            background: var(--accent);
+            color: #fff;
+            border: none;
+            padding: 13px;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 700;
+            font-family: 'Syne', sans-serif;
+            cursor: pointer;
+            margin-top: 8px;
+            transition: opacity .2s, transform .1s, box-shadow .2s;
+            letter-spacing: 0.3px;
+            position: relative; overflow: hidden;
+        }
+        .btn-submit:hover { opacity: .9; box-shadow: 0 4px 20px rgba(255,107,0,0.35); }
+        .btn-submit:active { transform: scale(.99); }
+        .btn-submit .ripple { position:absolute; border-radius:50%; background:rgba(255,255,255,0.3); transform:scale(0); animation:ripple-anim 0.6s linear; pointer-events:none; }
+        @keyframes ripple-anim { to { transform: scale(4); opacity: 0; } }
+
+        .footer-link {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 13px;
+            color: var(--muted);
+        }
+
+        .footer-link a {
+            color: var(--accent);
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .footer-link a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+
+<div class="wrapper">
+    <div class="logo" style="justify-content:center; margin-bottom: 5px;">
+        BODYFLEX<span>GYM</span>
+    </div>
+    <p class="tagline">Sistema de gestión de membresías</p>
+
+    <div class="card">
+        <div class="card-title">Crear cuenta</div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}{% for category, message in messages %}
+                <div class="flash flash-{{ category }}">{{ message }}</div>
+            {% endfor %}{% endif %}
+        {% endwith %}
+
+        <form action="/registrar" method="POST">
+            <div class="grid-2">
+                <div class="field">
+                    <label>Nombre</label>
+                    <input type="text" name="nombre" placeholder="Juan" required autofocus>
+                </div>
+                <div class="field">
+                    <label>Apellido</label>
+                    <input type="text" name="apellido" placeholder="García" required>
+                </div>
+            </div>
+
+            <div class="field">
+                <label>Correo electrónico</label>
+                <input type="email" name="correo" placeholder="tu@correo.com" required>
+            </div>
+
+            <div class="field">
+                <label>Contraseña</label>
+                <div class="input-wrap">
+                    <input type="password" name="password" id="password" placeholder="••••••••" required
+                           oninput="verificarFuerza(this.value); verificarRequisitos(this.value);">
+                    <button type="button" class="eye-btn" onclick="toggleEye('password', this)" aria-label="Mostrar/ocultar contraseña">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.964-7.178Z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /></svg>
+                    </button>
+                </div>
+                <div class="strength-bar"><div class="strength-fill" id="strengthFill"></div></div>
+                <div class="strength-label" id="strengthLabel">Escribe tu contraseña</div>
+                <div class="requisitos">
+                    <div class="req-title">Requisitos</div>
+                    <div class="req-item" id="req-largo">  <span>○</span> Mínimo 8 caracteres</div>
+                    <div class="req-item" id="req-mayus">  <span>○</span> Al menos una mayúscula (A-Z)</div>
+                    <div class="req-item" id="req-minus">  <span>○</span> Al menos una minúscula (a-z)</div>
+                    <div class="req-item" id="req-numero"> <span>○</span> Al menos un número (0-9)</div>
+                    <div class="req-item" id="req-especial"><span>○</span> Al menos un carácter especial (@, #, $, !...)</div>
+                </div>
+            </div>
+
+            <button type="submit" class="btn-submit" onclick="addRipple(event, this)">Crear cuenta</button>
+        </form>
+
+        <p class="footer-link">
+            ¿Ya tienes cuenta? <a href="/login">Inicia sesión</a>
+        </p>
+    </div>
+</div>
+
+<script>
+const SVG_EYE = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" style="width:18px;height:18px"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.964-7.178Z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /></svg>`;
+const SVG_EYE_OFF = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" style="width:18px;height:18px"><path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" /></svg>`;
+
+function toggleEye(inputId, btn) {
+    const input = document.getElementById(inputId);
+    const isHidden = input.type === 'password';
+    input.type = isHidden ? 'text' : 'password';
+    btn.innerHTML = isHidden ? SVG_EYE_OFF : SVG_EYE;
+}
+function addRipple(e, btn) {
+    const rect = btn.getBoundingClientRect();
+    const d = Math.max(rect.width, rect.height);
+    const span = document.createElement('span');
+    span.className = 'ripple';
+    span.style.cssText = `width:${d}px;height:${d}px;left:${e.clientX-rect.left-d/2}px;top:${e.clientY-rect.top-d/2}px`;
+    btn.appendChild(span);
+    setTimeout(() => span.remove(), 700);
+}
+function verificarFuerza(val) {
+    const fill = document.getElementById('strengthFill');
+    const label = document.getElementById('strengthLabel');
+    let score = 0;
+    if (val.length >= 8) score++;
+    if (/[A-Z]/.test(val)) score++;
+    if (/[a-z]/.test(val)) score++;
+    if (/[0-9]/.test(val)) score++;
+    if (/[^A-Za-z0-9]/.test(val)) score++;
+    const n = [
+        {p:'0%',   c:'transparent', t:'Escribe tu contraseña'},
+        {p:'25%',  c:'#ef4444',     t:'⚠️ Muy débil'},
+        {p:'45%',  c:'#f97316',     t:'🔸 Débil'},
+        {p:'65%',  c:'#facc15',     t:'🔶 Regular'},
+        {p:'85%',  c:'#22c55e',     t:'✅ Fuerte'},
+        {p:'100%', c:'#16a34a',     t:'🔒 Muy fuerte'},
+    ][score];
+    fill.style.width = n.p; fill.style.background = n.c; label.textContent = n.t;
+}
+function verificarRequisitos(val) {
+    setReq('req-largo',   val.length >= 8);
+    setReq('req-mayus',   /[A-Z]/.test(val));
+    setReq('req-minus',   /[a-z]/.test(val));
+    setReq('req-numero',  /[0-9]/.test(val));
+    setReq('req-especial',/[^A-Za-z0-9]/.test(val));
+}
+function setReq(id, ok) {
+    const el = document.getElementById(id);
+    el.classList.toggle('ok', ok);
+    el.querySelector('span').textContent = ok ? '✓' : '○';
+}
+</script>
