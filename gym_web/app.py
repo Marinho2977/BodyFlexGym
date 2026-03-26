@@ -16,11 +16,15 @@ from reportlab.pdfgen import canvas
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "clave_dev_local_cambiar_en_produccion")
 
-app.config['MYSQL_HOST'] = os.environ.get('MYSQLHOST')
-app.config['MYSQL_USER'] = os.environ.get('MYSQLUSER')
-app.config['MYSQL_PASSWORD'] = os.environ.get('MYSQLPASSWORD')
-app.config['MYSQL_DB'] = os.environ.get('MYSQLDATABASE')
-app.config['MYSQL_PORT'] = int(os.environ.get('MYSQLPORT', 3306))
+
+def conectar_db():
+    return mysql.connector.connect(
+        host=os.environ.get('MYSQLHOST'), # No uses .internal, usa la variable
+        user=os.environ.get('MYSQLUSER'),
+        password=os.environ.get('MYSQLPASSWORD'),
+        database=os.environ.get('MYSQLDATABASE'),
+        port=int(os.environ.get('MYSQLPORT', 3306))
+    )
 
 PRECIO_MENSUAL = 225.00
 
@@ -36,7 +40,7 @@ def conectar_db():
         host="mysql.railway.internal",
         user="root",
         password="jThHLsIdDnRNYJXjNEDFOLkQSucRnACY",
-        database="gymdb"
+        database=f"'{os.environ.get('MYSQLDATABASE')}'"
     )
 
 
@@ -1220,5 +1224,10 @@ def eliminar_anuncio(anuncio_id):
 # METAS — CLIENTE
 # ─────────────────────────────────────────────
 
+
 if __name__ == "__main__":
     app.run(debug=True)
+# Pon esto al final de todo tu app.py
+if __name__ == '__main__':
+    port = int(os.environ.get("PORT", 8080))
+    app.run(host='0.0.0.0', port=port)
