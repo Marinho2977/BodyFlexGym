@@ -1,4 +1,4 @@
 Flask
-Flask-MySQLdb
+mysql-connector-python
 reportlab
 gunicorn
