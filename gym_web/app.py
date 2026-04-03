@@ -8,18 +8,16 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from io import BytesIO
-from reportlab.lib.pagesizes import letter
-from reportlab.lib.colors import HexColor
-from reportlab.lib.units import inch
-from reportlab.pdfgen import canvas
+import re
 
 app = Flask(__name__)
-app.secret_key = os.environ.get("SECRET_KEY", "clave_dev_local_cambiar_en_produccion")
+# Usa la variable de entorno para la seguridad
+app.secret_key = os.environ.get("SECRET_KEY", "clave_segura_de_kevin_123")
 
-
+# --- CONFIGURACIÓN DE BASE DE DATOS (ÚNICA Y LIMPIA) ---
 def conectar_db():
     return mysql.connector.connect(
-        host=os.environ.get('MYSQLHOST'), # No uses .internal, usa la variable
+        host=os.environ.get('MYSQLHOST'),
         user=os.environ.get('MYSQLUSER'),
         password=os.environ.get('MYSQLPASSWORD'),
         database=os.environ.get('MYSQLDATABASE'),
@@ -28,24 +26,12 @@ def conectar_db():
 
 PRECIO_MENSUAL = 225.00
 
-# ── Configura tu correo aquí ──
-# Para Gmail: usa un App Password (no tu contraseña normal)
-# Guía: myaccount.google.com → Seguridad → Contraseñas de aplicaciones
-GMAIL_USER     = os.environ.get("GMAIL_USER",     "kevinmperez29@gmail.com")
+# --- CONFIGURACIÓN DE CORREO ---
+GMAIL_USER     = os.environ.get("GMAIL_USER", "kevinmperez29@gmail.com")
 GMAIL_PASSWORD = os.environ.get("GMAIL_PASSWORD", "xlqpntzngoeexkaaw")
 
-
-def conectar_db():
-    return mysql.connector.connect(
-        host="mysql.railway.internal",
-        user="root",
-        password="jThHLsIdDnRNYJXjNEDFOLkQSucRnACY",
-        database=f"'{os.environ.get('MYSQLDATABASE')}'"
-    )
-
-
 # ─────────────────────────────────────────────
-# HELPER — Auditoría: registrar acciones
+# HELPERS
 # ─────────────────────────────────────────────
 
 def registrar_log(tipo, detalle, afectado_id=None, afectado_nombre=None):
@@ -56,10 +42,10 @@ def registrar_log(tipo, detalle, afectado_id=None, afectado_nombre=None):
         conn   = conectar_db()
         cursor = conn.cursor()
         cursor.execute("""
-            INSERT INTO auditoria (tipo, actor_id, actor_nombre, actor_rol,
-                              afectado_id, afectado_nombre, detalle)
+            INSERT INTO auditoria (tipo, actor_id, actor_nombre, actor_rol, 
+                                  afectado_id, afectado_nombre, detalle)
             VALUES (%s, %s, %s, %s, %s, %s, %s)
-        """, (tipo, actor_id, actor_nombre, actor_rol,
+        """, (tipo, actor_id, actor_nombre, actor_rol, 
               afectado_id, afectado_nombre, detalle))
         conn.commit()
         conn.close()
@@ -1227,7 +1213,8 @@ def eliminar_anuncio(anuncio_id):
 
 if __name__ == "__main__":
     app.run(debug=True)
-# Pon esto al final de todo tu app.py
 if __name__ == '__main__':
+    # Esto es VITAL para que Railway asigne el puerto correctamente
     port = int(os.environ.get("PORT", 8080))
     app.run(host='0.0.0.0', port=port)
+    
