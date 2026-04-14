@@ -388,7 +388,7 @@
                 <tr>
                     <td>
                         <div class="socio-nombre">{{ u.nombre }} {{ u.apellido }}</div>
-                        <div class="socio-num">{{ u.numero_socio }}</div>
+                        <div class="socio-num">{{ u.tipo_doc }}: {{ u.cui }}</div>
                     </td>
                     <td>
                         {% if u.estado.lower() == "activo" %}
@@ -411,7 +411,7 @@
                     </td>
                     <td>
                         {% if u.estado.lower() == "activo" %}
-                        <button class="btn-pago btn-abrir-pago" data-id="{{ u.id_usuario }}" data-nombre="{{ u.nombre }} {{ u.apellido }}">+ Registrar pago</button>
+                        <button class="btn-pago btn-abrir-pago" data-id="{{ u.cui }}" data-nombre="{{ u.nombre }} {{ u.apellido }}">+ Registrar pago</button>
                         {% else %}
                             <span style="color:var(--muted); font-size:13px;">Cuenta inactiva</span>
                         {% endif %}

@@ -241,6 +241,27 @@
                 </div>
             </div>
 
+            <div class="grid-2">
+                <div class="field">
+                    <label>Tipo de documento</label>
+                    <select name="tipo_doc" id="tipo_doc" onchange="actualizarLabelDoc()">
+                        <option value="CUI">CUI (menor de edad)</option>
+                        <option value="DPI">DPI (mayor de edad)</option>
+                    </select>
+                </div>
+                <div class="field">
+                    <label id="label_doc">Número de CUI</label>
+                    <input type="text" name="numero_doc" id="numero_doc"
+                           placeholder="1234567890123"
+                           maxlength="13" minlength="13"
+                           pattern="\d{13}"
+                           title="13 dígitos exactos sin espacios"
+                           required
+                           oninput="this.value=this.value.replace(/\D/g,'')">
+                    <div class="hint">13 dígitos del documento guatemalteco</div>
+                </div>
+            </div>
+
             <div class="field">
                 <label>Correo electrónico</label>
                 <input type="email" name="correo" placeholder="tu@correo.com" required>
@@ -285,6 +306,10 @@ function toggleEye(inputId, btn) {
     const isHidden = input.type === 'password';
     input.type = isHidden ? 'text' : 'password';
     btn.innerHTML = isHidden ? SVG_EYE_OFF : SVG_EYE;
+}
+function actualizarLabelDoc() {
+    const tipo = document.getElementById('tipo_doc').value;
+    document.getElementById('label_doc').textContent = 'Número de ' + tipo;
 }
 function addRipple(e, btn) {
     const rect = btn.getBoundingClientRect();

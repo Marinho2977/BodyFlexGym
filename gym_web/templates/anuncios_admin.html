@@ -203,7 +203,7 @@
                     <td style="font-size:12px; color:var(--muted);">{{ a.nombre }} {{ a.apellido }}</td>
                     <td>
                         <div class="acciones">
-                            <button class="btn btn-ghost btn-sm edit-btn" data-id="{{ a.id }}" data-titulo="{{ a.titulo|tojson }}" data-contenido="{{ a.contenido|tojson }}" data-tipo="{{ a.tipo|tojson }}" data-fecha-inicio="{{ a.fecha_inicio|tojson }}" data-fecha-fin="{{ a.fecha_fin|tojson }}">Editar</button>
+                            <button class="btn btn-ghost btn-sm edit-btn" data-id="{{ a.id }}" data-titulo="{{ a.titulo }}" data-contenido="{{ a.contenido }}" data-tipo="{{ a.tipo }}" data-fecha-inicio="{{ a.fecha_inicio.strftime('%Y-%m-%d') if a.fecha_inicio else '' }}" data-fecha-fin="{{ a.fecha_fin.strftime('%Y-%m-%d') if a.fecha_fin else '' }}">Editar</button>
                             <form action="/admin/anuncios/{{ a.id }}/toggle" method="POST">
                                 <button type="submit" class="btn btn-sm {% if a.activo %}btn-red{% else %}btn-green{% endif %}">
                                     {{ 'Desactivar' if a.activo else 'Activar' }}

@@ -481,28 +481,28 @@
                             {% endif %}
                         </td>
                         <td>
-                            <button class="btn-pago-inline btn-abrir-pago" data-id="{{ u.id_usuario }}" data-nombre="{{ u.nombre }} {{ u.apellido }}">+ Registrar pago</button>
-                            <br><a href="/admin/pagos/{{ u.id_usuario }}" class="btn btn-ghost btn-sm" style="margin-top:6px;">Ver historial</a>
+                            <button class="btn-pago-inline btn-abrir-pago" data-id="{{ u.cui }}" data-nombre="{{ u.nombre }} {{ u.apellido }}">+ Registrar pago</button>
+                            <br><a href="/admin/pagos/{{ u.cui }}" class="btn btn-ghost btn-sm" style="margin-top:6px;">Ver historial</a>
                         </td>
                         <td>
                             <!-- Dropdown acciones -->
-                            <div class="dropdown" id="dd-{{ u.id_usuario }}">
-                                <button class="dropdown-toggle" onclick="toggleDd('dd-{{ u.id_usuario }}')">⋮</button>
+                            <div class="dropdown" id="dd-{{ u.cui }}">
+                                <button class="dropdown-toggle" onclick="toggleDd('dd-{{ u.cui }}')">⋮</button>
                                 <div class="dropdown-menu">
                                     {% if u.estado.lower() == "activo" %}
-                                    <form action="/admin/desactivar/{{ u.id_usuario }}" method="POST" style="margin:0;" onsubmit="return confirm('¿Desactivar a {{ u.nombre }}?')">
+                                    <form action="/admin/desactivar/{{ u.cui }}" method="POST" style="margin:0;" onsubmit="return confirm('¿Desactivar a {{ u.nombre }}?')">
                                         <button type="submit" class="dropdown-item red"><span class="di-icon">🔴</span>Desactivar</button>
                                     </form>
                                     {% else %}
-                                    <form action="/admin/reactivar/{{ u.id_usuario }}" method="POST" style="margin:0;">
+                                    <form action="/admin/reactivar/{{ u.cui }}" method="POST" style="margin:0;">
                                         <button type="submit" class="dropdown-item green"><span class="di-icon">🟢</span>Reactivar</button>
                                     </form>
                                     {% endif %}
                                     <div class="dropdown-sep"></div>
-                                    <form action="/admin/hacer_empleado/{{ u.id_usuario }}" method="POST" style="margin:0;">
+                                    <form action="/admin/hacer_empleado/{{ u.cui }}" method="POST" style="margin:0;">
                                         <button type="submit" class="dropdown-item"><span class="di-icon">👔</span>→ Empleado</button>
                                     </form>
-                                    <form action="/admin/hacer_admin/{{ u.id_usuario }}" method="POST" style="margin:0;">
+                                    <form action="/admin/hacer_admin/{{ u.cui }}" method="POST" style="margin:0;">
                                         <button type="submit" class="dropdown-item blue"><span class="di-icon">⭐</span>→ Admin</button>
                                     </form>
                                 </div>
@@ -555,23 +555,23 @@
                             {% endif %}
                         </td>
                         <td>
-                            <div class="dropdown" id="dd-e{{ e.id_usuario }}">
-                                <button class="dropdown-toggle" onclick="toggleDd('dd-e{{ e.id_usuario }}')">⋮</button>
+                            <div class="dropdown" id="dd-e{{ e.cui }}">
+                                <button class="dropdown-toggle" onclick="toggleDd('dd-e{{ e.cui }}')">⋮</button>
                                 <div class="dropdown-menu">
                                     {% if e.estado.lower() == "activo" %}
-                                    <form action="/admin/desactivar/{{ e.id_usuario }}" method="POST" style="margin:0;" onsubmit="return confirm('¿Desactivar cuenta de {{ e.nombre }}?')">
+                                    <form action="/admin/desactivar/{{ e.cui }}" method="POST" style="margin:0;" onsubmit="return confirm('¿Desactivar cuenta de {{ e.nombre }}?')">
                                         <button type="submit" class="dropdown-item red"><span class="di-icon">🔴</span>Desactivar</button>
                                     </form>
                                     {% else %}
-                                    <form action="/admin/reactivar/{{ e.id_usuario }}" method="POST" style="margin:0;">
+                                    <form action="/admin/reactivar/{{ e.cui }}" method="POST" style="margin:0;">
                                         <button type="submit" class="dropdown-item green"><span class="di-icon">🟢</span>Reactivar</button>
                                     </form>
                                     {% endif %}
                                     <div class="dropdown-sep"></div>
-                                    <form action="/admin/quitar_empleado/{{ e.id_usuario }}" method="POST" style="margin:0;" onsubmit="return confirm('¿Quitar rol empleado a {{ e.nombre }}?')">
+                                    <form action="/admin/quitar_empleado/{{ e.cui }}" method="POST" style="margin:0;" onsubmit="return confirm('¿Quitar rol empleado a {{ e.nombre }}?')">
                                         <button type="submit" class="dropdown-item"><span class="di-icon">👤</span>→ Usuario</button>
                                     </form>
-                                    <form action="/admin/hacer_admin/{{ e.id_usuario }}" method="POST" style="margin:0;">
+                                    <form action="/admin/hacer_admin/{{ e.cui }}" method="POST" style="margin:0;">
                                         <button type="submit" class="dropdown-item blue"><span class="di-icon">⭐</span>→ Admin</button>
                                     </form>
                                 </div>
