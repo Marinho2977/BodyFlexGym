@@ -274,20 +274,8 @@
         {% endfor %}{% endif %}
     {% endwith %}
 
-    <!-- ANUNCIOS ACTIVOS -->
-    {% if anuncios_activos %}
-    <div class="anuncios-zona">
-        {% for a in anuncios_activos %}
-        <div class="anuncio-banner anuncio-{{ a.tipo }}">
-            <div class="anuncio-icon">{% if a.tipo == 'info' %}ℹ️{% elif a.tipo == 'promo' %}🔥{% else %}⚠️{% endif %}</div>
-            <div>
-                <div class="anuncio-titulo">{{ a.titulo }}</div>
-                <div class="anuncio-contenido">{{ a.contenido }}</div>
-            </div>
-        </div>
-        {% endfor %}
-    </div>
-    {% endif %}
+
+
 
     <!-- STATS -->
     <div class="stats-row">

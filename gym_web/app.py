@@ -845,42 +845,27 @@ def panel():
     """, (session["usuario_id"],))
     historial_pagos = cursor.fetchall()
 
-    # Anuncios activos para el cliente (tabla puede no existir en todas las instancias)
-    hoy_date = date.today()
-    try:
-        cursor.execute("""
-            SELECT titulo, contenido, tipo
-            FROM anuncios
-            WHERE activo=1 AND fecha_inicio <= %s AND fecha_fin >= %s
-            ORDER BY created_at DESC
-        """, (hoy_date, hoy_date))
-        anuncios_activos = cursor.fetchall()
-    except Exception:
-        anuncios_activos = []
-
     # Streak: meses consecutivos pagados a tiempo
-    try:
-        cursor.execute("""
-            SELECT YEAR(fecha_pago) as anio, MONTH(fecha_pago) as mes
-            FROM pagos WHERE cui_usuario=%s
-            ORDER BY fecha_pago DESC
-        """, (session["usuario_id"],))
-        pagos_meses = cursor.fetchall()
-        streak = 0
-        if pagos_meses:
-            seen = set((r["anio"], r["mes"]) for r in pagos_meses)
-            check_year, check_month = hoy_date.year, hoy_date.month
-            for _ in range(120):
-                if (check_year, check_month) in seen:
-                    streak += 1
-                    if check_month == 1:
-                        check_month = 12; check_year -= 1
-                    else:
-                        check_month -= 1
+    hoy_date = date.today()
+    cursor.execute("""
+        SELECT YEAR(fecha_pago) as anio, MONTH(fecha_pago) as mes
+        FROM pagos WHERE cui_usuario=%s
+        ORDER BY fecha_pago DESC
+    """, (session["usuario_id"],))
+    pagos_meses = cursor.fetchall()
+    streak = 0
+    if pagos_meses:
+        seen = set((r["anio"], r["mes"]) for r in pagos_meses)
+        check_year, check_month = hoy_date.year, hoy_date.month
+        for _ in range(120):
+            if (check_year, check_month) in seen:
+                streak += 1
+                if check_month == 1:
+                    check_month = 12; check_year -= 1
                 else:
-                    break
-    except Exception:
-        streak = 0
+                    check_month -= 1
+            else:
+                break
 
     conn.close()
     return render_template("panel.html", perfil=perfil,
@@ -888,7 +873,6 @@ def panel():
                            imc_color=imc_color, imc_consejo=imc_consejo,
                            stats=stats, meses_miembro=meses_miembro,
                            historial_pagos=historial_pagos,
-                           anuncios_activos=anuncios_activos,
                            streak=streak)
 
 
@@ -1185,85 +1169,6 @@ def inicio():
     return render_template("inicio.html")
 
 
-# ─────────────────────────────────────────────
-# ANUNCIOS — CRUD ADMIN / EMPLEADO
-# ─────────────────────────────────────────────
-
-@app.route("/admin/anuncios")
-def admin_anuncios():
-    if "usuario_id" not in session or session.get("rol") not in ("admin", "empleado"):
-        return redirect("/login")
-    conn = conectar_db(); cursor = conn.cursor(dictionary=True)
-    cursor.execute("SELECT a.*, u.nombre, u.apellido FROM anuncios a JOIN usuarios u ON u.cui=a.creado_por ORDER BY a.created_at DESC")
-    anuncios = cursor.fetchall()
-    conn.close()
-    return render_template("anuncios_admin.html", anuncios=anuncios)
-
-
-@app.route("/admin/anuncios/crear", methods=["POST"])
-def crear_anuncio():
-    if "usuario_id" not in session or session.get("rol") not in ("admin", "empleado"):
-        return redirect("/login")
-    titulo     = request.form.get("titulo", "").strip()
-    contenido  = request.form.get("contenido", "").strip()
-    tipo       = request.form.get("tipo", "info")
-    fecha_ini  = request.form.get("fecha_inicio")
-    fecha_fin  = request.form.get("fecha_fin")
-    if not titulo or not contenido or not fecha_ini or not fecha_fin:
-        flash("Completa todos los campos", "error")
-        return redirect("/admin/anuncios")
-    conn = conectar_db(); cursor = conn.cursor()
-    cursor.execute("INSERT INTO anuncios (titulo, contenido, tipo, fecha_inicio, fecha_fin, creado_por) VALUES (%s,%s,%s,%s,%s,%s)",
-                   (titulo, contenido, tipo, fecha_ini, fecha_fin, session["usuario_id"]))
-    conn.commit(); conn.close()
-    registrar_log("anuncio", f"Creó anuncio: {titulo}")
-    flash("Anuncio creado", "success")
-    return redirect("/admin/anuncios")
-
-
-@app.route("/admin/anuncios/<int:anuncio_id>/editar", methods=["POST"])
-def editar_anuncio(anuncio_id):
-    if "usuario_id" not in session or session.get("rol") not in ("admin", "empleado"):
-        return redirect("/login")
-    titulo    = request.form.get("titulo", "").strip()
-    contenido = request.form.get("contenido", "").strip()
-    tipo      = request.form.get("tipo", "info")
-    fecha_ini = request.form.get("fecha_inicio")
-    fecha_fin = request.form.get("fecha_fin")
-    conn = conectar_db(); cursor = conn.cursor()
-    cursor.execute("UPDATE anuncios SET titulo=%s, contenido=%s, tipo=%s, fecha_inicio=%s, fecha_fin=%s WHERE id=%s",
-                   (titulo, contenido, tipo, fecha_ini, fecha_fin, anuncio_id))
-    conn.commit(); conn.close()
-    registrar_log("anuncio", f"Editó anuncio #{anuncio_id}")
-    flash("Anuncio actualizado", "success")
-    return redirect("/admin/anuncios")
-
-
-@app.route("/admin/anuncios/<int:anuncio_id>/toggle", methods=["POST"])
-def toggle_anuncio(anuncio_id):
-    if "usuario_id" not in session or session.get("rol") not in ("admin", "empleado"):
-        return redirect("/login")
-    conn = conectar_db(); cursor = conn.cursor()
-    cursor.execute("UPDATE anuncios SET activo = NOT activo WHERE id=%s", (anuncio_id,))
-    conn.commit(); conn.close()
-    return redirect("/admin/anuncios")
-
-
-@app.route("/admin/anuncios/<int:anuncio_id>/eliminar", methods=["POST"])
-def eliminar_anuncio(anuncio_id):
-    if "usuario_id" not in session or session.get("rol") not in ("admin", "empleado"):
-        return redirect("/login")
-    conn = conectar_db(); cursor = conn.cursor()
-    cursor.execute("DELETE FROM anuncios WHERE id=%s", (anuncio_id,))
-    conn.commit(); conn.close()
-    registrar_log("anuncio", f"Eliminó anuncio #{anuncio_id}")
-    flash("Anuncio eliminado", "success")
-    return redirect("/admin/anuncios")
-
-
-# ─────────────────────────────────────────────
-# METAS — CLIENTE
-# ─────────────────────────────────────────────
 
 
 if __name__ == "__main__":
