@@ -46,18 +46,20 @@ GMAIL_PASSWORD = os.environ.get("GMAIL_PASSWORD", "xlqpntzngoeexkaaw")
 # ─────────────────────────────────────────────
 
 def registrar_log(tipo, detalle, afectado_id=None, afectado_nombre=None):
-    actor_id     = session.get("usuario_id")
+    """Registra una acción en la tabla de auditoría.
+    Usa session['usuario_id'] que almacena el CUI del usuario activo."""
+    actor_cui    = session.get("usuario_id")   # CUI del actor (admin/empleado/cliente)
     actor_nombre = session.get("nombre", "Sistema")
     actor_rol    = session.get("rol", "—")
     try:
         conn   = conectar_db()
         cursor = conn.cursor()
         cursor.execute("""
-            INSERT INTO auditoria (tipo, actor_id, actor_nombre, actor_rol, 
-                                  afectado_id, afectado_nombre, detalle)
+            INSERT INTO auditoria (tipo, actor_id, actor_nombre, actor_rol,
+                                   afectado_id, afectado_nombre, detalle)
             VALUES (%s, %s, %s, %s, %s, %s, %s)
-        """, (tipo, actor_id, actor_nombre, actor_rol, 
-              afectado_id, afectado_nombre, detalle))
+        """, (tipo, actor_cui, actor_nombre, actor_rol,
+               afectado_id, afectado_nombre, detalle))
         conn.commit()
         conn.close()
     except Exception as e:
@@ -223,36 +225,54 @@ def registrar():
 
 @app.route("/iniciar", methods=["POST"])
 def iniciar():
-    email    = request.form.get("identificador")
-    password = request.form.get("password")
+    """Valida credenciales usando el correo electrónico.
+    Guarda el CUI en sesión como session['usuario_id']."""
+    email    = request.form.get("identificador", "").strip()
+    password = request.form.get("password", "")
+
+    if not email or not password:
+        flash("Completa todos los campos", "error")
+        return redirect("/login")
 
     conn   = conectar_db()
     cursor = conn.cursor(dictionary=True)
-    cursor.execute("SELECT * FROM usuarios WHERE email=%s", (email,))
+    cursor.execute("""
+        SELECT cui, nombre, apellido, email, password, estado, rol, edad
+        FROM usuarios WHERE email = %s
+    """, (email,))
     usuario = cursor.fetchone()
 
-    if usuario and usuario["estado"].lower() == "activo" and check_password_hash(usuario["password"], password):
-        session["usuario_id"] = usuario["cui"]
-        session["nombre"]     = usuario["nombre"]
-        session["rol"]        = usuario["rol"]
-
-        cursor.execute("SELECT edad FROM usuarios WHERE cui=%s", (usuario["cui"],))
-        perfil = cursor.fetchone()
+    if not usuario:
         conn.close()
+        flash("Correo o contraseña incorrectos", "error")
+        return redirect("/login")
 
-        registrar_log("login", "Inició sesión")
+    if usuario["estado"].lower() != "activo":
+        conn.close()
+        flash("Tu cuenta está inactiva. Contacta al gimnasio.", "error")
+        return redirect("/login")
 
-        if usuario["rol"] == "admin":
-            return redirect("/admin")
-        if usuario["rol"] == "empleado":
-            return redirect("/empleado")
-        if not perfil:
-            return redirect("/completar_perfil")
-        return redirect("/panel")
+    if not check_password_hash(usuario["password"], password):
+        conn.close()
+        flash("Correo o contraseña incorrectos", "error")
+        return redirect("/login")
 
+    # ✅ Credenciales correctas — guardar CUI como identificador de sesión
     conn.close()
-    flash("Correo o contraseña incorrectos", "error")
-    return redirect("/login")
+    session["usuario_id"] = usuario["cui"]   # CUI = llave primaria única
+    session["nombre"]     = usuario["nombre"]
+    session["rol"]        = usuario["rol"]
+
+    registrar_log("login", "Inició sesión")
+
+    if usuario["rol"] == "admin":
+        return redirect("/admin")
+    if usuario["rol"] == "empleado":
+        return redirect("/empleado")
+    # Si el cliente no ha completado su perfil (edad es NULL), redirigir
+    if not usuario["edad"]:
+        return redirect("/completar_perfil")
+    return redirect("/panel")
 
 
 # ─────────────────────────────────────────────
@@ -825,36 +845,42 @@ def panel():
     """, (session["usuario_id"],))
     historial_pagos = cursor.fetchall()
 
-    # Anuncios activos para el cliente
+    # Anuncios activos para el cliente (tabla puede no existir en todas las instancias)
     hoy_date = date.today()
-    cursor.execute("""
-        SELECT titulo, contenido, tipo
-        FROM anuncios
-        WHERE activo=1 AND fecha_inicio <= %s AND fecha_fin >= %s
-        ORDER BY created_at DESC
-    """, (hoy_date, hoy_date))
-    anuncios_activos = cursor.fetchall()
+    try:
+        cursor.execute("""
+            SELECT titulo, contenido, tipo
+            FROM anuncios
+            WHERE activo=1 AND fecha_inicio <= %s AND fecha_fin >= %s
+            ORDER BY created_at DESC
+        """, (hoy_date, hoy_date))
+        anuncios_activos = cursor.fetchall()
+    except Exception:
+        anuncios_activos = []
 
-    # Streak: meses consecutivos pagados a tiempo (hasta el mes actual)
-    cursor.execute("""
-        SELECT YEAR(fecha_pago) as anio, MONTH(fecha_pago) as mes
-        FROM pagos WHERE cui_usuario=%s
-        ORDER BY fecha_pago DESC
-    """, (session["usuario_id"],))
-    pagos_meses = cursor.fetchall()
-    streak = 0
-    if pagos_meses:
-        seen = set((r["anio"], r["mes"]) for r in pagos_meses)
-        check_year, check_month = hoy_date.year, hoy_date.month
-        for _ in range(120):
-            if (check_year, check_month) in seen:
-                streak += 1
-                if check_month == 1:
-                    check_month = 12; check_year -= 1
+    # Streak: meses consecutivos pagados a tiempo
+    try:
+        cursor.execute("""
+            SELECT YEAR(fecha_pago) as anio, MONTH(fecha_pago) as mes
+            FROM pagos WHERE cui_usuario=%s
+            ORDER BY fecha_pago DESC
+        """, (session["usuario_id"],))
+        pagos_meses = cursor.fetchall()
+        streak = 0
+        if pagos_meses:
+            seen = set((r["anio"], r["mes"]) for r in pagos_meses)
+            check_year, check_month = hoy_date.year, hoy_date.month
+            for _ in range(120):
+                if (check_year, check_month) in seen:
+                    streak += 1
+                    if check_month == 1:
+                        check_month = 12; check_year -= 1
+                    else:
+                        check_month -= 1
                 else:
-                    check_month -= 1
-            else:
-                break
+                    break
+    except Exception:
+        streak = 0
 
     conn.close()
     return render_template("panel.html", perfil=perfil,
