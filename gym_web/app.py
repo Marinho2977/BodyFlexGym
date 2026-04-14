@@ -635,13 +635,12 @@ def cambiar_password():
 # ─────────────────────────────────────────────
 
 
-@app.route("/recuperar_contra", methods=["GET"])
+@app.route("/recuperar_contra", methods=["GET", "POST"])
 def recuperar_contra_form():
-    return render_template("recuperar_contra.html")
+    if request.method == "GET":
+        return render_template("recuperar_contra.html")
 
-
-@app.route("/recuperar_contra", methods=["POST"])
-def recuperar_contra():
+    # POST — procesar solicitud de recuperación
     correo = request.form.get("correo", "").strip().lower()
 
     if not correo or "@" not in correo:
@@ -679,26 +678,25 @@ def recuperar_contra():
     return redirect("/recuperar_contra")
 
 
-@app.route("/reset_password/<token>", methods=["GET"])
+@app.route("/reset_password/<token>", methods=["GET", "POST"])
 def reset_password_form(token):
-    conn   = conectar_db()
-    cursor = conn.cursor(dictionary=True)
-    cursor.execute("""
-        SELECT * FROM recuperar_contra
-        WHERE token=%s AND usado=0 AND expira > NOW()
-    """, (token,))
-    reset = cursor.fetchone()
-    conn.close()
+    if request.method == "GET":
+        conn   = conectar_db()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT * FROM recuperar_contra
+            WHERE token=%s AND usado=0 AND expira > NOW()
+        """, (token,))
+        reset = cursor.fetchone()
+        conn.close()
 
-    if not reset:
-        flash("El enlace es inválido o ya expiró. Solicita uno nuevo.", "error")
-        return redirect("/recuperar_contra")
+        if not reset:
+            flash("El enlace es inválido o ya expiró. Solicita uno nuevo.", "error")
+            return redirect("/recuperar_contra")
 
-    return render_template("reset_password.html", token=token)
+        return render_template("reset_password.html", token=token)
 
-
-@app.route("/reset_password/<token>", methods=["POST"])
-def reset_password(token):
+    # POST — guardar nueva contraseña
     nueva     = request.form.get("password_nueva", "").strip()
     confirmar = request.form.get("password_confirmar", "").strip()
 
