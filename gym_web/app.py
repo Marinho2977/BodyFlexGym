@@ -5,6 +5,7 @@ from datetime import date, timedelta, datetime
 import os
 import secrets
 import smtplib
+import ssl                          # ← FIX #2: importar ssl
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from io import BytesIO
@@ -14,18 +15,16 @@ from reportlab.lib.pagesizes import letter
 from reportlab.lib.colors import HexColor
 
 app = Flask(__name__)
-# Usa la variable de entorno para la seguridad
 app.secret_key = os.environ.get("SECRET_KEY", "clave_segura_de_kevin_123")
 
 @app.after_request
 def sin_cache(response):
-    """Evita que el navegador cachee páginas — el botón Atrás pide login."""
     response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
     response.headers["Pragma"] = "no-cache"
     response.headers["Expires"] = "0"
     return response
 
-# --- CONFIGURACIÓN DE BASE DE DATOS (ÚNICA Y LIMPIA) ---
+# --- CONFIGURACIÓN DE BASE DE DATOS ---
 def conectar_db():
     return mysql.connector.connect(
         host=os.environ.get('MYSQLHOST'),
@@ -38,17 +37,16 @@ def conectar_db():
 PRECIO_MENSUAL = 225.00
 
 # --- CONFIGURACIÓN DE CORREO ---
-GMAIL_USER     = os.environ.get("GMAIL_USER", "kevinmperez29@gmail.com")
-GMAIL_PASSWORD = os.environ.get("GMAIL_PASSWORD", "xlqpntzngoeexkaaw")
+# FIX #1 SEGURIDAD: sin fallback hardcodeado — las credenciales SOLO vienen de Railway
+GMAIL_USER     = os.environ.get("GMAIL_USER")
+GMAIL_PASSWORD = os.environ.get("GMAIL_PASSWORD")
 
 # ─────────────────────────────────────────────
 # HELPERS
 # ─────────────────────────────────────────────
 
 def registrar_log(tipo, detalle, afectado_id=None, afectado_nombre=None):
-    """Registra una acción en la tabla de auditoría.
-    Usa session['usuario_id'] que almacena el CUI del usuario activo."""
-    actor_cui    = session.get("usuario_id")   # CUI del actor (admin/empleado/cliente)
+    actor_cui    = session.get("usuario_id")
     actor_nombre = session.get("nombre", "Sistema")
     actor_rol    = session.get("rol", "—")
     try:
@@ -71,9 +69,16 @@ def registrar_log(tipo, detalle, afectado_id=None, afectado_nombre=None):
 # ─────────────────────────────────────────────
 
 def enviar_correo_reset(destino, token, nombre):
+    # FIX #1 + #3: validar que existen las variables Y limpiar espacios del App Password
+    gmail_user = GMAIL_USER
+    gmail_pwd  = GMAIL_PASSWORD.replace(" ", "") if GMAIL_PASSWORD else None
+
+    if not gmail_user or not gmail_pwd:
+        raise ValueError("Variables de entorno GMAIL_USER o GMAIL_PASSWORD no configuradas en Railway.")
+
     base_url = os.environ.get("BASE_URL", "http://localhost:5000")
     link     = f"{base_url}/reset_password/{token}"
-    asunto = "Recuperación de contraseña — Bodyflex Gym"
+    asunto   = "Recuperación de contraseña — Bodyflex Gym"
 
     html = f"""
     <!DOCTYPE html>
@@ -140,14 +145,16 @@ def enviar_correo_reset(destino, token, nombre):
 
     msg = MIMEMultipart("alternative")
     msg["Subject"] = asunto
-    msg["From"]    = f"Bodyflex Gym <{GMAIL_USER}>"
+    msg["From"]    = f"Bodyflex Gym <{gmail_user}>"
     msg["To"]      = destino
     msg.attach(MIMEText(texto, "plain"))
     msg.attach(MIMEText(html, "html"))
 
-    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
-        server.login(GMAIL_USER, GMAIL_PASSWORD)
-        server.sendmail(GMAIL_USER, destino, msg.as_string())
+    # FIX #2: ssl.create_default_context() para Railway (evita errores SSL en producción)
+    contexto_ssl = ssl.create_default_context()
+    with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=contexto_ssl) as server:
+        server.login(gmail_user, gmail_pwd)
+        server.sendmail(gmail_user, destino, msg.as_string())
 
 
 # ─────────────────────────────────────────────
@@ -171,7 +178,6 @@ def registrar():
         flash("Correo inválido", "error")
         return redirect("/registro")
 
-    # Validar número de documento (CUI o DPI = 13 dígitos)
     if not numero_doc.isdigit() or len(numero_doc) != 13:
         flash("El CUI/DPI debe tener exactamente 13 dígitos", "error")
         return redirect("/registro")
@@ -225,8 +231,6 @@ def registrar():
 
 @app.route("/iniciar", methods=["POST"])
 def iniciar():
-    """Valida credenciales usando el correo electrónico.
-    Guarda el CUI en sesión como session['usuario_id']."""
     email    = request.form.get("identificador", "").strip()
     password = request.form.get("password", "")
 
@@ -257,9 +261,8 @@ def iniciar():
         flash("Correo o contraseña incorrectos", "error")
         return redirect("/login")
 
-    # ✅ Credenciales correctas — guardar CUI como identificador de sesión
     conn.close()
-    session["usuario_id"] = usuario["cui"]   # CUI = llave primaria única
+    session["usuario_id"] = usuario["cui"]
     session["nombre"]     = usuario["nombre"]
     session["rol"]        = usuario["rol"]
 
@@ -269,14 +272,13 @@ def iniciar():
         return redirect("/admin")
     if usuario["rol"] == "empleado":
         return redirect("/empleado")
-    # Si el cliente no ha completado su perfil (edad es NULL), redirigir
     if not usuario["edad"]:
         return redirect("/completar_perfil")
     return redirect("/panel")
 
 
 # ─────────────────────────────────────────────
-# PANEL ADMIN — acceso total
+# PANEL ADMIN
 # ─────────────────────────────────────────────
 
 @app.route("/admin")
@@ -466,7 +468,6 @@ def registrar_pago(cui):
     meses_nombres = ["Enero","Febrero","Marzo","Abril","Mayo","Junio",
                      "Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"]
 
-    # Parsear meses seleccionados
     if meses_lista:
         meses_nums = sorted([int(m) for m in meses_lista.split(",") if m.strip().isdigit()])
         meses      = len(meses_nums)
@@ -634,13 +635,11 @@ def cambiar_password():
 # RECUPERAR CONTRASEÑA (olvidada)
 # ─────────────────────────────────────────────
 
-
 @app.route("/recuperar_contra", methods=["GET", "POST"])
 def recuperar_contra_form():
     if request.method == "GET":
         return render_template("recuperar_contra.html")
 
-    # POST — procesar solicitud de recuperación
     correo = request.form.get("correo", "").strip().lower()
 
     if not correo or "@" not in correo:
@@ -696,7 +695,6 @@ def reset_password_form(token):
 
         return render_template("reset_password.html", token=token)
 
-    # POST — guardar nueva contraseña
     nueva     = request.form.get("password_nueva", "").strip()
     confirmar = request.form.get("password_confirmar", "").strip()
 
@@ -781,7 +779,6 @@ def panel():
     conn   = conectar_db()
     cursor = conn.cursor(dictionary=True)
 
-    # Datos del perfil
     cursor.execute("""
         SELECT nombre, apellido, email,
                edad, peso, altura, clase, horario, objetivo, fecha_registro
@@ -790,13 +787,12 @@ def panel():
     """, (session["usuario_id"],))
     perfil = cursor.fetchone()
 
-    # Calcular IMC
     imc = None
     imc_categoria = None
     imc_color = None
     imc_consejo = None
     if perfil and perfil["peso"] and perfil["altura"] and float(perfil["altura"]) > 0:
-        peso_kg = float(perfil["peso"]) * 0.453592  # libras a kg
+        peso_kg = float(perfil["peso"]) * 0.453592
         altura_m = float(perfil["altura"])
         imc = round(peso_kg / (altura_m ** 2), 1)
         if imc < 18.5:
@@ -816,7 +812,6 @@ def panel():
             imc_color = "red"
             imc_consejo = "Te recomendamos consultar con un especialista para un plan personalizado de ejercicio y nutrición."
 
-    # Estadísticas de pagos
     cursor.execute("""
         SELECT COUNT(*) AS total_pagos,
                COALESCE(SUM(monto), 0) AS total_pagado,
@@ -825,7 +820,6 @@ def panel():
     """, (session["usuario_id"],))
     stats = cursor.fetchone()
 
-    # Meses como miembro
     meses_miembro = 0
     if perfil and perfil["fecha_registro"]:
         from datetime import datetime
@@ -835,7 +829,6 @@ def panel():
             reg = reg.date()
         meses_miembro = (hoy.year - reg.year) * 12 + (hoy.month - reg.month)
 
-    # Historial de pagos
     cursor.execute("""
         SELECT id_pago, fecha_pago, fecha_vencimiento, monto, mes_pagado
         FROM pagos WHERE cui_usuario=%s
@@ -843,7 +836,6 @@ def panel():
     """, (session["usuario_id"],))
     historial_pagos = cursor.fetchall()
 
-    # Streak: meses consecutivos pagados a tiempo
     hoy_date = date.today()
     cursor.execute("""
         SELECT YEAR(fecha_pago) as anio, MONTH(fecha_pago) as mes
@@ -968,8 +960,6 @@ def generar_recibo(id_pago):
         flash("Pago no encontrado", "error")
         return redirect("/panel")
 
-    # Admins y empleados pueden ver cualquier recibo
-    # Clientes solo pueden ver SUS propios recibos
     es_admin_emp = session.get("rol") in ("admin", "empleado")
     es_dueno     = pago["cui"] == session.get("usuario_id")
     if not es_admin_emp and not es_dueno:
@@ -1028,8 +1018,7 @@ def generar_recibo(id_pago):
     c.setFillColor(gris_dark)
     c.setFont("Helvetica", 10)
     c.drawString(50, y - 22, f"Correo: {pago['email']}")
-    num_socio = f"CUI: {pago['cui']}"
-    c.drawString(50, y - 38, f"No. Socio: {num_socio}")
+    c.drawString(50, y - 38, f"No. Socio: CUI: {pago['cui']}")
 
     y = height - 290
     c.setFillColor(HexColor("#f5f5f5"))
@@ -1099,13 +1088,7 @@ def generar_recibo(id_pago):
 
 
 # ─────────────────────────────────────────────
-# RUTAS SIMPLES
-# ─────────────────────────────────────────────
-
-# ─────────────────────────────────────────────
-# RUTA DE PRUEBA DE CORREO — solo para desarrollo
-# Visita http://localhost:5000/test_email para probar
-# BORRA esta ruta antes de subir a producción
+# RUTA DE PRUEBA DE CORREO — solo admin, solo dev
 # ─────────────────────────────────────────────
 
 @app.route("/test_email")
@@ -1113,40 +1096,50 @@ def test_email():
     if "usuario_id" not in session or session.get("rol") != "admin":
         return redirect("/login")
     try:
-        import smtplib
-        # Verificar que el password no tenga espacios
-        pwd = GMAIL_PASSWORD.replace(" ", "")
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
-            server.login(GMAIL_USER, pwd)
-            from email.mime.text import MIMEText
+        gmail_user = GMAIL_USER
+        gmail_pwd  = GMAIL_PASSWORD.replace(" ", "") if GMAIL_PASSWORD else None
+
+        if not gmail_user or not gmail_pwd:
+            raise ValueError("GMAIL_USER o GMAIL_PASSWORD no están configuradas en Railway.")
+
+        contexto_ssl = ssl.create_default_context()
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=contexto_ssl) as server:
+            server.login(gmail_user, gmail_pwd)
             msg = MIMEText("✅ Correo de prueba desde Bodyflex Gym — configuración correcta.")
             msg["Subject"] = "Prueba de correo — Bodyflex Gym"
-            msg["From"]    = GMAIL_USER
-            msg["To"]      = GMAIL_USER
-            server.sendmail(GMAIL_USER, GMAIL_USER, msg.as_string())
+            msg["From"]    = gmail_user
+            msg["To"]      = gmail_user
+            server.sendmail(gmail_user, gmail_user, msg.as_string())
+
         return f"""
         <div style='font-family:sans-serif;padding:40px;background:#0f0f0f;color:#f5f5f5;min-height:100vh;'>
             <h2 style='color:#22c55e;'>✅ Correo enviado correctamente</h2>
-            <p>Revisa tu bandeja de entrada en <strong>{GMAIL_USER}</strong></p>
-            <p style='color:#9ca3af;margin-top:16px;'>Usuario: {GMAIL_USER}<br>
-            Password length: {len(pwd)} caracteres</p>
+            <p>Revisa tu bandeja de entrada en <strong>{gmail_user}</strong></p>
+            <p style='color:#9ca3af;margin-top:16px;'>Password length: {len(gmail_pwd)} caracteres</p>
             <a href='/admin' style='color:#FF6B00;'>← Volver al panel</a>
         </div>"""
     except Exception as e:
+        pwd_len = len(GMAIL_PASSWORD.replace(" ","")) if GMAIL_PASSWORD else 0
         return f"""
         <div style='font-family:sans-serif;padding:40px;background:#0f0f0f;color:#f5f5f5;min-height:100vh;'>
             <h2 style='color:#ef4444;'>❌ Error al enviar</h2>
             <p style='background:#1a1a1a;padding:16px;border-radius:8px;border:1px solid #2e2e2e;
                       color:#ef4444;font-family:monospace;'>{str(e)}</p>
-            <p style='color:#9ca3af;margin-top:16px;'>Usuario: {GMAIL_USER}<br>
-            Password length: {len(GMAIL_PASSWORD.replace(" ",""))} caracteres</p>
-            <p style='color:#9ca3af;margin-top:12px;'>Soluciones comunes:<br>
-            1. App Password sin espacios (16 caracteres exactos)<br>
+            <p style='color:#9ca3af;margin-top:16px;'>
+                Password length: {pwd_len} caracteres<br>
+                (debe ser exactamente 16)
+            </p>
+            <p style='color:#9ca3af;margin-top:12px;'>Pasos:<br>
+            1. App Password de 16 caracteres sin espacios<br>
             2. Verificación en 2 pasos activa en Gmail<br>
-            3. El correo GMAIL_USER debe ser el mismo donde creaste el App Password</p>
+            3. El GMAIL_USER debe coincidir con la cuenta donde creaste el App Password</p>
             <a href='/admin' style='color:#FF6B00;'>← Volver al panel</a>
         </div>"""
 
+
+# ─────────────────────────────────────────────
+# RUTAS SIMPLES
+# ─────────────────────────────────────────────
 
 @app.route("/login")
 def login():
@@ -1165,8 +1158,6 @@ def logout():
 @app.route("/")
 def inicio():
     return render_template("inicio.html")
-
-
 
 
 if __name__ == "__main__":
