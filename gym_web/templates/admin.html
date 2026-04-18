@@ -424,7 +424,6 @@
                     <tr>
                         <th>Socio</th>
                         <th>Datos físicos</th>
-                        <th>Entrenamiento</th>
                         <th>Estado pago</th>
                         <th>Registrar pago (Q{{ precio_mensual }}/mes)</th>
                         <th>Acciones</th>
@@ -458,14 +457,6 @@
                                 <span style="color:var(--muted);font-size:11px;">{{ u.objetivo }}</span>
                             {% else %}
                                 <span style="color:var(--muted);">Sin perfil</span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            {% if u.clase %}
-                                <span style="font-weight:500;">{{ u.clase }}</span><br>
-                                <span style="color:var(--muted);font-size:12px;">{{ u.horario }}</span>
-                            {% else %}
-                                <span style="color:var(--muted);">—</span>
                             {% endif %}
                         </td>
                         <td>
@@ -511,7 +502,7 @@
                     </tr>
                     {% endfor %}
                     {% if not usuarios %}
-                    <tr><td colspan="6" class="empty">No hay socios registrados</td></tr>
+                    <tr><td colspan="5" class="empty">No hay socios registrados</td></tr>
                     {% endif %}
                 </tbody>
             </table>

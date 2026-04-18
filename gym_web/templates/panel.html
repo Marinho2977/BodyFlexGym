@@ -279,11 +279,7 @@
 
     <!-- STATS -->
     <div class="stats-row">
-        <div class="stat-card">
-            <div class="stat-label">Clase</div>
-            <div class="stat-value yellow">{{ perfil.clase or '—' }}</div>
-            <div class="stat-sub">{{ perfil.horario or 'Sin horario asignado' }}</div>
-        </div>
+
         <div class="stat-card">
             <div class="stat-label">Peso actual</div>
             <div class="stat-value yellow">{{ perfil.peso or '—' }} <small style="font-size:14px;color:var(--muted);">lb</small></div>
@@ -334,7 +330,7 @@
     </div>
     {% endif %}
 
-    <!-- PANELES INFO + ENTRENAMIENTO -->
+    <!-- PANEL INFO -->
     <div class="grid-panels" style="margin-bottom:20px;">
 
         <!-- Panel: Mi Información -->
@@ -364,48 +360,6 @@
                         <p class="field-hint">La edad no se puede modificar aquí.</p>
                     </div>
                     <button type="submit" class="btn-save">Guardar cambios</button>
-                </form>
-            </div>
-        </div>
-
-        <!-- Panel: Mi Entrenamiento -->
-        <div class="panel-card">
-            <div class="panel-card-header">
-                <div class="panel-card-title">Mi entrenamiento</div>
-                <button class="btn-edit-toggle" onclick="toggleEdit('entrenamientoForm', this)">Editar</button>
-            </div>
-            <div class="panel-card-body">
-                <div id="entrenamientoData">
-                    <div class="data-row"><span class="data-key">Clase</span><span class="data-val">{{ perfil.clase or 'No asignada' }}</span></div>
-                    <div class="data-row"><span class="data-key">Horario</span><span class="data-val">{{ perfil.horario or 'No asignado' }}</span></div>
-                    <div class="data-row"><span class="data-key">Objetivo</span><span class="data-val">{{ perfil.objetivo or '—' }}</span></div>
-                </div>
-                <form id="entrenamientoForm" class="edit-form" method="POST" action="/actualizar_entrenamiento">
-                    <div class="field">
-                        <label>Clase</label>
-                        <select name="clase">
-                            {% for c in ['Spinning', 'Crossfit', 'Pesas', 'Funcional'] %}
-                                <option value="{{ c }}" {% if perfil.clase == c %}selected{% endif %}>{{ c }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="field">
-                        <label>Horario</label>
-                        <select name="horario">
-                            {% for h in ['Mañana', 'Tarde', 'Noche'] %}
-                                <option value="{{ h }}" {% if perfil.horario == h %}selected{% endif %}>{{ h }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="field">
-                        <label>Objetivo</label>
-                        <select name="objetivo">
-                            {% for o in ['Bajar de peso', 'Ganar músculo', 'Mejorar resistencia', 'Mantenimiento', 'Rehabilitación', 'Otro'] %}
-                                <option value="{{ o }}" {% if perfil.objetivo == o %}selected{% endif %}>{{ o }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <button type="submit" class="btn-save">Guardar entrenamiento</button>
                 </form>
             </div>
         </div>
@@ -466,7 +420,7 @@ if (marcador) {
 // ── Toggle edit forms ──
 function toggleEdit(formId, btn) {
     const form = document.getElementById(formId);
-    const dataMap = { 'infoForm': 'infoData', 'entrenamientoForm': 'entrenamientoData' };
+    const dataMap = { 'infoForm': 'infoData' };
     const dataEl = document.getElementById(dataMap[formId]);
     const isVisible = form.classList.contains('visible');
     if (isVisible) {

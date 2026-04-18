@@ -246,8 +246,11 @@
 
         <form action="/iniciar" method="POST">
             <div class="field">
-                <label>Correo electrónico</label>
-                <input type="email" name="identificador" placeholder="tu@correo.com" required autofocus>
+                <label>Correo electrónico o CUI (13 dígitos)</label>
+                <input type="text" name="identificador"
+                       placeholder="tu@correo.com  ó  1234567890123"
+                       required autofocus
+                       autocomplete="username">
             </div>
             <div class="field">
                 <label>Contraseña</label>
