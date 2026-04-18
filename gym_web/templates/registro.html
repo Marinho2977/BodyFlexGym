@@ -8,240 +8,86 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <style>
         :root {
-            --bg:       #0f0f0f;
-            --surface:  #1a1a1a;
-            --card:     #222222;
-            --border:   #2e2e2e;
-            --accent:   #FF6B00;
-            --green:    #22c55e;
-            --red:      #ef4444;
-            --text:     #f5f5f5;
-            --muted:    #9ca3af;
+            --bg:#0f0f0f;--surface:#1a1a1a;--card:#222222;--border:#2e2e2e;
+            --accent:#FF6B00;--green:#22c55e;--red:#ef4444;--text:#f5f5f5;--muted:#9ca3af;
         }
+        *{margin:0;padding:0;box-sizing:border-box;}
+        body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh;
+             display:flex;align-items:center;justify-content:center;padding:32px 24px;}
+        body::before{content:'';position:fixed;bottom:-200px;right:-200px;width:600px;height:600px;
+                     background:radial-gradient(circle,rgba(255,107,0,0.1) 0%,transparent 70%);pointer-events:none;}
+        @keyframes fadeInUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
+        .wrapper{width:100%;max-width:440px;}
+        .logo{font-family:'Syne',sans-serif;font-weight:800;font-size:28px;letter-spacing:-1px;
+              text-align:center;margin-bottom:8px;display:inline-flex;align-items:center;justify-content:center;gap:8px;}
+        .logo span{color:var(--accent);}
+        .tagline{text-align:center;color:var(--muted);font-size:13px;margin-bottom:36px;}
+        .card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:32px;
+              animation:fadeInUp 0.5s ease both;transition:box-shadow .3s,transform .3s;}
+        .card:hover{box-shadow:0 16px 40px rgba(0,0,0,.4),0 0 0 1px rgba(255,107,0,.1);transform:translateY(-2px);}
+        .card-title{font-family:'Syne',sans-serif;font-size:20px;font-weight:700;margin-bottom:24px;}
+        .flash{padding:12px 16px;border-radius:8px;margin-bottom:20px;font-size:13px;}
+        .flash-success{background:rgba(34,197,94,.15);border:1px solid rgba(34,197,94,.3);color:var(--green);}
+        .flash-error{background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3);color:var(--red);}
+        .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+        .field{margin-bottom:18px;}
+        label{display:block;font-size:12px;font-weight:500;color:var(--muted);text-transform:uppercase;
+              letter-spacing:.8px;margin-bottom:8px;}
+        .input-wrap{position:relative;}
+        input,select{width:100%;background:var(--surface);border:1px solid var(--border);color:var(--text);
+                     padding:12px 16px;border-radius:10px;font-size:14px;font-family:'DM Sans',sans-serif;
+                     outline:none;transition:border-color .2s,box-shadow .2s;}
+        .input-wrap input{padding-right:44px;}
+        input:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(255,107,0,.2);}
+        input::placeholder{color:var(--muted);}
+        select{appearance:none;-webkit-appearance:none;
+               background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+               background-repeat:no-repeat;background-position:right 14px center;}
+        select option{background:var(--surface);color:var(--text);}
+        .eye-btn{position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;
+                 cursor:pointer;color:var(--muted);padding:4px;display:flex;align-items:center;transition:color .2s;}
+        .eye-btn:hover{color:var(--accent);}
+        .eye-btn svg{width:18px;height:18px;}
 
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-
-        body {
-            background: var(--bg);
-            color: var(--text);
-            font-family: 'DM Sans', sans-serif;
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 32px 24px;
+        /* Nota correo opcional */
+        .nota-opcional{
+            background:rgba(255,107,0,0.07);border:1px solid rgba(255,107,0,0.2);
+            border-radius:10px;padding:12px 14px;margin-bottom:6px;
+            font-size:12px;color:var(--muted);line-height:1.5;
         }
+        .nota-opcional strong{color:#FF6B00;}
 
-        @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(24px); }
-            to   { opacity: 1; transform: translateY(0); }
-        }
+        /* Badge opcional */
+        .label-opcional{display:flex;align-items:center;gap:6px;margin-bottom:8px;}
+        .label-opcional label{margin-bottom:0;}
+        .badge-op{background:rgba(255,107,0,0.12);color:#FF6B00;border:1px solid rgba(255,107,0,0.25);
+                  padding:1px 8px;border-radius:20px;font-size:10px;font-weight:700;letter-spacing:.5px;}
 
-        body::before {
-            content: '';
-            position: fixed;
-            bottom: -200px; right: -200px;
-            width: 600px; height: 600px;
-            background: radial-gradient(circle, rgba(255,107,0,0.1) 0%, transparent 70%);
-            pointer-events: none;
-        }
-
-        .wrapper {
-            width: 100%;
-            max-width: 440px;
-        }
-
-        .logo {
-            font-family: 'Syne', sans-serif;
-            font-weight: 800;
-            font-size: 28px;
-            letter-spacing: -1px;
-            text-align: center;
-            margin-bottom: 8px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-        }
-        .logo span { color: var(--accent); }
-
-        .tagline {
-            text-align: center;
-            color: var(--muted);
-            font-size: 13px;
-            margin-bottom: 36px;
-        }
-
-        .card {
-            background: var(--card);
-            border: 1px solid var(--border);
-            border-radius: 16px;
-            padding: 32px;
-            animation: fadeInUp 0.5s ease both;
-            transition: box-shadow 0.3s ease, transform 0.3s ease;
-        }
-        .card:hover {
-            box-shadow: 0 16px 40px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,107,0,0.1);
-            transform: translateY(-2px);
-        }
-
-        .card-title {
-            font-family: 'Syne', sans-serif;
-            font-size: 20px;
-            font-weight: 700;
-            margin-bottom: 24px;
-        }
-
-        /* Flash */
-        .flash {
-            padding: 12px 16px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            font-size: 13px;
-        }
-        .flash-success { background: rgba(34,197,94,0.15); border: 1px solid rgba(34,197,94,0.3); color: var(--green); }
-        .flash-error   { background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.3); color: var(--red); }
-
-        /* Grid de 2 columnas para nombre/apellido */
-        .grid-2 {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 14px;
-        }
-
-        .field { margin-bottom: 18px; }
-
-        label {
-            display: block;
-            font-size: 12px;
-            font-weight: 500;
-            color: var(--muted);
-            text-transform: uppercase;
-            letter-spacing: 0.8px;
-            margin-bottom: 8px;
-        }
-
-        .input-wrap { position: relative; }
-
-        input {
-            width: 100%;
-            background: var(--surface);
-            border: 1px solid var(--border);
-            color: var(--text);
-            padding: 12px 16px;
-            border-radius: 10px;
-            font-size: 14px;
-            font-family: 'DM Sans', sans-serif;
-            outline: none;
-            transition: border-color .2s, box-shadow .2s;
-        }
-        .input-wrap input { padding-right: 44px; }
-
-        input:focus {
-            border-color: var(--accent);
-            box-shadow: 0 0 0 3px rgba(255,107,0,0.2);
-        }
-
-        input::placeholder { color: var(--muted); }
-
-        select {
-            width: 100%;
-            background: var(--surface);
-            border: 1px solid var(--border);
-            color: var(--text);
-            padding: 12px 16px;
-            border-radius: 10px;
-            font-size: 14px;
-            font-family: 'DM Sans', sans-serif;
-            outline: none;
-            cursor: pointer;
-            transition: border-color .2s, box-shadow .2s;
-            appearance: none;
-            -webkit-appearance: none;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
-            background-repeat: no-repeat;
-            background-position: right 14px center;
-        }
-        select:focus {
-            border-color: var(--accent);
-            box-shadow: 0 0 0 3px rgba(255,107,0,0.2);
-        }
-        select option { background: var(--surface); color: var(--text); }
-
-        .eye-btn {
-            position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
-            background: none; border: none; cursor: pointer; color: var(--muted);
-            padding: 4px; display: flex; align-items: center; transition: color 0.2s ease;
-        }
-        .eye-btn:hover { color: var(--accent); }
-        .eye-btn svg { width: 18px; height: 18px; }
-
-        /* Hint de contraseña */
-        .hint {
-            font-size: 11px;
-            color: var(--muted);
-            margin-top: 6px;
-        }
-
-        .requisitos {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 10px;
-            padding: 12px 16px;
-            margin-top: 8px;
-        }
-        .req-title { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 8px; font-weight: 600; }
-        .req-item { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); margin-bottom: 5px; transition: color .2s; }
-        .req-item:last-child { margin-bottom: 0; }
-        .req-item.ok { color: var(--green); }
-
-        .strength-bar { height: 4px; border-radius: 4px; background: var(--border); overflow: hidden; margin-top: 8px; }
-        .strength-fill { height: 100%; border-radius: 4px; transition: width .3s, background .3s; width: 0%; }
-        .strength-label { font-size: 11px; margin-top: 5px; color: var(--muted); }
-
-        .btn-submit {
-            width: 100%;
-            background: var(--accent);
-            color: #fff;
-            border: none;
-            padding: 13px;
-            border-radius: 10px;
-            font-size: 15px;
-            font-weight: 700;
-            font-family: 'Syne', sans-serif;
-            cursor: pointer;
-            margin-top: 8px;
-            transition: opacity .2s, transform .1s, box-shadow .2s;
-            letter-spacing: 0.3px;
-            position: relative; overflow: hidden;
-        }
-        .btn-submit:hover { opacity: .9; box-shadow: 0 4px 20px rgba(255,107,0,0.35); }
-        .btn-submit:active { transform: scale(.99); }
-        .btn-submit .ripple { position:absolute; border-radius:50%; background:rgba(255,255,255,0.3); transform:scale(0); animation:ripple-anim 0.6s linear; pointer-events:none; }
-        @keyframes ripple-anim { to { transform: scale(4); opacity: 0; } }
-
-        .footer-link {
-            text-align: center;
-            margin-top: 20px;
-            font-size: 13px;
-            color: var(--muted);
-        }
-
-        .footer-link a {
-            color: var(--accent);
-            text-decoration: none;
-            font-weight: 500;
-        }
-
-        .footer-link a:hover { text-decoration: underline; }
+        .hint{font-size:11px;color:var(--muted);margin-top:6px;}
+        .requisitos{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 16px;margin-top:8px;}
+        .req-title{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:8px;font-weight:600;}
+        .req-item{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);margin-bottom:5px;transition:color .2s;}
+        .req-item:last-child{margin-bottom:0;}
+        .req-item.ok{color:var(--green);}
+        .strength-bar{height:4px;border-radius:4px;background:var(--border);overflow:hidden;margin-top:8px;}
+        .strength-fill{height:100%;border-radius:4px;transition:width .3s,background .3s;width:0%;}
+        .strength-label{font-size:11px;margin-top:5px;color:var(--muted);}
+        .btn-submit{width:100%;background:var(--accent);color:#fff;border:none;padding:13px;border-radius:10px;
+                    font-size:15px;font-weight:700;font-family:'Syne',sans-serif;cursor:pointer;margin-top:8px;
+                    transition:opacity .2s,transform .1s,box-shadow .2s;position:relative;overflow:hidden;}
+        .btn-submit:hover{opacity:.9;box-shadow:0 4px 20px rgba(255,107,0,.35);}
+        .btn-submit:active{transform:scale(.99);}
+        .btn-submit .ripple{position:absolute;border-radius:50%;background:rgba(255,255,255,.3);
+                            transform:scale(0);animation:ripple-anim .6s linear;pointer-events:none;}
+        @keyframes ripple-anim{to{transform:scale(4);opacity:0}}
+        .footer-link{text-align:center;margin-top:20px;font-size:13px;color:var(--muted);}
+        .footer-link a{color:var(--accent);text-decoration:none;font-weight:500;}
+        .footer-link a:hover{text-decoration:underline;}
     </style>
 </head>
 <body>
-
 <div class="wrapper">
-    <div class="logo" style="justify-content:center; margin-bottom: 5px;">
-        BODYFLEX<span>GYM</span>
-    </div>
+    <div class="logo" style="justify-content:center;margin-bottom:5px;">BODYFLEX<span>GYM</span></div>
     <p class="tagline">Sistema de gestión de membresías</p>
 
     <div class="card">
@@ -286,9 +132,17 @@
                 </div>
             </div>
 
+            <!-- EMAIL OPCIONAL -->
             <div class="field">
-                <label>Correo electrónico</label>
-                <input type="email" name="correo" placeholder="tu@correo.com" required>
+                <div class="label-opcional">
+                    <label>Correo electrónico</label>
+                    <span class="badge-op">OPCIONAL</span>
+                </div>
+                <div class="nota-opcional">
+                    El correo es <strong>opcional</strong>. Si no tienes uno, puedes dejarlo en blanco
+                    y usar tu número de <strong>CUI/DPI</strong> para iniciar sesión.
+                </div>
+                <input type="email" name="correo" placeholder="tu@correo.com (puedes dejarlo vacío)">
             </div>
 
             <div class="field">
@@ -297,7 +151,10 @@
                     <input type="password" name="password" id="password" placeholder="••••••••" required
                            oninput="verificarFuerza(this.value); verificarRequisitos(this.value);">
                     <button type="button" class="eye-btn" onclick="toggleEye('password', this)" aria-label="Mostrar/ocultar contraseña">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.964-7.178Z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /></svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.964-7.178Z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                        </svg>
                     </button>
                 </div>
                 <div class="strength-bar"><div class="strength-fill" id="strengthFill"></div></div>
@@ -315,9 +172,7 @@
             <button type="submit" class="btn-submit" onclick="addRipple(event, this)">Crear cuenta</button>
         </form>
 
-        <p class="footer-link">
-            ¿Ya tienes cuenta? <a href="/login">Inicia sesión</a>
-        </p>
+        <p class="footer-link">¿Ya tienes cuenta? <a href="/login">Inicia sesión</a></p>
     </div>
 </div>
 
@@ -353,14 +208,9 @@ function verificarFuerza(val) {
     if (/[a-z]/.test(val)) score++;
     if (/[0-9]/.test(val)) score++;
     if (/[^A-Za-z0-9]/.test(val)) score++;
-    const n = [
-        {p:'0%',   c:'transparent', t:'Escribe tu contraseña'},
-        {p:'25%',  c:'#ef4444',     t:'⚠️ Muy débil'},
-        {p:'45%',  c:'#f97316',     t:'🔸 Débil'},
-        {p:'65%',  c:'#facc15',     t:'🔶 Regular'},
-        {p:'85%',  c:'#22c55e',     t:'✅ Fuerte'},
-        {p:'100%', c:'#16a34a',     t:'🔒 Muy fuerte'},
-    ][score];
+    const n = [{p:'0%',c:'transparent',t:'Escribe tu contraseña'},{p:'25%',c:'#ef4444',t:'⚠️ Muy débil'},
+               {p:'45%',c:'#f97316',t:'🔸 Débil'},{p:'65%',c:'#facc15',t:'🔶 Regular'},
+               {p:'85%',c:'#22c55e',t:'✅ Fuerte'},{p:'100%',c:'#16a34a',t:'🔒 Muy fuerte'}][score];
     fill.style.width = n.p; fill.style.background = n.c; label.textContent = n.t;
 }
 function verificarRequisitos(val) {
@@ -376,3 +226,5 @@ function setReq(id, ok) {
     el.querySelector('span').textContent = ok ? '✓' : '○';
 }
 </script>
+</body>
+</html>

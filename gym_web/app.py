@@ -5,7 +5,7 @@ from datetime import date, timedelta, datetime
 import os
 import secrets
 import smtplib
-import ssl                          # ← FIX #2: importar ssl
+import ssl
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from io import BytesIO
@@ -37,7 +37,6 @@ def conectar_db():
 PRECIO_MENSUAL = 225.00
 
 # --- CONFIGURACIÓN DE CORREO ---
-# FIX #1 SEGURIDAD: sin fallback hardcodeado — las credenciales SOLO vienen de Railway
 GMAIL_USER     = os.environ.get("GMAIL_USER")
 GMAIL_PASSWORD = os.environ.get("GMAIL_PASSWORD")
 
@@ -64,12 +63,7 @@ def registrar_log(tipo, detalle, afectado_id=None, afectado_nombre=None):
         print(f"[LOG ERROR] {e}")
 
 
-# ─────────────────────────────────────────────
-# HELPER — Enviar correo de recuperación
-# ─────────────────────────────────────────────
-
 def enviar_correo_reset(destino, token, nombre):
-    # FIX #1 + #3: validar que existen las variables Y limpiar espacios del App Password
     gmail_user = GMAIL_USER
     gmail_pwd  = GMAIL_PASSWORD.replace(" ", "") if GMAIL_PASSWORD else None
 
@@ -150,7 +144,6 @@ def enviar_correo_reset(destino, token, nombre):
     msg.attach(MIMEText(texto, "plain"))
     msg.attach(MIMEText(html, "html"))
 
-    # FIX #2: ssl.create_default_context() para Railway (evita errores SSL en producción)
     contexto_ssl = ssl.create_default_context()
     with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=contexto_ssl) as server:
         server.login(gmail_user, gmail_pwd)
@@ -158,23 +151,27 @@ def enviar_correo_reset(destino, token, nombre):
 
 
 # ─────────────────────────────────────────────
-# REGISTRO E INICIO DE SESIÓN
+# REGISTRO
 # ─────────────────────────────────────────────
 
 @app.route("/registrar", methods=["POST"])
 def registrar():
-    nombre        = request.form.get("nombre",         "").strip()
-    apellido      = request.form.get("apellido",       "").strip()
-    email         = request.form.get("correo",         "").strip()
-    password      = request.form.get("password",       "").strip()
-    numero_doc    = request.form.get("numero_doc",     "").strip()
-    tipo_doc      = request.form.get("tipo_doc",       "CUI").strip()
+    nombre     = request.form.get("nombre",     "").strip()
+    apellido   = request.form.get("apellido",   "").strip()
+    email_raw  = request.form.get("correo",     "").strip()
+    password   = request.form.get("password",   "").strip()
+    numero_doc = request.form.get("numero_doc", "").strip()
+    tipo_doc   = request.form.get("tipo_doc",   "CUI").strip()
 
-    if not nombre or not apellido or not email or not password or not numero_doc:
-        flash("Todos los campos son obligatorios", "error")
+    # El correo es OPCIONAL — si viene vacío se guarda como NULL
+    email = email_raw if email_raw else None
+
+    if not nombre or not apellido or not password or not numero_doc:
+        flash("Nombre, apellido, documento y contraseña son obligatorios", "error")
         return redirect("/registro")
 
-    if "@" not in email:
+    # Validar email solo si lo proporcionaron
+    if email and "@" not in email:
         flash("Correo inválido", "error")
         return redirect("/registro")
 
@@ -185,7 +182,6 @@ def registrar():
     if tipo_doc not in ("CUI", "DPI"):
         tipo_doc = "CUI"
 
-    import re
     if len(password) < 8:
         flash("La contraseña debe tener al menos 8 caracteres", "error")
         return redirect("/registro")
@@ -205,12 +201,15 @@ def registrar():
     conn   = conectar_db()
     cursor = conn.cursor()
 
-    cursor.execute("SELECT cui FROM usuarios WHERE email=%s", (email,))
-    if cursor.fetchone():
-        conn.close()
-        flash("Ese correo ya está registrado", "error")
-        return redirect("/registro")
+    # Verificar email duplicado solo si se proporcionó
+    if email:
+        cursor.execute("SELECT cui FROM usuarios WHERE email=%s", (email,))
+        if cursor.fetchone():
+            conn.close()
+            flash("Ese correo ya está registrado", "error")
+            return redirect("/registro")
 
+    # Verificar CUI duplicado
     cursor.execute("SELECT cui FROM usuarios WHERE cui=%s", (int(numero_doc),))
     if cursor.fetchone():
         conn.close()
@@ -229,26 +228,39 @@ def registrar():
     return redirect("/login")
 
 
+# ─────────────────────────────────────────────
+# INICIO DE SESIÓN — acepta correo O CUI (13 dígitos)
+# ─────────────────────────────────────────────
+
 @app.route("/iniciar", methods=["POST"])
 def iniciar():
-    email    = request.form.get("identificador", "").strip()
-    password = request.form.get("password", "")
+    identificador = request.form.get("identificador", "").strip()
+    password      = request.form.get("password", "")
 
-    if not email or not password:
+    if not identificador or not password:
         flash("Completa todos los campos", "error")
         return redirect("/login")
 
     conn   = conectar_db()
     cursor = conn.cursor(dictionary=True)
-    cursor.execute("""
-        SELECT cui, nombre, apellido, email, password, estado, rol, edad
-        FROM usuarios WHERE email = %s
-    """, (email,))
+
+    # Detectar si ingresaron CUI (13 dígitos numéricos) o correo
+    if identificador.isdigit() and len(identificador) == 13:
+        cursor.execute("""
+            SELECT cui, nombre, apellido, email, password, estado, rol, edad
+            FROM usuarios WHERE cui = %s
+        """, (int(identificador),))
+    else:
+        cursor.execute("""
+            SELECT cui, nombre, apellido, email, password, estado, rol, edad
+            FROM usuarios WHERE email = %s
+        """, (identificador,))
+
     usuario = cursor.fetchone()
 
     if not usuario:
         conn.close()
-        flash("Correo o contraseña incorrectos", "error")
+        flash("Identificador o contraseña incorrectos", "error")
         return redirect("/login")
 
     if usuario["estado"].lower() != "activo":
@@ -258,7 +270,7 @@ def iniciar():
 
     if not check_password_hash(usuario["password"], password):
         conn.close()
-        flash("Correo o contraseña incorrectos", "error")
+        flash("Identificador o contraseña incorrectos", "error")
         return redirect("/login")
 
     conn.close()
@@ -296,7 +308,7 @@ def admin_panel():
         SELECT
             u.cui, u.tipo_doc, u.nombre, u.apellido, u.email,
             u.estado, u.rol,
-            u.edad, u.peso, u.altura, u.objetivo, u.clase, u.horario,
+            u.edad, u.peso, u.altura, u.objetivo,
             (SELECT MAX(fecha_vencimiento) FROM pagos WHERE pagos.cui_usuario = u.cui) AS ultimo_vencimiento
         FROM usuarios u
         WHERE u.rol NOT IN ('admin', 'empleado')
@@ -574,7 +586,41 @@ def auditoria():
 
 
 # ─────────────────────────────────────────────
-# CAMBIAR CONTRASEÑA (sabe la actual)
+# ADMIN — Restablecer contraseña de un socio
+# ─────────────────────────────────────────────
+
+@app.route("/admin/reset_pass/<int:cui>", methods=["POST"])
+def admin_reset_pass(cui):
+    """El admin genera una nueva contraseña temporal para un socio sin correo."""
+    if "usuario_id" not in session or session.get("rol") != "admin":
+        return redirect("/login")
+
+    nueva_pass = request.form.get("nueva_pass", "").strip()
+    if len(nueva_pass) < 6:
+        flash("La contraseña temporal debe tener al menos 6 caracteres", "error")
+        return redirect("/admin")
+
+    conn = conectar_db(); cursor = conn.cursor(dictionary=True)
+    cursor.execute("SELECT nombre, apellido FROM usuarios WHERE cui=%s", (cui,))
+    u = cursor.fetchone()
+    if not u:
+        conn.close()
+        flash("Socio no encontrado", "error")
+        return redirect("/admin")
+
+    nuevo_hash = generate_password_hash(nueva_pass)
+    cursor = conn.cursor()
+    cursor.execute("UPDATE usuarios SET password=%s WHERE cui=%s", (nuevo_hash, cui))
+    conn.commit(); conn.close()
+
+    registrar_log("perfil", f"Admin restableció contraseña temporalmente",
+                  afectado_id=cui, afectado_nombre=f"{u['nombre']} {u['apellido']}")
+    flash(f"Contraseña restablecida para {u['nombre']} {u['apellido']}", "success")
+    return redirect("/admin")
+
+
+# ─────────────────────────────────────────────
+# CAMBIAR CONTRASEÑA
 # ─────────────────────────────────────────────
 
 @app.route("/cambiar_password", methods=["GET", "POST"])
@@ -781,7 +827,7 @@ def panel():
 
     cursor.execute("""
         SELECT nombre, apellido, email,
-               edad, peso, altura, clase, horario, objetivo, fecha_registro
+               edad, peso, altura, objetivo, fecha_registro
         FROM usuarios
         WHERE cui=%s
     """, (session["usuario_id"],))
@@ -822,7 +868,6 @@ def panel():
 
     meses_miembro = 0
     if perfil and perfil["fecha_registro"]:
-        from datetime import datetime
         hoy = date.today()
         reg = perfil["fecha_registro"]
         if hasattr(reg, 'date'):
@@ -892,9 +937,10 @@ def actualizar_info():
     if "usuario_id" not in session:
         return redirect("/login")
     nombre = request.form.get("nombre"); apellido = request.form.get("apellido")
-    email  = request.form.get("email");  peso     = request.form.get("peso")
+    email  = request.form.get("email") or None   # Vacío → NULL
+    peso   = request.form.get("peso")
     conn = conectar_db(); cursor = conn.cursor()
-    if nombre and apellido and email:
+    if nombre and apellido:
         cursor.execute("UPDATE usuarios SET nombre=%s, apellido=%s, email=%s WHERE cui=%s",
                        (nombre, apellido, email, session["usuario_id"]))
     if peso:
@@ -918,20 +964,6 @@ def actualizar_objetivo():
         conn.commit(); conn.close()
         registrar_log("perfil", f"Cambió su objetivo a: {objetivo}")
         flash("Objetivo actualizado correctamente", "success")
-    return redirect("/panel")
-
-
-@app.route("/actualizar_entrenamiento", methods=["POST"])
-def actualizar_entrenamiento():
-    if "usuario_id" not in session:
-        return redirect("/login")
-    clase = request.form["clase"]; horario = request.form["horario"]
-    conn = conectar_db(); cursor = conn.cursor()
-    cursor.execute("UPDATE usuarios SET clase=%s, horario=%s WHERE cui=%s",
-                   (clase, horario, session["usuario_id"]))
-    conn.commit(); conn.close()
-    registrar_log("perfil", f"Actualizó entrenamiento — {clase} / {horario}")
-    flash("Entrenamiento actualizado", "success")
     return redirect("/panel")
 
 
@@ -1017,8 +1049,11 @@ def generar_recibo(id_pago):
 
     c.setFillColor(gris_dark)
     c.setFont("Helvetica", 10)
-    c.drawString(50, y - 22, f"Correo: {pago['email']}")
-    c.drawString(50, y - 38, f"No. Socio: CUI: {pago['cui']}")
+    if pago['email']:
+        c.drawString(50, y - 22, f"Correo: {pago['email']}")
+        c.drawString(50, y - 38, f"No. Socio: {pago['tipo_doc']}: {pago['cui']}")
+    else:
+        c.drawString(50, y - 22, f"No. Socio: {pago['tipo_doc']}: {pago['cui']}")
 
     y = height - 290
     c.setFillColor(HexColor("#f5f5f5"))
@@ -1088,7 +1123,7 @@ def generar_recibo(id_pago):
 
 
 # ─────────────────────────────────────────────
-# RUTA DE PRUEBA DE CORREO — solo admin, solo dev
+# RUTA DE PRUEBA DE CORREO
 # ─────────────────────────────────────────────
 
 @app.route("/test_email")
@@ -1115,7 +1150,6 @@ def test_email():
         <div style='font-family:sans-serif;padding:40px;background:#0f0f0f;color:#f5f5f5;min-height:100vh;'>
             <h2 style='color:#22c55e;'>✅ Correo enviado correctamente</h2>
             <p>Revisa tu bandeja de entrada en <strong>{gmail_user}</strong></p>
-            <p style='color:#9ca3af;margin-top:16px;'>Password length: {len(gmail_pwd)} caracteres</p>
             <a href='/admin' style='color:#FF6B00;'>← Volver al panel</a>
         </div>"""
     except Exception as e:
@@ -1123,16 +1157,7 @@ def test_email():
         return f"""
         <div style='font-family:sans-serif;padding:40px;background:#0f0f0f;color:#f5f5f5;min-height:100vh;'>
             <h2 style='color:#ef4444;'>❌ Error al enviar</h2>
-            <p style='background:#1a1a1a;padding:16px;border-radius:8px;border:1px solid #2e2e2e;
-                      color:#ef4444;font-family:monospace;'>{str(e)}</p>
-            <p style='color:#9ca3af;margin-top:16px;'>
-                Password length: {pwd_len} caracteres<br>
-                (debe ser exactamente 16)
-            </p>
-            <p style='color:#9ca3af;margin-top:12px;'>Pasos:<br>
-            1. App Password de 16 caracteres sin espacios<br>
-            2. Verificación en 2 pasos activa en Gmail<br>
-            3. El GMAIL_USER debe coincidir con la cuenta donde creaste el App Password</p>
+            <p style='background:#1a1a1a;padding:16px;border-radius:8px;color:#ef4444;font-family:monospace;'>{str(e)}</p>
             <a href='/admin' style='color:#FF6B00;'>← Volver al panel</a>
         </div>"""
 
