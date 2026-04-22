@@ -210,6 +210,8 @@
 
         /* ─── DROPDOWN ACTIONS ─── */
         .dropdown { position: relative; display: inline-block; }
+        /* El .dropdown-menu actúa solo como plantilla; el portal lo clona en <body> */
+        .dropdown-menu { display: none !important; }
         .dropdown-toggle {
             background: transparent; border: 1px solid var(--border-light);
             color: var(--muted-light); padding: 6px 10px; border-radius: 7px;
