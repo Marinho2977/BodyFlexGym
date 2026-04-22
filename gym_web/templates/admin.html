@@ -168,7 +168,11 @@
         .filter-search input:focus { border-color:#FF6B00; }
 
         /* ─── TABLE ─── */
-        .tabla-wrap { background:var(--card); border:1px solid var(--border); border-radius:16px; overflow:hidden; margin-bottom:32px; }
+        .tabla-wrap { background:var(--card); border:1px solid var(--border); border-radius:16px; overflow:visible; margin-bottom:32px; }
+        /* Clip header/last-row corners without blocking dropdown overflow */
+        .tabla-wrap > table { border-collapse:collapse; }
+        .tabla-wrap > table thead tr:first-child th:first-child { border-top-left-radius:16px; }
+        .tabla-wrap > table thead tr:first-child th:last-child  { border-top-right-radius:16px; }
         table { width:100%; border-collapse:collapse; }
         thead th {
             background:rgba(255,255,255,0.02); padding:12px 16px;
@@ -212,25 +216,44 @@
             font-size: 16px; cursor: pointer; line-height: 1; transition: all 0.2s;
         }
         .dropdown-toggle:hover { border-color:#FF6B00; color:#FF6B00; }
-        .dropdown-menu {
-            position: absolute; right: 0; top: calc(100% + 6px);
-            background: #1e1e1e; border: 1px solid var(--border-light);
-            border-radius: 12px; padding: 6px; min-width: 180px;
-            z-index: 200; opacity: 0; visibility: hidden; pointer-events: none;
+
+        /* ── Portal menu: attached to <body> with fixed positioning ── */
+        .dropdown-menu-portal {
+            position: fixed;
+            background: #1e1e1e;
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 12px;
+            padding: 6px;
+            min-width: 190px;
+            z-index: 9999;
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
             transform: translateY(-6px);
-            transition: all 0.2s ease;
-            box-shadow: 0 16px 48px rgba(0,0,0,0.6);
+            transition: opacity 0.18s ease, transform 0.18s ease, visibility 0.18s;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.75);
         }
-        .dropdown:focus-within .dropdown-menu,
-        .dropdown.open .dropdown-menu { opacity: 1; visibility: visible; pointer-events: all; transform: translateY(0); }
+        .dropdown-menu-portal.open {
+            opacity: 1;
+            visibility: visible;
+            pointer-events: all;
+            transform: translateY(0);
+        }
+        .dropdown-menu-portal.dropup {
+            transform: translateY(6px);
+        }
+        .dropdown-menu-portal.dropup.open {
+            transform: translateY(0);
+        }
         .dropdown-item {
             display: flex; align-items: center; gap: 8px;
             padding: 9px 12px; border-radius: 8px; font-size: 13px;
             font-weight: 500; color: #f0f0f0; text-decoration: none;
             transition: all 0.15s; border: none; background: transparent;
             cursor: pointer; width: 100%; font-family: 'DM Sans',sans-serif;
+            white-space: nowrap;
         }
-        .dropdown-item:hover { background: rgba(255,255,255,0.06); }
+        .dropdown-item:hover { background: rgba(255,255,255,0.08); }
         .dropdown-item.red   { color: var(--red); }
         .dropdown-item.green { color: var(--green); }
         .dropdown-item.blue  { color: var(--blue); }
@@ -478,7 +501,7 @@
                         <td>
                             <!-- Dropdown acciones -->
                             <div class="dropdown" id="dd-{{ u.cui }}">
-                                <button class="dropdown-toggle" onclick="toggleDd('dd-{{ u.cui }}')">⋮</button>
+                                <button class="dropdown-toggle" onclick="toggleDd('dd-{{ u.cui }}', this)">⋮</button>
                                 <div class="dropdown-menu">
                                     {% if u.estado.lower() == "activo" %}
                                     <form action="/admin/desactivar/{{ u.cui }}" method="POST" style="margin:0;" onsubmit="return confirm('¿Desactivar a {{ u.nombre }}?')">
@@ -547,7 +570,7 @@
                         </td>
                         <td>
                             <div class="dropdown" id="dd-e{{ e.cui }}">
-                                <button class="dropdown-toggle" onclick="toggleDd('dd-e{{ e.cui }}')">⋮</button>
+                                <button class="dropdown-toggle" onclick="toggleDd('dd-e{{ e.cui }}', this)">⋮</button>
                                 <div class="dropdown-menu">
                                     {% if e.estado.lower() == "activo" %}
                                     <form action="/admin/desactivar/{{ e.cui }}" method="POST" style="margin:0;" onsubmit="return confirm('¿Desactivar cuenta de {{ e.nombre }}?')">
@@ -627,13 +650,87 @@ function toggleSidebar() {
     document.getElementById('sidebar').classList.toggle('collapsed');
 }
 
-// ── Dropdown acciones ──
-function toggleDd(id) {
-    document.querySelectorAll('.dropdown').forEach(d => { if (d.id !== id) d.classList.remove('open'); });
-    document.getElementById(id).classList.toggle('open');
+// ── Dropdown acciones — Portal pattern (bypasses overflow & stacking context) ──
+let activePortal = null;
+let activeToggle = null;
+
+function toggleDd(id, btnEl) {
+    // Si el mismo menú está abierto, lo cerramos
+    if (activePortal && activePortal.dataset.sourceId === id) {
+        closeActivePortal();
+        return;
+    }
+    closeActivePortal();
+
+    const trigger = btnEl || document.querySelector('#' + id + ' .dropdown-toggle');
+    const sourceMenu = document.querySelector('#' + id + ' .dropdown-menu');
+    if (!sourceMenu || !trigger) return;
+
+    // Crear portal y clonarlo en <body>
+    const portal = document.createElement('div');
+    portal.className = 'dropdown-menu-portal';
+    portal.dataset.sourceId = id;
+    portal.innerHTML = sourceMenu.innerHTML;
+    document.body.appendChild(portal);
+
+    // Calcular posición
+    positionPortal(portal, trigger);
+
+    // Forzar reflow y mostrar
+    requestAnimationFrame(() => portal.classList.add('open'));
+
+    activePortal = portal;
+    activeToggle = trigger;
 }
+
+function positionPortal(portal, trigger) {
+    const rect = trigger.getBoundingClientRect();
+    const menuH = 220; // estimado máximo de altura del menú
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const spaceAbove = rect.top;
+    const isDropup = spaceBelow < menuH && spaceAbove > spaceBelow;
+
+    portal.style.minWidth = '190px';
+
+    if (isDropup) {
+        portal.classList.add('dropup');
+        portal.style.top  = '';
+        portal.style.bottom = (window.innerHeight - rect.top + 6) + 'px';
+    } else {
+        portal.classList.remove('dropup');
+        portal.style.bottom = '';
+        portal.style.top  = (rect.bottom + 6) + 'px';
+    }
+
+    // Alinear a la derecha del botón
+    let left = rect.right - 190;
+    if (left < 8) left = 8;
+    portal.style.left = left + 'px';
+    portal.style.right = 'auto';
+}
+
+function closeActivePortal() {
+    if (activePortal) {
+        activePortal.classList.remove('open');
+        const p = activePortal;
+        setTimeout(() => { if (p.parentNode) p.parentNode.removeChild(p); }, 200);
+        activePortal = null;
+        activeToggle = null;
+    }
+}
+
 document.addEventListener('click', e => {
-    if (!e.target.closest('.dropdown')) document.querySelectorAll('.dropdown').forEach(d => d.classList.remove('open'));
+    if (activePortal && !e.target.closest('.dropdown-menu-portal') && !e.target.closest('.dropdown-toggle')) {
+        closeActivePortal();
+    }
+});
+
+// Reposicionar al hacer scroll o resize
+window.addEventListener('scroll', () => {
+    if (activePortal && activeToggle) positionPortal(activePortal, activeToggle);
+}, true);
+window.addEventListener('resize', () => {
+    if (activePortal && activeToggle) positionPortal(activePortal, activeToggle);
 });
 
 // ── Modal pago ──
