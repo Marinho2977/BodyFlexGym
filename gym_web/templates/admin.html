@@ -280,6 +280,16 @@
         .empty { text-align:center; padding:50px; color:var(--muted); font-size:14px; }
         hr.sep { border:none; border-top:1px solid var(--border); margin:32px 0; }
 
+        /* ─── MODAL RESET PASS ─── */
+        .modal-reset-label { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--muted); display:block; margin-bottom:8px; }
+        .modal-reset-input {
+            width:100%; padding:10px 14px; border-radius:10px;
+            background:#1e1e1e; border:1px solid #2a2a2a;
+            color:#f0f0f0; font-size:14px; font-family:'DM Sans',sans-serif; outline:none;
+            box-sizing:border-box;
+        }
+        .modal-reset-input:focus { border-color:#FF6B00; }
+
         /* ─── MODAL ─── */
         .modal-overlay {
             display:none; position:fixed; inset:0;
@@ -356,9 +366,6 @@
             <span class="icon">📋</span><span class="sidebar-label">Auditoría</span>
         </a>
         <div class="sidebar-section-title">Gestión</div>
-        <a href="/admin/anuncios" class="sidebar-link">
-            <span class="icon">📢</span><span class="sidebar-label">Anuncios</span>
-        </a>
         <a href="/cambiar_password" class="sidebar-link">
             <span class="icon">🔑</span><span class="sidebar-label">Contraseña</span>
         </a>
@@ -521,6 +528,10 @@
                                     <form action="/admin/hacer_admin/{{ u.cui }}" method="POST" style="margin:0;">
                                         <button type="submit" class="dropdown-item blue"><span class="di-icon">⭐</span>→ Admin</button>
                                     </form>
+                                    <div class="dropdown-sep"></div>
+                                    <button type="button" class="dropdown-item"
+                                        onclick="abrirResetPass('{{ u.cui }}', '{{ u.nombre }} {{ u.apellido }}')"
+                                    ><span class="di-icon">🔑</span>Cambiar contraseña</button>
                                 </div>
                             </div>
                         </td>
@@ -590,6 +601,10 @@
                                     <form action="/admin/hacer_admin/{{ e.cui }}" method="POST" style="margin:0;">
                                         <button type="submit" class="dropdown-item blue"><span class="di-icon">⭐</span>→ Admin</button>
                                     </form>
+                                    <div class="dropdown-sep"></div>
+                                    <button type="button" class="dropdown-item"
+                                        onclick="abrirResetPass('{{ e.cui }}', '{{ e.nombre }} {{ e.apellido }}')"
+                                    ><span class="di-icon">🔑</span>Cambiar contraseña</button>
                                 </div>
                             </div>
                         </td>
@@ -605,6 +620,35 @@
     </div><!-- /main -->
 </div><!-- /main-content -->
 </div><!-- /layout -->
+
+<!-- ═══════ MODAL RESET CONTRASEÑA ═══════ -->
+<div id="modalResetPass" class="modal-overlay">
+    <div class="modal-box">
+        <div class="modal-head">
+            <div>
+                <div class="modal-tag">Cambiar contraseña</div>
+                <div class="modal-name" id="resetNombre"></div>
+            </div>
+            <button class="modal-close" onclick="cerrarResetPass()">✕</button>
+        </div>
+        <form id="formResetPass" method="POST">
+            <div style="margin-bottom:18px;">
+                <label class="modal-reset-label">Nueva contraseña</label>
+                <input type="password" id="resetPassInput" name="nueva_pass"
+                       class="modal-reset-input" placeholder="Mínimo 6 caracteres"
+                       autocomplete="new-password">
+            </div>
+            <div style="margin-bottom:18px;">
+                <label class="modal-reset-label">Confirmar contraseña</label>
+                <input type="password" id="resetPassConfirm"
+                       class="modal-reset-input" placeholder="Repite la contraseña"
+                       autocomplete="new-password">
+            </div>
+            <p id="resetPassError" style="color:var(--red);font-size:12px;margin:0 0 14px;display:none;"></p>
+            <button type="button" class="modal-submit" onclick="submitResetPass()">Cambiar contraseña</button>
+        </form>
+    </div>
+</div>
 
 <!-- ═══════ MODAL PAGO ═══════ -->
 <div id="modalPago" class="modal-overlay" data-precio="{{ precio_mensual }}">
@@ -774,7 +818,32 @@ function submitPago() {
     document.getElementById('mesesHidden').value = checks.map(c => c.value).join(',');
     document.getElementById('formPago').submit();
 }
-document.addEventListener('keydown', e => { if (e.key === 'Escape') cerrarPago(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { cerrarPago(); cerrarResetPass(); } });
+
+// ── Modal reset contraseña ──
+function abrirResetPass(cui, nombre) {
+    closeActivePortal();
+    document.getElementById('resetNombre').textContent = nombre;
+    document.getElementById('formResetPass').action = '/admin/reset_pass/' + cui;
+    document.getElementById('resetPassInput').value = '';
+    document.getElementById('resetPassConfirm').value = '';
+    document.getElementById('resetPassError').style.display = 'none';
+    document.getElementById('modalResetPass').classList.add('show');
+    setTimeout(() => document.getElementById('resetPassInput').focus(), 120);
+}
+function cerrarResetPass() {
+    document.getElementById('modalResetPass').classList.remove('show');
+}
+function submitResetPass() {
+    const p1 = document.getElementById('resetPassInput').value.trim();
+    const p2 = document.getElementById('resetPassConfirm').value.trim();
+    const err = document.getElementById('resetPassError');
+    if (p1.length < 6) { err.textContent = 'La contraseña debe tener al menos 6 caracteres.'; err.style.display='block'; return; }
+    if (p1 !== p2)     { err.textContent = 'Las contraseñas no coinciden.'; err.style.display='block'; return; }
+    err.style.display = 'none';
+    document.getElementById('formResetPass').submit();
+}
+document.getElementById('modalResetPass').addEventListener('click', e => { if (e.target === e.currentTarget) cerrarResetPass(); });
 document.getElementById('modalPago').addEventListener('click', e => { if (e.target === e.currentTarget) cerrarPago(); });
 </script>
 </body>
