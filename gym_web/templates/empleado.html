@@ -213,54 +213,6 @@
             margin-top: 8px;
         }
 
-        .attention {
-            background: var(--surface);
-            border: 1px solid var(--line);
-            border-radius: 8px;
-            padding: 16px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 16px;
-            margin-bottom: 18px;
-        }
-
-        .attention-title {
-            font-weight: 800;
-            color: var(--text);
-            margin-bottom: 3px;
-        }
-
-        .attention-sub {
-            color: var(--muted);
-            font-size: 12px;
-        }
-
-        .attention-chips {
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
-            justify-content: flex-end;
-        }
-
-        .info-chip {
-            min-height: 28px;
-            padding: 0 11px;
-            border-radius: 999px;
-            display: inline-flex;
-            align-items: center;
-            font-size: 12px;
-            font-weight: 800;
-            white-space: nowrap;
-            background: rgba(143,148,156,0.12);
-            border: 1px solid rgba(143,148,156,0.2);
-            color: #cbd0d6;
-        }
-
-        .info-chip.red { background: var(--red-soft); border-color: rgba(239,68,68,0.25); color: #ffb0b0; }
-        .info-chip.yellow { background: var(--yellow-soft); border-color: rgba(247,201,72,0.25); color: #ffe08a; }
-        .info-chip.blue { background: rgba(96,165,250,0.13); border-color: rgba(96,165,250,0.24); color: #9cc8ff; }
-
         .panel {
             background: var(--surface);
             border: 1px solid var(--line);
@@ -591,8 +543,7 @@
 
         @media (max-width: 980px) {
             .stats-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-            .page-head, .attention, .panel-toolbar { align-items: stretch; flex-direction: column; }
-            .attention-chips { justify-content: flex-start; }
+            .page-head, .panel-toolbar { align-items: stretch; flex-direction: column; }
             .search-bar { max-width: none; }
         }
 
@@ -642,7 +593,6 @@
     {% set al_dia_count = con_pago | selectattr("ultimo_vencimiento", "ge", fecha_hoy) | list | length %}
     {% set vencidos_count = con_pago | selectattr("ultimo_vencimiento", "lt", fecha_hoy) | list | length %}
     {% set sin_pago_count = total - (con_pago | length) %}
-    {% set vencen_hoy_count = con_pago | selectattr("ultimo_vencimiento", "equalto", fecha_hoy) | list | length %}
 
     <section class="stats-row">
         <div class="stat-card">
@@ -664,18 +614,6 @@
             <div class="stat-label">Sin historial</div>
             <div class="stat-value">{{ sin_pago_count }}</div>
             <div class="stat-foot">sin pagos registrados</div>
-        </div>
-    </section>
-
-    <section class="attention">
-        <div>
-            <div class="attention-title">Atencion sugerida</div>
-            <div class="attention-sub">Resumen rapido para decidir a quien cobrar primero, sin agregar filtros nuevos.</div>
-        </div>
-        <div class="attention-chips">
-            <span class="info-chip red">{{ vencidos_count }} vencidos</span>
-            <span class="info-chip yellow">{{ sin_pago_count }} sin historial</span>
-            <span class="info-chip blue">{{ vencen_hoy_count }} vencen hoy</span>
         </div>
     </section>
 
