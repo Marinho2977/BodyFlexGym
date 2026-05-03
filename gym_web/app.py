@@ -885,14 +885,15 @@ def empleado_panel():
 
     query = """
         SELECT u.cui, u.tipo_doc, u.nombre, u.apellido, u.estado,
+               u.edad, u.peso, u.altura, u.objetivo,
                (SELECT MAX(fecha_vencimiento) FROM pagos WHERE cui_usuario = u.cui) AS ultimo_vencimiento
         FROM usuarios u
         WHERE u.rol = 'user'
     """
     params = []
     if buscar:
-        query += " AND (u.nombre LIKE %s OR u.apellido LIKE %s)"
-        params.extend([f"%{buscar}%", f"%{buscar}%"])
+        query += " AND (u.nombre LIKE %s OR u.apellido LIKE %s OR CAST(u.cui AS CHAR) LIKE %s)"
+        params.extend([f"%{buscar}%", f"%{buscar}%", f"%{buscar}%"])
 
     query += " ORDER BY u.nombre"
     cursor.execute(query, params)
