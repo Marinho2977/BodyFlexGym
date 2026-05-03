@@ -35,6 +35,9 @@ def conectar_db():
     )
 
 PRECIO_MENSUAL = 225.00
+MESES_NOMBRES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+                 "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
+MESES_POR_NOMBRE = {nombre.lower(): i + 1 for i, nombre in enumerate(MESES_NOMBRES)}
 
 # --- CONFIGURACIÓN DE CORREO ---
 GMAIL_USER     = os.environ.get("GMAIL_USER")
@@ -61,6 +64,70 @@ def registrar_log(tipo, detalle, afectado_id=None, afectado_nombre=None):
         conn.close()
     except Exception as e:
         print(f"[LOG ERROR] {e}")
+
+
+def _sumar_meses(anio, mes, cantidad):
+    total = (anio * 12) + (mes - 1) + cantidad
+    return total // 12, (total % 12) + 1
+
+
+def periodos_desde_mes_pagado(mes_pagado):
+    if not mes_pagado:
+        return set()
+
+    texto = re.sub(r"\s+", " ", str(mes_pagado)).strip()
+    meses_regex = "|".join(MESES_NOMBRES)
+    rango = re.search(
+        rf"\b({meses_regex})\s+(\d{{4}})\s*(?:-|\u2013|\u2014|a)\s*({meses_regex})\s+(\d{{4}})\b",
+        texto,
+        flags=re.IGNORECASE
+    )
+    if rango:
+        mes_inicio = MESES_POR_NOMBRE[rango.group(1).lower()]
+        anio_inicio = int(rango.group(2))
+        mes_fin = MESES_POR_NOMBRE[rango.group(3).lower()]
+        anio_fin = int(rango.group(4))
+        periodos = set()
+        total_inicio = anio_inicio * 12 + mes_inicio
+        total_fin = anio_fin * 12 + mes_fin
+        if total_inicio <= total_fin and total_fin - total_inicio < 120:
+            for offset in range(total_fin - total_inicio + 1):
+                periodos.add(_sumar_meses(anio_inicio, mes_inicio, offset))
+        return periodos
+
+    anios = re.findall(r"\b(\d{4})\b", texto)
+    if not anios:
+        return set()
+
+    anio = int(anios[-1])
+    meses = re.findall(rf"\b({meses_regex})\b", texto, flags=re.IGNORECASE)
+    return {(anio, MESES_POR_NOMBRE[mes.lower()]) for mes in meses}
+
+
+def formatear_periodos(periodos):
+    ordenados = sorted(periodos)
+    return ", ".join(f"{MESES_NOMBRES[mes - 1]} {anio}" for anio, mes in ordenados)
+
+
+def periodos_pagados_por_usuario(cursor, cuis):
+    if not cuis:
+        return {}
+
+    placeholders = ", ".join(["%s"] * len(cuis))
+    cursor.execute(f"""
+        SELECT cui_usuario, mes_pagado
+        FROM pagos
+        WHERE cui_usuario IN ({placeholders})
+    """, tuple(cuis))
+
+    periodos = {str(cui): [] for cui in cuis}
+    for pago in cursor.fetchall():
+        cui = str(pago["cui_usuario"])
+        for anio, mes in sorted(periodos_desde_mes_pagado(pago.get("mes_pagado"))):
+            clave = f"{anio}-{mes}"
+            if clave not in periodos.setdefault(cui, []):
+                periodos[cui].append(clave)
+    return periodos
 
 
 def enviar_correo_reset(destino, token, nombre):
@@ -325,6 +392,7 @@ def admin_panel():
     cursor.execute("SELECT cui, tipo_doc, nombre, apellido, email, estado FROM usuarios WHERE rol='empleado'")
     empleados = cursor.fetchall()
 
+    periodos_pagados = periodos_pagados_por_usuario(cursor, [u["cui"] for u in usuarios])
     conn.close()
 
     fecha_hoy = date.today()
@@ -335,7 +403,8 @@ def admin_panel():
         usuarios = [u for u in usuarios if u["ultimo_vencimiento"] and u["ultimo_vencimiento"] >= fecha_hoy]
 
     return render_template("admin.html", usuarios=usuarios, empleados=empleados,
-                           fecha_hoy=fecha_hoy, precio_mensual=PRECIO_MENSUAL)
+                           fecha_hoy=fecha_hoy, precio_mensual=PRECIO_MENSUAL,
+                           periodos_pagados=periodos_pagados)
 
 
 @app.route("/admin/hacer_admin/<int:cui>", methods=["POST"])
@@ -466,6 +535,7 @@ def registrar_pago(cui):
 
     meses_lista = request.form.get("meses_lista", "")
     anio_sel    = request.form.get("anio_sel", str(date.today().year))
+    redirect_destino = "/empleado" if session.get("rol") == "empleado" else "/admin"
     conn   = conectar_db()
     cursor = conn.cursor(dictionary=True)
 
@@ -477,14 +547,24 @@ def registrar_pago(cui):
 
     hoy        = date.today()
     fecha_base = resultado["ultimo"] if resultado["ultimo"] and resultado["ultimo"] >= hoy else hoy
-    meses_nombres = ["Enero","Febrero","Marzo","Abril","Mayo","Junio",
-                     "Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"]
+
+    try:
+        anio_i = int(anio_sel)
+    except ValueError:
+        conn.close()
+        flash("Selecciona un anio valido para registrar el pago.", "error")
+        return redirect(redirect_destino)
 
     if meses_lista:
-        meses_nums = sorted([int(m) for m in meses_lista.split(",") if m.strip().isdigit()])
+        meses_nums = sorted(set(int(m) for m in meses_lista.split(",") if m.strip().isdigit()))
+        if not meses_nums or any(m < 1 or m > 12 for m in meses_nums):
+            conn.close()
+            flash("Selecciona al menos un mes valido para registrar el pago.", "error")
+            return redirect(redirect_destino)
+
         meses      = len(meses_nums)
-        anio_i     = int(anio_sel)
-        nombres_sel = [meses_nombres[m-1] for m in meses_nums]
+        periodos_solicitados = {(anio_i, m) for m in meses_nums}
+        nombres_sel = [MESES_NOMBRES[m-1] for m in meses_nums]
         if meses == 1:
             mes_pagado = f"{nombres_sel[0]} {anio_i}"
         else:
@@ -492,13 +572,24 @@ def registrar_pago(cui):
     else:
         meses  = int(request.form.get("meses", 1))
         mes_i  = fecha_base.month if fecha_base > hoy else hoy.month
-        anio_i = int(anio_sel)
+        periodos_solicitados = {_sumar_meses(anio_i, mes_i, offset) for offset in range(meses)}
         if meses == 1:
-            mes_pagado = f"{meses_nombres[mes_i-1]} {anio_i}"
+            mes_pagado = f"{MESES_NOMBRES[mes_i-1]} {anio_i}"
         else:
             mes_fin  = ((mes_i - 1 + meses - 1) % 12) + 1
             anio_fin = anio_i + ((mes_i - 1 + meses - 1) // 12)
-            mes_pagado = f"{meses_nombres[mes_i-1]} {anio_i} — {meses_nombres[mes_fin-1]} {anio_fin}"
+            mes_pagado = f"{MESES_NOMBRES[mes_i-1]} {anio_i} — {MESES_NOMBRES[mes_fin-1]} {anio_fin}"
+
+    cursor.execute("SELECT mes_pagado FROM pagos WHERE cui_usuario=%s", (cui,))
+    periodos_registrados = set()
+    for pago in cursor.fetchall():
+        periodos_registrados.update(periodos_desde_mes_pagado(pago.get("mes_pagado")))
+
+    duplicados = periodos_solicitados & periodos_registrados
+    if duplicados:
+        conn.close()
+        flash(f"No se puede registrar: {formatear_periodos(duplicados)} ya fue pagado para este socio.", "error")
+        return redirect(redirect_destino)
 
     nueva_fecha = fecha_base + timedelta(days=30 * meses)
     monto_total = PRECIO_MENSUAL * meses
@@ -514,9 +605,7 @@ def registrar_pago(cui):
 
     flash(f"Pago de {meses} mes(es) registrado — Q{monto_total:.2f}", "success")
 
-    if session.get("rol") == "empleado":
-        return redirect("/empleado")
-    return redirect("/admin")
+    return redirect(redirect_destino)
 
 
 # ─────────────────────────────────────────────
@@ -808,10 +897,12 @@ def empleado_panel():
     query += " ORDER BY u.nombre"
     cursor.execute(query, params)
     usuarios = cursor.fetchall()
+    periodos_pagados = periodos_pagados_por_usuario(cursor, [u["cui"] for u in usuarios])
     conn.close()
 
     return render_template("empleado.html", usuarios=usuarios, fecha_hoy=date.today(),
-                           precio_mensual=PRECIO_MENSUAL, buscar=buscar)
+                           precio_mensual=PRECIO_MENSUAL, buscar=buscar,
+                           periodos_pagados=periodos_pagados)
 
 
 # ─────────────────────────────────────────────

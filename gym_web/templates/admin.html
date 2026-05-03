@@ -663,7 +663,7 @@
         <form id="formPago" method="POST">
             <div style="margin-bottom:16px;">
                 <label class="modal-field-label">Año</label>
-                <select id="anioModal" class="modal-select" onchange="actualizarResumen()">
+                <select id="anioModal" class="modal-select" onchange="actualizarMesesBloqueados()">
                     <option value="2024">2024</option>
                     <option value="2025">2025</option>
                     <option value="2026" selected>2026</option>
@@ -782,19 +782,22 @@ window.addEventListener('resize', () => {
 // ── Modal pago ──
 const PRECIO = parseFloat(document.getElementById('modalPago').dataset.precio);
 const MESES_NOMBRES = ['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+const PAGOS_REGISTRADOS = {{ periodos_pagados|tojson }};
+let socioPagoActual = null;
 
 document.addEventListener('click', e => {
     const btn = e.target.closest('.btn-abrir-pago');
     if (btn) abrirPago(btn.dataset.id, btn.dataset.nombre);
 });
 document.addEventListener('change', e => {
-    if (e.target.name === 'meses_sel') { toggleLbl(e.target.dataset.mes, e.target.checked); actualizarResumen(); }
+    if (e.target.name === 'meses_sel' && !e.target.disabled) { toggleLbl(e.target.dataset.mes, e.target.checked); actualizarResumen(); }
 });
 function abrirPago(id, nombre) {
+    socioPagoActual = String(id);
     document.getElementById('modalNombre').textContent = nombre;
     document.getElementById('formPago').action = '/admin/registrar_pago/' + id;
     document.querySelectorAll('input[name="meses_sel"]').forEach(c => { c.checked = false; toggleLbl(c.value, false); });
-    actualizarResumen();
+    actualizarMesesBloqueados();
     document.getElementById('modalPago').classList.add('show');
 }
 function cerrarPago() { document.getElementById('modalPago').classList.remove('show'); }
@@ -802,8 +805,25 @@ function toggleLbl(m, checked) {
     const lbl = document.getElementById('lbl-' + m);
     if (lbl) lbl.style.borderColor = checked ? '#FF6B00' : 'var(--border)';
 }
+function actualizarMesesBloqueados() {
+    const anio = document.getElementById('anioModal').value;
+    const pagados = new Set(PAGOS_REGISTRADOS[socioPagoActual] || []);
+    document.querySelectorAll('input[name="meses_sel"]').forEach(c => {
+        const bloqueado = pagados.has(`${anio}-${parseInt(c.value)}`);
+        c.disabled = bloqueado;
+        if (bloqueado) c.checked = false;
+        const lbl = document.getElementById('lbl-' + c.value);
+        if (lbl) {
+            lbl.style.opacity = bloqueado ? '0.45' : '1';
+            lbl.style.cursor = bloqueado ? 'not-allowed' : 'pointer';
+            lbl.title = bloqueado ? 'Este mes ya fue pagado' : '';
+        }
+        toggleLbl(c.value, c.checked);
+    });
+    actualizarResumen();
+}
 function actualizarResumen() {
-    const checks = [...document.querySelectorAll('input[name="meses_sel"]:checked')];
+    const checks = [...document.querySelectorAll('input[name="meses_sel"]:checked:not(:disabled)')];
     const anio = document.getElementById('anioModal').value;
     const resumen = document.getElementById('resumenPago');
     if (!checks.length) { resumen.innerHTML = '<span style="color:var(--muted)">Selecciona al menos un mes</span>'; return; }
@@ -812,7 +832,7 @@ function actualizarResumen() {
     resumen.innerHTML = `<span style="color:#f0f0f0;font-weight:600;">${nombres} ${anio}</span><br><span style="color:#FF6B00;font-weight:700;font-size:18px;">Q${total}</span> <span style="color:var(--muted)">(${checks.length} mes${checks.length>1?'es':''})</span>`;
 }
 function submitPago() {
-    const checks = [...document.querySelectorAll('input[name="meses_sel"]:checked')];
+    const checks = [...document.querySelectorAll('input[name="meses_sel"]:checked:not(:disabled)')];
     if (!checks.length) { alert('Selecciona al menos un mes'); return; }
     document.getElementById('anioHidden').value  = document.getElementById('anioModal').value;
     document.getElementById('mesesHidden').value = checks.map(c => c.value).join(',');

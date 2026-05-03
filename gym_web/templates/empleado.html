@@ -446,7 +446,7 @@
         <form id="formPago" method="POST">
             <div style="margin-bottom:16px;">
                 <label style="font-size:12px; color:#888; display:block; margin-bottom:6px;">AÑO</label>
-                <select id="anioModal" onchange="actualizarResumen()" style="width:100%; padding:10px 12px; border-radius:10px; background:#252525; color:#fff; border:1px solid #333; font-size:14px;">
+                <select id="anioModal" onchange="actualizarMesesBloqueados()" style="width:100%; padding:10px 12px; border-radius:10px; background:#252525; color:#fff; border:1px solid #333; font-size:14px;">
                     <option value="2024">2024</option>
                     <option value="2025">2025</option>
                     <option value="2026" selected>2026</option>
@@ -487,6 +487,8 @@
 <script>
 const PRECIO = parseFloat(document.getElementById('modalPago').dataset.precio);
 const MESES_NOMBRES = ['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+const PAGOS_REGISTRADOS = {{ periodos_pagados|tojson }};
+let socioPagoActual = null;
 
 document.addEventListener('click', function(e) {
     const btn = e.target.closest('.btn-abrir-pago');
@@ -494,7 +496,7 @@ document.addEventListener('click', function(e) {
 });
 
 document.addEventListener('change', function(e) {
-    if (e.target.name === 'meses_sel') {
+    if (e.target.name === 'meses_sel' && !e.target.disabled) {
         const m = e.target.dataset.mes;
         toggleLbl(m, e.target.checked);
         actualizarResumen();
@@ -502,13 +504,14 @@ document.addEventListener('change', function(e) {
 });
 
 function abrirPago(id, nombre) {
+    socioPagoActual = String(id);
     document.getElementById('modalNombre').textContent = nombre;
     document.getElementById('formPago').action = '/admin/registrar_pago/' + id;
     document.querySelectorAll('input[name="meses_sel"]').forEach(c => {
         c.checked = false;
         toggleLbl(c.value, false);
     });
-    actualizarResumen();
+    actualizarMesesBloqueados();
     document.getElementById('modalPago').classList.add('show');
 }
 function cerrarPago() { document.getElementById('modalPago').classList.remove('show'); }
@@ -516,8 +519,25 @@ function toggleLbl(m, checked) {
     const lbl = document.getElementById('lbl-' + m);
     if (lbl) lbl.style.borderColor = checked ? '#f97316' : '#333';
 }
+function actualizarMesesBloqueados() {
+    const anio = document.getElementById('anioModal').value;
+    const pagados = new Set(PAGOS_REGISTRADOS[socioPagoActual] || []);
+    document.querySelectorAll('input[name="meses_sel"]').forEach(c => {
+        const bloqueado = pagados.has(`${anio}-${parseInt(c.value)}`);
+        c.disabled = bloqueado;
+        if (bloqueado) c.checked = false;
+        const lbl = document.getElementById('lbl-' + c.value);
+        if (lbl) {
+            lbl.style.opacity = bloqueado ? '0.45' : '1';
+            lbl.style.cursor = bloqueado ? 'not-allowed' : 'pointer';
+            lbl.title = bloqueado ? 'Este mes ya fue pagado' : '';
+        }
+        toggleLbl(c.value, c.checked);
+    });
+    actualizarResumen();
+}
 function actualizarResumen() {
-    const checks = [...document.querySelectorAll('input[name="meses_sel"]:checked')];
+    const checks = [...document.querySelectorAll('input[name="meses_sel"]:checked:not(:disabled)')];
     const anio   = document.getElementById('anioModal').value;
     const resumen = document.getElementById('resumenPago');
     if (checks.length === 0) { resumen.innerHTML = '<span style="color:#888">Selecciona al menos un mes</span>'; return; }
@@ -526,7 +546,7 @@ function actualizarResumen() {
     resumen.innerHTML = `<span style="color:#fff;font-weight:600;">${nombres} ${anio}</span><br><span style="color:#f97316;font-weight:700;">Total: Q${total}</span> <span style="color:#888;">(${checks.length} mes${checks.length>1?'es':''})</span>`;
 }
 function submitPago() {
-    const checks = [...document.querySelectorAll('input[name="meses_sel"]:checked')];
+    const checks = [...document.querySelectorAll('input[name="meses_sel"]:checked:not(:disabled)')];
     if (checks.length === 0) { alert('Selecciona al menos un mes'); return; }
     document.getElementById('anioHidden').value  = document.getElementById('anioModal').value;
     document.getElementById('mesesHidden').value = checks.map(c => c.value).join(',');
