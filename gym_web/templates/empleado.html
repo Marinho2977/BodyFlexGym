@@ -624,7 +624,7 @@
         <div>
             <div class="eyebrow">Caja y membresias</div>
             <h1 class="page-title">Cobros de membresia</h1>
-            <div class="page-sub">Busca un socio, revisa su estado y registra mensualidades sin duplicar periodos.</div>
+            <div class="page-sub">Busca un socio, revisa su estado y registra mensualidades</div>
         </div>
         <div class="rate-pill">Mensualidad <strong>Q{{ "%.0f"|format(precio_mensual) }}</strong></div>
     </div>
@@ -686,7 +686,7 @@
                 <div class="panel-count">{{ total }} resultado{{ 's' if total != 1 else '' }}</div>
             </div>
             <form method="GET" action="/empleado" class="search-bar">
-                <input type="text" name="buscar" placeholder="Nombre, apellido o numero de socio" value="{{ buscar }}">
+                <input type="text" name="buscar" placeholder="Nombre o CUI/DPI" value="{{ buscar }}">
                 <button type="submit" class="btn-buscar">Buscar</button>
                 {% if buscar %}
                     <a href="/empleado" class="btn-limpiar">Limpiar</a>
