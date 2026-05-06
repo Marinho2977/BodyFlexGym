@@ -245,6 +245,7 @@
         {% endwith %}
 
         <form action="/iniciar" method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="field">
                 <label>Correo electrónico o CUI (13 dígitos)</label>
                 <input type="text" name="identificador"

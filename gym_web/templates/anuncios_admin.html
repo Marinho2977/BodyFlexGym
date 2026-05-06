@@ -131,6 +131,7 @@
     <div class="create-card">
         <h3>+ Crear nuevo anuncio</h3>
         <form action="/admin/anuncios/crear" method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="form-grid">
                 <div>
                     <label>Título</label>
@@ -205,12 +206,14 @@
                         <div class="acciones">
                             <button class="btn btn-ghost btn-sm edit-btn" data-id="{{ a.id }}" data-titulo="{{ a.titulo }}" data-contenido="{{ a.contenido }}" data-tipo="{{ a.tipo }}" data-fecha-inicio="{{ a.fecha_inicio.strftime('%Y-%m-%d') if a.fecha_inicio else '' }}" data-fecha-fin="{{ a.fecha_fin.strftime('%Y-%m-%d') if a.fecha_fin else '' }}">Editar</button>
                             <form action="/admin/anuncios/{{ a.id }}/toggle" method="POST">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                 <button type="submit" class="btn btn-sm {% if a.activo %}btn-red{% else %}btn-green{% endif %}">
                                     {{ 'Desactivar' if a.activo else 'Activar' }}
                                 </button>
                             </form>
                             <form action="/admin/anuncios/{{ a.id }}/eliminar" method="POST"
                                   onsubmit='return confirm("¿Eliminar este anuncio?")'>
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                 <button type="submit" class="btn btn-red btn-sm">Eliminar</button>
                             </form>
                         </div>
@@ -234,6 +237,7 @@
             <button class="modal-close" onclick="cerrarEditar()">✕</button>
         </div>
         <form id="formEditar" method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="form-grid" style="margin-bottom:14px;">
                 <div>
                     <label>Título</label>

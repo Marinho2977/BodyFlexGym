@@ -100,6 +100,7 @@
         {% endwith %}
 
         <form action="/registrar" method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="grid-2">
                 <div class="field">
                     <label>Nombre</label>

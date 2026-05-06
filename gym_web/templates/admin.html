@@ -337,10 +337,55 @@
         }
         .modal-submit:hover { background:#FF8C42; box-shadow:0 0 28px rgba(255,107,0,0.45); }
 
+        /* ─── PAGINATION ─── */
+        .pagination {
+            display: flex; align-items: center; justify-content: center;
+            gap: 6px; margin-top: 16px; margin-bottom: 32px; flex-wrap: wrap;
+        }
+        .page-btn {
+            min-width: 36px; height: 36px; display: inline-flex;
+            align-items: center; justify-content: center;
+            border-radius: 9px; font-size: 13px; font-weight: 600;
+            text-decoration: none; transition: all 0.2s;
+            border: 1px solid var(--border); color: var(--muted-light);
+            background: transparent; cursor: pointer;
+            font-family: 'DM Sans', sans-serif;
+        }
+        .page-btn:hover { border-color: #FF6B00; color: #FF6B00; background: rgba(255,107,0,0.06); }
+        .page-btn.active { background: rgba(255,107,0,0.15); color: #FF6B00; border-color: rgba(255,107,0,0.3); pointer-events: none; }
+        .page-btn.disabled { opacity: 0.3; pointer-events: none; }
+        .page-info { font-size: 12px; color: var(--muted); margin: 0 8px; }
+
+        /* ─── METRICS CHART ─── */
+        .metrics-section { margin-bottom: 28px; }
+        .metrics-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+            margin-bottom: 14px;
+        }
+        .chart-card {
+            background: rgba(23,23,23,0.8);
+            backdrop-filter: blur(16px);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 20px;
+            grid-column: span 2;
+        }
+        .chart-title {
+            font-family: 'Syne', sans-serif;
+            font-size: 15px; font-weight: 700;
+            margin-bottom: 16px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .chart-title .chart-icon { font-size: 18px; }
+
         /* ─── RESPONSIVE ─── */
         @media (max-width:900px) {
             .sidebar { display:none; }
             .bento-stats { grid-template-columns:repeat(2,1fr); }
+            .metrics-row { grid-template-columns:1fr; }
+            .chart-card { grid-column: span 1; }
         }
         @media (max-width:600px) {
             .main { padding:16px; }
@@ -409,7 +454,7 @@
         <div class="bento-stats">
             <div class="bento-card orange">
                 <div class="bento-label">Total socios</div>
-                <div class="bento-value orange">{{ usuarios | length }}</div>
+                <div class="bento-value orange">{{ total_socios }}</div>
                 <div class="bento-sub">registrados en el sistema</div>
             </div>
             <div class="bento-card green">
@@ -428,6 +473,31 @@
                 <div class="bento-label">Sin pagos</div>
                 <div class="bento-value blue">{{ usuarios | rejectattr("ultimo_vencimiento") | list | length }}</div>
                 <div class="bento-sub">sin historial de pago</div>
+            </div>
+        </div>
+
+        <!-- ─── METRICS DASHBOARD ─── -->
+        <div class="metrics-section">
+            <div class="section-hd">
+                <div class="section-hd-title">Métricas de Ingresos <small>mensualidades cobradas</small></div>
+            </div>
+            <div class="bento-stats" style="margin-bottom:14px;">
+                <div class="bento-card green">
+                    <div class="bento-label">Ingresos totales</div>
+                    <div class="bento-value green">Q{{ "%.0f"|format(total_ingresos_global|float) }}</div>
+                    <div class="bento-sub">acumulado histórico</div>
+                </div>
+                <div class="bento-card orange">
+                    <div class="bento-label">Ingresos mes actual</div>
+                    <div class="bento-value orange">Q{{ "%.0f"|format(ingresos_mes_actual|float) }}</div>
+                    <div class="bento-sub">{{ fecha_hoy.strftime('%B %Y') }}</div>
+                </div>
+            </div>
+            <div class="metrics-row">
+                <div class="chart-card">
+                    <div class="chart-title"><span class="chart-icon">📊</span> Ingresos mensuales (últimos 12 meses)</div>
+                    <canvas id="chartIngresos" height="220"></canvas>
+                </div>
             </div>
         </div>
 
@@ -514,18 +584,22 @@
                                 <div class="dropdown-menu">
                                     {% if u.estado.lower() == "activo" %}
                                     <form action="/admin/desactivar/{{ u.cui }}" method="POST" style="margin:0;" onsubmit="return confirm('¿Desactivar a {{ u.nombre }}?')">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                         <button type="submit" class="dropdown-item red"><span class="di-icon">🔴</span>Desactivar</button>
                                     </form>
                                     {% else %}
                                     <form action="/admin/reactivar/{{ u.cui }}" method="POST" style="margin:0;">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                         <button type="submit" class="dropdown-item green"><span class="di-icon">🟢</span>Reactivar</button>
                                     </form>
                                     {% endif %}
                                     <div class="dropdown-sep"></div>
                                     <form action="/admin/hacer_empleado/{{ u.cui }}" method="POST" style="margin:0;">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                         <button type="submit" class="dropdown-item"><span class="di-icon">👔</span>→ Empleado</button>
                                     </form>
                                     <form action="/admin/hacer_admin/{{ u.cui }}" method="POST" style="margin:0;">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                         <button type="submit" class="dropdown-item blue"><span class="di-icon">⭐</span>→ Admin</button>
                                     </form>
                                     <div class="dropdown-sep"></div>
@@ -543,6 +617,27 @@
                 </tbody>
             </table>
         </div>
+
+        <!-- ─── PAGINACIÓN ─── -->
+        {% if total_paginas > 1 %}
+        <div class="pagination">
+            <a href="/admin?pagina={{ pagina - 1 }}{% if request.args.get('buscar') %}&buscar={{ request.args.get('buscar') }}{% endif %}{% if request.args.get('filtro') %}&filtro={{ request.args.get('filtro') }}{% endif %}"
+               class="page-btn {% if pagina <= 1 %}disabled{% endif %}">← Anterior</a>
+            {% for p in range(1, total_paginas + 1) %}
+                {% if p == pagina %}
+                    <span class="page-btn active">{{ p }}</span>
+                {% elif p <= 3 or p > total_paginas - 2 or (p >= pagina - 1 and p <= pagina + 1) %}
+                    <a href="/admin?pagina={{ p }}{% if request.args.get('buscar') %}&buscar={{ request.args.get('buscar') }}{% endif %}{% if request.args.get('filtro') %}&filtro={{ request.args.get('filtro') }}{% endif %}"
+                       class="page-btn">{{ p }}</a>
+                {% elif p == 4 or p == total_paginas - 2 %}
+                    <span class="page-info">…</span>
+                {% endif %}
+            {% endfor %}
+            <a href="/admin?pagina={{ pagina + 1 }}{% if request.args.get('buscar') %}&buscar={{ request.args.get('buscar') }}{% endif %}{% if request.args.get('filtro') %}&filtro={{ request.args.get('filtro') }}{% endif %}"
+               class="page-btn {% if pagina >= total_paginas %}disabled{% endif %}">Siguiente →</a>
+            <span class="page-info">Página {{ pagina }} de {{ total_paginas }} · {{ total_socios }} socios</span>
+        </div>
+        {% endif %}
 
         <hr class="sep">
 
@@ -587,18 +682,22 @@
                                 <div class="dropdown-menu">
                                     {% if e.estado.lower() == "activo" %}
                                     <form action="/admin/desactivar/{{ e.cui }}" method="POST" style="margin:0;" onsubmit="return confirm('¿Desactivar cuenta de {{ e.nombre }}?')">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                         <button type="submit" class="dropdown-item red"><span class="di-icon">🔴</span>Desactivar</button>
                                     </form>
                                     {% else %}
                                     <form action="/admin/reactivar/{{ e.cui }}" method="POST" style="margin:0;">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                         <button type="submit" class="dropdown-item green"><span class="di-icon">🟢</span>Reactivar</button>
                                     </form>
                                     {% endif %}
                                     <div class="dropdown-sep"></div>
                                     <form action="/admin/quitar_empleado/{{ e.cui }}" method="POST" style="margin:0;" onsubmit="return confirm('¿Quitar rol empleado a {{ e.nombre }}?')">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                         <button type="submit" class="dropdown-item"><span class="di-icon">👤</span>→ Usuario</button>
                                     </form>
                                     <form action="/admin/hacer_admin/{{ e.cui }}" method="POST" style="margin:0;">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                         <button type="submit" class="dropdown-item blue"><span class="di-icon">⭐</span>→ Admin</button>
                                     </form>
                                     <div class="dropdown-sep"></div>
@@ -632,17 +731,28 @@
             <button class="modal-close" onclick="cerrarResetPass()">✕</button>
         </div>
         <form id="formResetPass" method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div style="margin-bottom:18px;">
                 <label class="modal-reset-label">Nueva contraseña</label>
                 <input type="password" id="resetPassInput" name="nueva_pass"
-                       class="modal-reset-input" placeholder="Mínimo 6 caracteres"
-                       autocomplete="new-password">
+                       class="modal-reset-input" placeholder="Mínimo 8 caracteres"
+                       autocomplete="new-password"
+                       oninput="verificarReqReset(this.value)">
             </div>
             <div style="margin-bottom:18px;">
                 <label class="modal-reset-label">Confirmar contraseña</label>
                 <input type="password" id="resetPassConfirm"
                        class="modal-reset-input" placeholder="Repite la contraseña"
                        autocomplete="new-password">
+            </div>
+            <!-- Requisitos visuales -->
+            <div style="background:#1e1e1e;border:1px solid #2a2a2a;border-radius:10px;padding:12px 14px;margin-bottom:14px;">
+                <div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:8px;font-weight:700;">Requisitos</div>
+                <div class="reset-req" id="rr-largo"  style="display:flex;align-items:center;gap:7px;font-size:12px;color:var(--muted);margin-bottom:4px;"><span>○</span> Mínimo 8 caracteres</div>
+                <div class="reset-req" id="rr-mayus"  style="display:flex;align-items:center;gap:7px;font-size:12px;color:var(--muted);margin-bottom:4px;"><span>○</span> Al menos una mayúscula</div>
+                <div class="reset-req" id="rr-minus"  style="display:flex;align-items:center;gap:7px;font-size:12px;color:var(--muted);margin-bottom:4px;"><span>○</span> Al menos una minúscula</div>
+                <div class="reset-req" id="rr-numero" style="display:flex;align-items:center;gap:7px;font-size:12px;color:var(--muted);margin-bottom:4px;"><span>○</span> Al menos un número</div>
+                <div class="reset-req" id="rr-especial" style="display:flex;align-items:center;gap:7px;font-size:12px;color:var(--muted);"><span>○</span> Al menos un carácter especial</div>
             </div>
             <p id="resetPassError" style="color:var(--red);font-size:12px;margin:0 0 14px;display:none;"></p>
             <button type="button" class="modal-submit" onclick="submitResetPass()">Cambiar contraseña</button>
@@ -661,6 +771,7 @@
             <button class="modal-close" onclick="cerrarPago()">✕</button>
         </div>
         <form id="formPago" method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div style="margin-bottom:16px;">
                 <label class="modal-field-label">Año</label>
                 <select id="anioModal" class="modal-select" onchange="actualizarMesesBloqueados()">
@@ -690,6 +801,7 @@
     </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 <script>
 // ── Sidebar toggle ──
 function toggleSidebar() {
@@ -841,6 +953,18 @@ function submitPago() {
 document.addEventListener('keydown', e => { if (e.key === 'Escape') { cerrarPago(); cerrarResetPass(); } });
 
 // ── Modal reset contraseña ──
+function verificarReqReset(val) {
+    function setR(id, ok) {
+        const el = document.getElementById(id);
+        el.style.color = ok ? 'var(--green)' : 'var(--muted)';
+        el.querySelector('span').textContent = ok ? '✓' : '○';
+    }
+    setR('rr-largo',   val.length >= 8);
+    setR('rr-mayus',   /[A-Z]/.test(val));
+    setR('rr-minus',   /[a-z]/.test(val));
+    setR('rr-numero',  /[0-9]/.test(val));
+    setR('rr-especial',/[^A-Za-z0-9]/.test(val));
+}
 function abrirResetPass(cui, nombre) {
     closeActivePortal();
     document.getElementById('resetNombre').textContent = nombre;
@@ -848,6 +972,12 @@ function abrirResetPass(cui, nombre) {
     document.getElementById('resetPassInput').value = '';
     document.getElementById('resetPassConfirm').value = '';
     document.getElementById('resetPassError').style.display = 'none';
+    // Reset requirement indicators
+    ['rr-largo','rr-mayus','rr-minus','rr-numero','rr-especial'].forEach(id => {
+        const el = document.getElementById(id);
+        el.style.color = 'var(--muted)';
+        el.querySelector('span').textContent = '○';
+    });
     document.getElementById('modalResetPass').classList.add('show');
     setTimeout(() => document.getElementById('resetPassInput').focus(), 120);
 }
@@ -858,13 +988,67 @@ function submitResetPass() {
     const p1 = document.getElementById('resetPassInput').value.trim();
     const p2 = document.getElementById('resetPassConfirm').value.trim();
     const err = document.getElementById('resetPassError');
-    if (p1.length < 6) { err.textContent = 'La contraseña debe tener al menos 6 caracteres.'; err.style.display='block'; return; }
-    if (p1 !== p2)     { err.textContent = 'Las contraseñas no coinciden.'; err.style.display='block'; return; }
+    if (p1.length < 8)             { err.textContent = 'La contraseña debe tener al menos 8 caracteres.'; err.style.display='block'; return; }
+    if (!/[A-Z]/.test(p1))         { err.textContent = 'Debe tener al menos una mayúscula.'; err.style.display='block'; return; }
+    if (!/[a-z]/.test(p1))         { err.textContent = 'Debe tener al menos una minúscula.'; err.style.display='block'; return; }
+    if (!/[0-9]/.test(p1))         { err.textContent = 'Debe tener al menos un número.'; err.style.display='block'; return; }
+    if (!/[^A-Za-z0-9]/.test(p1))  { err.textContent = 'Debe tener al menos un carácter especial.'; err.style.display='block'; return; }
+    if (p1 !== p2)                 { err.textContent = 'Las contraseñas no coinciden.'; err.style.display='block'; return; }
     err.style.display = 'none';
     document.getElementById('formResetPass').submit();
 }
 document.getElementById('modalResetPass').addEventListener('click', e => { if (e.target === e.currentTarget) cerrarResetPass(); });
 document.getElementById('modalPago').addEventListener('click', e => { if (e.target === e.currentTarget) cerrarPago(); });
+
+// ── Chart.js — Ingresos mensuales ──
+const ctxIngresos = document.getElementById('chartIngresos');
+if (ctxIngresos) {
+    const labelsIngresos = {{ ingresos_labels|tojson }};
+    const dataIngresos   = {{ ingresos_data|tojson }};
+    new Chart(ctxIngresos, {
+        type: 'bar',
+        data: {
+            labels: labelsIngresos,
+            datasets: [{
+                label: 'Ingresos (Q)',
+                data: dataIngresos,
+                backgroundColor: 'rgba(255,107,0,0.55)',
+                borderColor: '#FF6B00',
+                borderWidth: 2,
+                borderRadius: 8,
+                hoverBackgroundColor: 'rgba(255,107,0,0.85)',
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: '#1e1e1e',
+                    borderColor: '#FF6B00',
+                    borderWidth: 1,
+                    titleColor: '#f0f0f0',
+                    bodyColor: '#FF6B00',
+                    callbacks: {
+                        label: ctx => 'Q' + ctx.parsed.y.toFixed(2)
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    ticks: { color: '#666', font: { size: 11 } },
+                    grid:  { display: false }
+                },
+                y: {
+                    beginAtZero: true,
+                    ticks: { color: '#666', font: { size: 11 }, callback: v => 'Q' + v },
+                    grid:  { color: 'rgba(255,255,255,0.05)' }
+                }
+            }
+        }
+    });
+}
 </script>
 </body>
 </html>

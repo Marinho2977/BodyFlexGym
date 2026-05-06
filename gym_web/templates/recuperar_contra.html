@@ -77,6 +77,7 @@
         {% endwith %}
 
         <form action="/recuperar_contra" method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="field">
                 <label>Correo electrónico</label>
                 <input type="email" name="correo" placeholder="tu@correo.com" required autofocus>

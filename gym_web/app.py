@@ -10,12 +10,33 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from io import BytesIO
 import re
+import math
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.colors import HexColor
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "clave_segura_de_kevin_123")
+
+# ─────────────────────────────────────────────
+# CSRF PROTECTION
+# ─────────────────────────────────────────────
+
+def generar_csrf_token():
+    if "_csrf_token" not in session:
+        session["_csrf_token"] = secrets.token_hex(32)
+    return session["_csrf_token"]
+
+app.jinja_env.globals["csrf_token"] = generar_csrf_token
+
+@app.before_request
+def verificar_csrf():
+    if request.method == "POST":
+        token_sesion = session.get("_csrf_token")
+        token_form   = request.form.get("csrf_token")
+        if not token_sesion or token_sesion != token_form:
+            flash("Sesión inválida. Intenta de nuevo.", "error")
+            return redirect(request.referrer or "/login")
 
 @app.after_request
 def sin_cache(response):
@@ -367,6 +388,8 @@ def admin_panel():
 
     buscar = request.args.get("buscar")
     filtro = request.args.get("filtro")
+    pagina = int(request.args.get("pagina", 1))
+    por_pagina = 20
 
     conn   = conectar_db()
     cursor = conn.cursor(dictionary=True)
@@ -387,24 +410,61 @@ def admin_panel():
         params.extend([f"%{buscar}%", f"%{buscar}%"])
 
     cursor.execute(query, params)
-    usuarios = cursor.fetchall()
+    usuarios_all = cursor.fetchall()
 
     cursor.execute("SELECT cui, tipo_doc, nombre, apellido, email, estado FROM usuarios WHERE rol='empleado'")
     empleados = cursor.fetchall()
 
-    periodos_pagados = periodos_pagados_por_usuario(cursor, [u["cui"] for u in usuarios])
+    periodos_pagados = periodos_pagados_por_usuario(cursor, [u["cui"] for u in usuarios_all])
+
+    # ── Métricas de ingresos mensuales (últimos 12 meses) ──
+    cursor.execute("""
+        SELECT YEAR(fecha_pago) AS anio, MONTH(fecha_pago) AS mes,
+               SUM(monto) AS total
+        FROM pagos
+        WHERE fecha_pago >= DATE_SUB(CURDATE(), INTERVAL 12 MONTH)
+        GROUP BY YEAR(fecha_pago), MONTH(fecha_pago)
+        ORDER BY anio, mes
+    """)
+    ingresos_raw = cursor.fetchall()
+
+    cursor.execute("SELECT COALESCE(SUM(monto), 0) AS total FROM pagos")
+    total_ingresos_global = cursor.fetchone()["total"]
+
+    cursor.execute("""
+        SELECT COALESCE(SUM(monto), 0) AS total FROM pagos
+        WHERE YEAR(fecha_pago) = YEAR(CURDATE()) AND MONTH(fecha_pago) = MONTH(CURDATE())
+    """)
+    ingresos_mes_actual = cursor.fetchone()["total"]
+
     conn.close()
+
+    ingresos_labels = [f"{MESES_NOMBRES[r['mes']-1][:3]} {r['anio']}" for r in ingresos_raw]
+    ingresos_data   = [float(r['total']) for r in ingresos_raw]
 
     fecha_hoy = date.today()
 
     if filtro == "vencidos":
-        usuarios = [u for u in usuarios if u["ultimo_vencimiento"] and u["ultimo_vencimiento"] < fecha_hoy]
+        usuarios_all = [u for u in usuarios_all if u["ultimo_vencimiento"] and u["ultimo_vencimiento"] < fecha_hoy]
     if filtro == "activos":
-        usuarios = [u for u in usuarios if u["ultimo_vencimiento"] and u["ultimo_vencimiento"] >= fecha_hoy]
+        usuarios_all = [u for u in usuarios_all if u["ultimo_vencimiento"] and u["ultimo_vencimiento"] >= fecha_hoy]
+
+    # ── Paginación ──
+    total_socios = len(usuarios_all)
+    total_paginas = max(1, math.ceil(total_socios / por_pagina))
+    pagina = max(1, min(pagina, total_paginas))
+    offset = (pagina - 1) * por_pagina
+    usuarios = usuarios_all[offset:offset + por_pagina]
 
     return render_template("admin.html", usuarios=usuarios, empleados=empleados,
                            fecha_hoy=fecha_hoy, precio_mensual=PRECIO_MENSUAL,
-                           periodos_pagados=periodos_pagados)
+                           periodos_pagados=periodos_pagados,
+                           pagina=pagina, total_paginas=total_paginas,
+                           total_socios=total_socios,
+                           ingresos_labels=ingresos_labels,
+                           ingresos_data=ingresos_data,
+                           total_ingresos_global=total_ingresos_global,
+                           ingresos_mes_actual=ingresos_mes_actual)
 
 
 @app.route("/admin/hacer_admin/<int:cui>", methods=["POST"])
@@ -685,8 +745,22 @@ def admin_reset_pass(cui):
         return redirect("/login")
 
     nueva_pass = request.form.get("nueva_pass", "").strip()
-    if len(nueva_pass) < 6:
-        flash("La contraseña temporal debe tener al menos 6 caracteres", "error")
+
+    # Mismas validaciones que el registro
+    if len(nueva_pass) < 8:
+        flash("La contraseña debe tener al menos 8 caracteres", "error")
+        return redirect("/admin")
+    if not re.search(r"[A-Z]", nueva_pass):
+        flash("La contraseña debe tener al menos una mayúscula", "error")
+        return redirect("/admin")
+    if not re.search(r"[a-z]", nueva_pass):
+        flash("La contraseña debe tener al menos una minúscula", "error")
+        return redirect("/admin")
+    if not re.search(r"[0-9]", nueva_pass):
+        flash("La contraseña debe tener al menos un número", "error")
+        return redirect("/admin")
+    if not re.search(r"[^A-Za-z0-9]", nueva_pass):
+        flash("La contraseña debe tener al menos un carácter especial (ej: @, #, $, !)", "error")
         return redirect("/admin")
 
     conn = conectar_db(); cursor = conn.cursor(dictionary=True)
@@ -1014,8 +1088,10 @@ def completar_perfil():
 def guardar_perfil():
     if "usuario_id" not in session:
         return redirect("/login")
-    edad = request.form["edad"]; peso = request.form["peso"]
-    altura = request.form["altura"]; objetivo = request.form["objetivo"]
+    edad = request.form.get("edad", "").strip()
+    peso = request.form.get("peso", "").strip() or None
+    altura = request.form.get("altura", "").strip() or None
+    objetivo = request.form.get("objetivo", "").strip()
     conn = conectar_db(); cursor = conn.cursor()
     cursor.execute("UPDATE usuarios SET edad=%s, peso=%s, altura=%s, objetivo=%s WHERE cui=%s",
                    (edad, peso, altura, objetivo, session["usuario_id"]))

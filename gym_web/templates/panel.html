@@ -348,6 +348,7 @@
                     <div class="data-row"><span class="data-key">Altura</span><span class="data-val">{{ perfil.altura }} m</span></div>
                 </div>
                 <form id="infoForm" class="edit-form" method="POST" action="/actualizar_info">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <div class="input-group">
                         <div class="field" style="flex:1;"><label>Nombre</label><input type="text" name="nombre" value="{{ perfil.nombre }}" required></div>
                         <div class="field" style="flex:1;"><label>Apellido</label><input type="text" name="apellido" value="{{ perfil.apellido }}" required></div>
