@@ -356,6 +356,41 @@
         .page-btn.disabled { opacity: 0.3; pointer-events: none; }
         .page-info { font-size: 12px; color: var(--muted); margin: 0 8px; }
 
+        /* ─── MAIN TABS ─── */
+        .main-tabs {
+            display: flex;
+            gap: 4px;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 4px;
+            margin-bottom: 24px;
+            width: fit-content;
+        }
+        .main-tab {
+            display: flex; align-items: center; gap: 7px;
+            padding: 10px 20px;
+            border-radius: 9px;
+            font-size: 13px; font-weight: 600;
+            color: var(--muted);
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            font-family: 'DM Sans', sans-serif;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+        .main-tab:hover { color: #f0f0f0; }
+        .main-tab.active {
+            background: rgba(255,107,0,0.12);
+            color: #FF6B00;
+            box-shadow: 0 2px 8px rgba(255,107,0,0.1);
+        }
+        .main-tab .tab-icon { font-size: 15px; }
+        .tab-panel { display: none; animation: tabFadeIn 0.3s ease; }
+        .tab-panel.active { display: block; }
+        @keyframes tabFadeIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+
         /* ─── METRICS CHART ─── */
         .metrics-section { margin-bottom: 28px; }
         .metrics-row {
@@ -372,10 +407,15 @@
             padding: 20px;
             grid-column: span 2;
         }
+        .chart-canvas-wrap {
+            position: relative;
+            width: 100%;
+            max-height: 260px;
+        }
         .chart-title {
             font-family: 'Syne', sans-serif;
             font-size: 15px; font-weight: 700;
-            margin-bottom: 16px;
+            margin-bottom: 14px;
             display: flex; align-items: center; gap: 8px;
         }
         .chart-title .chart-icon { font-size: 18px; }
@@ -390,6 +430,8 @@
         @media (max-width:600px) {
             .main { padding:16px; }
             .bento-stats { grid-template-columns:1fr 1fr; }
+            .main-tabs { width:100%; }
+            .main-tab { flex:1; justify-content:center; padding:10px 12px; }
         }
     </style>
 </head>
@@ -450,6 +492,19 @@
             {% endfor %}{% endif %}
         {% endwith %}
 
+        <!-- ─── TABS PRINCIPALES ─── -->
+        <div class="main-tabs">
+            <button class="main-tab active" onclick="switchTab('socios')" id="tab-socios">
+                <span class="tab-icon">👥</span> Socios
+            </button>
+            <button class="main-tab" onclick="switchTab('ingresos')" id="tab-ingresos">
+                <span class="tab-icon">📊</span> Ingresos
+            </button>
+        </div>
+
+        <!-- ══════ TAB: SOCIOS ══════ -->
+        <div class="tab-panel active" id="panel-socios">
+
         <!-- ─── BENTO STATS ─── -->
         <div class="bento-stats">
             <div class="bento-card orange">
@@ -473,31 +528,6 @@
                 <div class="bento-label">Sin pagos</div>
                 <div class="bento-value blue">{{ usuarios | rejectattr("ultimo_vencimiento") | list | length }}</div>
                 <div class="bento-sub">sin historial de pago</div>
-            </div>
-        </div>
-
-        <!-- ─── METRICS DASHBOARD ─── -->
-        <div class="metrics-section">
-            <div class="section-hd">
-                <div class="section-hd-title">Métricas de Ingresos <small>mensualidades cobradas</small></div>
-            </div>
-            <div class="bento-stats" style="margin-bottom:14px;">
-                <div class="bento-card green">
-                    <div class="bento-label">Ingresos totales</div>
-                    <div class="bento-value green">Q{{ "%.0f"|format(total_ingresos_global|float) }}</div>
-                    <div class="bento-sub">acumulado histórico</div>
-                </div>
-                <div class="bento-card orange">
-                    <div class="bento-label">Ingresos mes actual</div>
-                    <div class="bento-value orange">Q{{ "%.0f"|format(ingresos_mes_actual|float) }}</div>
-                    <div class="bento-sub">{{ fecha_hoy.strftime('%B %Y') }}</div>
-                </div>
-            </div>
-            <div class="metrics-row">
-                <div class="chart-card">
-                    <div class="chart-title"><span class="chart-icon">📊</span> Ingresos mensuales (últimos 12 meses)</div>
-                    <canvas id="chartIngresos" height="220"></canvas>
-                </div>
             </div>
         </div>
 
@@ -714,6 +744,33 @@
                     {% endif %}
                 </tbody>
             </table>
+        </div>
+
+    </div><!-- /tab-panel socios -->
+
+        <!-- ══════ TAB: INGRESOS ══════ -->
+        <div class="tab-panel" id="panel-ingresos">
+            <div class="section-hd" style="margin-bottom:20px;">
+                <div class="section-hd-title">Métricas de Ingresos <small>resumen financiero</small></div>
+            </div>
+            <div class="bento-stats" style="margin-bottom:20px;">
+                <div class="bento-card green">
+                    <div class="bento-label">Ingresos totales</div>
+                    <div class="bento-value green">Q{{ "%.0f"|format(total_ingresos_global|float) }}</div>
+                    <div class="bento-sub">acumulado histórico</div>
+                </div>
+                <div class="bento-card orange">
+                    <div class="bento-label">Ingresos mes actual</div>
+                    <div class="bento-value orange">Q{{ "%.0f"|format(ingresos_mes_actual|float) }}</div>
+                    <div class="bento-sub">{{ fecha_hoy.strftime('%B %Y') }}</div>
+                </div>
+            </div>
+            <div class="chart-card">
+                <div class="chart-title"><span class="chart-icon">📊</span> Ingresos mensuales (últimos 12 meses)</div>
+                <div class="chart-canvas-wrap">
+                    <canvas id="chartIngresos"></canvas>
+                </div>
+            </div>
         </div>
 
     </div><!-- /main -->
@@ -1000,18 +1057,29 @@ function submitResetPass() {
 document.getElementById('modalResetPass').addEventListener('click', e => { if (e.target === e.currentTarget) cerrarResetPass(); });
 document.getElementById('modalPago').addEventListener('click', e => { if (e.target === e.currentTarget) cerrarPago(); });
 
+// ── Tab switching ──
+let chartInitialized = false;
+function switchTab(tab) {
+    document.querySelectorAll('.main-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    document.getElementById('tab-' + tab).classList.add('active');
+    document.getElementById('panel-' + tab).classList.add('active');
+    if (tab === 'ingresos' && !chartInitialized) { initChart(); chartInitialized = true; }
+}
+
 // ── Chart.js — Ingresos mensuales ──
-const ctxIngresos = document.getElementById('chartIngresos');
-if (ctxIngresos) {
-    const labelsIngresos = {{ ingresos_labels|tojson }};
-    const dataIngresos   = {{ ingresos_data|tojson }};
-    new Chart(ctxIngresos, {
+function initChart() {
+    const ctx = document.getElementById('chartIngresos');
+    if (!ctx) return;
+    const labels = {{ ingresos_labels|tojson }};
+    const data   = {{ ingresos_data|tojson }};
+    new Chart(ctx, {
         type: 'bar',
         data: {
-            labels: labelsIngresos,
+            labels: labels,
             datasets: [{
                 label: 'Ingresos (Q)',
-                data: dataIngresos,
+                data: data,
                 backgroundColor: 'rgba(255,107,0,0.55)',
                 borderColor: '#FF6B00',
                 borderWidth: 2,
@@ -1021,7 +1089,8 @@ if (ctxIngresos) {
         },
         options: {
             responsive: true,
-            maintainAspectRatio: false,
+            maintainAspectRatio: true,
+            aspectRatio: 2.5,
             plugins: {
                 legend: { display: false },
                 tooltip: {
@@ -1031,7 +1100,7 @@ if (ctxIngresos) {
                     titleColor: '#f0f0f0',
                     bodyColor: '#FF6B00',
                     callbacks: {
-                        label: ctx => 'Q' + ctx.parsed.y.toFixed(2)
+                        label: c => 'Q' + c.parsed.y.toFixed(2)
                     }
                 }
             },
