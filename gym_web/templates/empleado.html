@@ -637,7 +637,6 @@
                 <thead>
                     <tr>
                         <th>Socio</th>
-                        <th>Cuenta</th>
                         <th>Datos</th>
                         <th>Membresia</th>
                         <th>Vencimiento</th>
@@ -656,13 +655,6 @@
                                     <div class="socio-num">{{ u.tipo_doc }}: {{ u.cui }}</div>
                                 </div>
                             </div>
-                        </td>
-                        <td>
-                            {% if u.estado.lower() == "activo" %}
-                                <span class="badge badge-activo">Activo</span>
-                            {% else %}
-                                <span class="badge badge-inactivo">Inactivo</span>
-                            {% endif %}
                         </td>
                         <td>
                             {% if u.edad %}
@@ -711,7 +703,7 @@
 
                     {% if not usuarios %}
                     <tr>
-                        <td colspan="6" class="empty">
+                        <td colspan="5" class="empty">
                             {% if buscar %}No se encontraron socios con "{{ buscar }}"{% else %}No hay socios registrados{% endif %}
                         </td>
                     </tr>
