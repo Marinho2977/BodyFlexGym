@@ -87,47 +87,7 @@ CREATE TABLE `auditoria` (
 -- TABLA: anuncios
 -- creado_por almacena el CUI del admin/empleado
 -- ============================================================
-CREATE TABLE `anuncios` (
-  `id`           INT(11) NOT NULL AUTO_INCREMENT,
-  `titulo`       VARCHAR(150) NOT NULL,
-  `contenido`    TEXT NOT NULL,
-  `tipo`         ENUM('info','promo','aviso') NOT NULL DEFAULT 'info',
-  `fecha_inicio` DATE NOT NULL,
-  `fecha_fin`    DATE NOT NULL,
-  `activo`       TINYINT(1) NOT NULL DEFAULT 1,
-  `creado_por`   BIGINT UNSIGNED NOT NULL,
-  `created_at`   DATETIME DEFAULT CURRENT_TIMESTAMP(),
-  PRIMARY KEY (`id`),
-  KEY `idx_anuncios_activo` (`activo`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- ============================================================
--- TABLA: asistencia
--- ============================================================
-CREATE TABLE `asistencia` (
-  `id`           INT(11) NOT NULL AUTO_INCREMENT,
-  `cui_usuario`  BIGINT UNSIGNED NOT NULL,
-  `fecha`        DATE NOT NULL,
-  `hora_entrada` TIME DEFAULT NULL,
-  `hora_salida`  TIME DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  KEY `cui_usuario` (`cui_usuario`),
-  CONSTRAINT `asistencia_ibfk_1` FOREIGN KEY (`cui_usuario`) REFERENCES `usuarios` (`cui`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- ============================================================
--- TABLA: metas
--- ============================================================
-CREATE TABLE `metas` (
-  `id`           INT(11) NOT NULL AUTO_INCREMENT,
-  `cui_usuario`  BIGINT UNSIGNED NOT NULL,
-  `descripcion`  VARCHAR(255) NOT NULL,
-  `completada`   TINYINT(1) DEFAULT 0,
-  `created_at`   DATETIME DEFAULT CURRENT_TIMESTAMP(),
-  PRIMARY KEY (`id`),
-  KEY `cui_usuario` (`cui_usuario`),
-  CONSTRAINT `metas_ibfk_1` FOREIGN KEY (`cui_usuario`) REFERENCES `usuarios` (`cui`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 COMMIT;
 

@@ -207,6 +207,22 @@
         <h1><span>{{ nombre_socio }}</span></h1>
     </div>
 
+    <!-- FILTROS Y EXPORTAR -->
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:12px;">
+        <form method="GET" action="/admin/pagos/{{ cui }}" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+            <input type="date" name="fecha_inicio" value="{{ request.args.get('fecha_inicio', '') }}" title="Fecha Inicio" style="background:var(--card); border:1px solid var(--border); color:var(--text); padding:8px 12px; border-radius:8px; font-size:13px; outline:none; font-family:'DM Sans', sans-serif;">
+            <input type="date" name="fecha_fin" value="{{ request.args.get('fecha_fin', '') }}" title="Fecha Fin" style="background:var(--card); border:1px solid var(--border); color:var(--text); padding:8px 12px; border-radius:8px; font-size:13px; outline:none; font-family:'DM Sans', sans-serif;">
+            <button type="submit" style="background:var(--accent); color:#fff; border:none; padding:8px 16px; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; font-family:'DM Sans', sans-serif;">Filtrar</button>
+            {% if request.args.get('fecha_inicio') or request.args.get('fecha_fin') %}
+                <a href="/admin/pagos/{{ cui }}" style="background:transparent; border:1px solid var(--border); color:var(--muted); padding:8px 16px; border-radius:8px; font-size:13px; text-decoration:none; font-family:'DM Sans', sans-serif; display:inline-flex; align-items:center;">✕ Limpiar</a>
+            {% endif %}
+        </form>
+        <div style="display:flex; gap:8px;">
+            <a href="/admin/pagos/{{ cui }}/excel?{{ request.query_string.decode('utf-8') }}" style="background:var(--green); color:#fff; border:none; padding:8px 16px; border-radius:8px; font-size:13px; font-weight:600; text-decoration:none; display:inline-flex; align-items:center; gap:6px; font-family:'DM Sans', sans-serif;">⬇ Excel</a>
+            <a href="/admin/pagos/{{ cui }}/pdf?{{ request.query_string.decode('utf-8') }}" style="background:rgba(255,107,0,0.15); border:1px solid rgba(255,107,0,0.3); color:var(--accent); padding:8px 16px; border-radius:8px; font-size:13px; font-weight:600; text-decoration:none; display:inline-flex; align-items:center; gap:6px; font-family:'DM Sans', sans-serif;">⬇ PDF</a>
+        </div>
+    </div>
+
     <!-- RESUMEN -->
     <div class="stats-row">
         <div class="stat-card">
@@ -215,7 +231,7 @@
         </div>
         <div class="stat-card">
             <div class="stat-label">Total ingresado</div>
-            <div class="stat-value green">Q{{ "%.2f"|format(total_ingresos) }}</div>
+            <div class="stat-value green">Q{{ "{:,.0f}".format(total_ingresos|float) }}</div>
         </div>
     </div>
 
@@ -241,7 +257,7 @@
                     <td>
                         <div class="date-val">{{ p.fecha_vencimiento.strftime('%d %b %Y') if p.fecha_vencimiento else p.fecha_vencimiento }}</div>
                     </td>
-                    <td><span class="monto-val">Q{{ "%.2f"|format(p.monto) }}</span></td>
+                    <td><span class="monto-val">Q{{ "{:,.0f}".format(p.monto|float) }}</span></td>
                     <td>
                         <a href="/recibo/{{ p.id_pago }}" target="_blank" class="btn-pdf">
                             📄 Descargar PDF

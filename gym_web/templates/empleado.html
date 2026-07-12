@@ -818,6 +818,14 @@ function actualizarMesesBloqueados() {
     actualizarResumen();
 }
 
+function calcularMontoPago(meses) {
+    const cant_6 = Math.floor(meses / 6);
+    const resto_6 = meses % 6;
+    const cant_3 = Math.floor(resto_6 / 3);
+    const resto_3 = resto_6 % 3;
+    return (cant_6 * 1100) + (cant_3 * 600) + (resto_3 * 225);
+}
+
 function actualizarResumen() {
     const checks = [...document.querySelectorAll('input[name="meses_sel"]:checked:not(:disabled)')];
     const anio = document.getElementById('anioModal').value;
@@ -827,8 +835,9 @@ function actualizarResumen() {
         return;
     }
     const nombres = checks.map(c => MESES_NOMBRES[parseInt(c.value)]).join(', ');
-    const total = (checks.length * PRECIO).toFixed(2);
-    resumen.innerHTML = `<span style="color:var(--text);font-weight:800;">${nombres} ${anio}</span><br><span style="color:var(--accent);font-weight:800;">Q${total}</span> <span style="color:var(--muted)">por ${checks.length} mes${checks.length > 1 ? 'es' : ''}</span>`;
+    const total = calcularMontoPago(checks.length);
+    const totalStr = Number(total).toLocaleString('en-US');
+    resumen.innerHTML = `<span style="color:var(--text);font-weight:800;">${nombres} ${anio}</span><br><span style="color:var(--accent);font-weight:800;">Q${totalStr}</span> <span style="color:var(--muted)">por ${checks.length} mes${checks.length > 1 ? 'es' : ''}</span>`;
 }
 
 function submitPago() {

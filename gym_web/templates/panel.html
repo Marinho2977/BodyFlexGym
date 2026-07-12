@@ -292,7 +292,7 @@
         </div>
         <div class="stat-card">
             <div class="stat-label">Total pagado</div>
-            <div class="stat-value green">Q{{ "%.0f"|format(stats.total_pagado or 0) }}</div>
+            <div class="stat-value green">Q{{ "{:,.0f}".format((stats.total_pagado or 0)|float) }}</div>
             <div class="stat-sub">{{ meses_miembro }} mes{{ 'es' if meses_miembro != 1 else '' }} como miembro</div>
         </div>
         <div class="stat-card streak-card">
@@ -346,6 +346,12 @@
                     <div class="data-row"><span class="data-key">Peso</span><span class="data-val">{{ perfil.peso }} lb</span></div>
                     <div class="data-row"><span class="data-key">Edad</span><span class="data-val">{{ perfil.edad }} años</span></div>
                     <div class="data-row"><span class="data-key">Altura</span><span class="data-val">{{ perfil.altura }} m</span></div>
+                    <div class="data-row" style="border-top:1px dashed var(--border); padding-top:12px; margin-top:8px;">
+                        <span class="data-key">Contrato</span>
+                        <span class="data-val">
+                            <a href="/contrato/{{ perfil.cui }}" target="_blank" style="color:var(--accent); text-decoration:none; font-weight:600;">📄 Descargar Contrato (PDF)</a>
+                        </span>
+                    </div>
                 </div>
                 <form id="infoForm" class="edit-form" method="POST" action="/actualizar_info">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -394,7 +400,7 @@
                             <td style="font-weight:600;">{{ p.mes_pagado or '—' }}</td>
                             <td style="color:var(--muted);font-size:12px;">{{ p.fecha_pago.strftime('%d/%m/%Y') if p.fecha_pago else '—' }}</td>
                             <td style="color:var(--muted);font-size:12px;">{{ p.fecha_vencimiento.strftime('%d/%m/%Y') if p.fecha_vencimiento else '—' }}</td>
-                            <td><span style="color:#22c55e;font-weight:700;font-family:'Syne',sans-serif;">Q{{ "%.2f"|format(p.monto) }}</span></td>
+                            <td><span style="color:#22c55e;font-weight:700;font-family:'Syne',sans-serif;">Q{{ "{:,.0f}".format(p.monto|float) }}</span></td>
                             <td><a href="/recibo/{{ p.id_pago }}" target="_blank" class="btn-pdf-sm">📄 PDF</a></td>
                         </tr>
                         {% endfor %}

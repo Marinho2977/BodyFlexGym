@@ -2,3 +2,5 @@ Flask
 mysql-connector-python
 reportlab
 gunicorn
+openpyxl
+

@@ -60,6 +60,19 @@ MESES_NOMBRES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
                  "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
 MESES_POR_NOMBRE = {nombre.lower(): i + 1 for i, nombre in enumerate(MESES_NOMBRES)}
 
+def calcular_monto_pago(meses):
+    cant_6 = meses // 6
+    resto_6 = meses % 6
+    cant_3 = resto_6 // 3
+    resto_3 = resto_6 % 3
+    return float((cant_6 * 1100) + (cant_3 * 600) + (resto_3 * 225))
+
+def calcular_fecha_vencimiento_dia_3(anio, mes):
+    siguiente_anio = anio + (mes // 12)
+    siguiente_mes = (mes % 12) + 1
+    return date(siguiente_anio, siguiente_mes, 3)
+
+
 # --- CONFIGURACIÓN DE CORREO ---
 GMAIL_USER     = os.environ.get("GMAIL_USER")
 GMAIL_PASSWORD = os.environ.get("GMAIL_PASSWORD")
@@ -72,7 +85,10 @@ def registrar_log(tipo, detalle, afectado_id=None, afectado_nombre=None):
     actor_cui    = session.get("usuario_id")
     actor_nombre = session.get("nombre", "Sistema")
     actor_rol    = session.get("rol", "—")
+    if actor_rol not in ("admin", "empleado") and actor_nombre != "Sistema":
+        return
     try:
+
         conn   = conectar_db()
         cursor = conn.cursor()
         cursor.execute("""
@@ -85,6 +101,28 @@ def registrar_log(tipo, detalle, afectado_id=None, afectado_nombre=None):
         conn.close()
     except Exception as e:
         print(f"[LOG ERROR] {e}")
+
+
+def validar_contrasena(password):
+    """
+    Valida que la contraseña cumpla con los requisitos mínimos de seguridad:
+    - Al menos 8 caracteres
+    - Al menos una mayúscula
+    - Al menos una minúscula
+    - Al menos un número
+    - Al menos un carácter especial (ej: @, #, $, !, etc.)
+    """
+    if len(password) < 8:
+        return False, "La contraseña debe tener al menos 8 caracteres"
+    if not re.search(r"[A-Z]", password):
+        return False, "La contraseña debe tener al menos una mayúscula"
+    if not re.search(r"[a-z]", password):
+        return False, "La contraseña debe tener al menos una minúscula"
+    if not re.search(r"[0-9]", password):
+        return False, "La contraseña debe tener al menos un número"
+    if not re.search(r"[^A-Za-z0-9]", password):
+        return False, "La contraseña debe tener al menos un carácter especial (ej: @, #, $, !)"
+    return True, None
 
 
 def _sumar_meses(anio, mes, cantidad):
@@ -270,20 +308,9 @@ def registrar():
     if tipo_doc not in ("CUI", "DPI"):
         tipo_doc = "CUI"
 
-    if len(password) < 8:
-        flash("La contraseña debe tener al menos 8 caracteres", "error")
-        return redirect("/registro")
-    if not re.search(r"[A-Z]", password):
-        flash("La contraseña debe tener al menos una mayúscula", "error")
-        return redirect("/registro")
-    if not re.search(r"[a-z]", password):
-        flash("La contraseña debe tener al menos una minúscula", "error")
-        return redirect("/registro")
-    if not re.search(r"[0-9]", password):
-        flash("La contraseña debe tener al menos un número", "error")
-        return redirect("/registro")
-    if not re.search(r"[^A-Za-z0-9]", password):
-        flash("La contraseña debe tener al menos un carácter especial (ej: @, #, $, !)", "error")
+    es_valida, msg_error = validar_contrasena(password)
+    if not es_valida:
+        flash(msg_error, "error")
         return redirect("/registro")
 
     conn   = conectar_db()
@@ -532,30 +559,179 @@ def quitar_empleado(cui):
 
 @app.route("/admin/pagos/<int:cui>")
 def ver_pagos(cui):
-    if "usuario_id" not in session or session.get("rol") != "admin":
+    if "usuario_id" not in session or session.get("rol") not in ("admin", "empleado"):
         return redirect("/login")
+
+    fecha_inicio = request.args.get("fecha_inicio", "").strip()
+    fecha_fin    = request.args.get("fecha_fin", "").strip()
 
     conn   = conectar_db()
     cursor = conn.cursor(dictionary=True)
-    cursor.execute("""
+
+    query = """
         SELECT u.nombre, u.apellido,
-               p.id_pago, p.monto, p.fecha_pago, p.fecha_vencimiento
+               p.id_pago, p.monto, p.fecha_pago, p.fecha_vencimiento, p.mes_pagado
         FROM pagos p
         JOIN usuarios u ON u.cui = p.cui_usuario
-        WHERE u.cui = %s ORDER BY p.fecha_pago DESC
-    """, (cui,))
+        WHERE u.cui = %s
+    """
+    params = [cui]
+
+    if fecha_inicio:
+        query += " AND p.fecha_pago >= %s"
+        params.append(fecha_inicio)
+    if fecha_fin:
+        query += " AND p.fecha_pago <= %s"
+        params.append(fecha_fin)
+
+    query += " ORDER BY p.fecha_pago DESC"
+    cursor.execute(query, params)
     pagos = cursor.fetchall()
 
-    cursor.execute("SELECT COALESCE(SUM(monto), 0) AS total_ingresos FROM pagos WHERE cui_usuario = %s", (cui,))
-    resumen = cursor.fetchone()
+    # Recalculate based on active list
+    total_ingresos = sum(float(p["monto"]) for p in pagos)
+    total_meses  = int(total_ingresos / PRECIO_MENSUAL)
+
+    nombre_socio = "Sin pagos"
+    if pagos:
+        nombre_socio = f"{pagos[0]['nombre']} {pagos[0]['apellido']}"
+    else:
+        # Fetch name if no payment records exist matching filter
+        cursor.execute("SELECT nombre, apellido FROM usuarios WHERE cui = %s", (cui,))
+        socio = cursor.fetchone()
+        if socio:
+            nombre_socio = f"{socio['nombre']} {socio['apellido']}"
+            
     conn.close()
 
-    nombre_socio = f"{pagos[0]['nombre']} {pagos[0]['apellido']}" if pagos else "Sin pagos"
-    total_meses  = int(float(resumen["total_ingresos"]) / PRECIO_MENSUAL)
-
     return render_template("pagos_admin.html", pagos=pagos, total=total_meses,
-                           total_ingresos=resumen["total_ingresos"],
+                           total_ingresos=total_ingresos,
                            nombre_socio=nombre_socio, cui=cui)
+
+
+@app.route("/admin/pagos/<int:cui>/excel")
+def exportar_pagos_excel(cui):
+    if "usuario_id" not in session or session.get("rol") not in ("admin", "empleado"):
+        return redirect("/login")
+
+    fecha_inicio = request.args.get("fecha_inicio", "").strip()
+    fecha_fin    = request.args.get("fecha_fin", "").strip()
+
+    conn   = conectar_db()
+    cursor = conn.cursor(dictionary=True)
+
+    query = """
+        SELECT u.nombre, u.apellido,
+               p.id_pago, p.monto, p.fecha_pago, p.fecha_vencimiento, p.mes_pagado
+        FROM pagos p
+        JOIN usuarios u ON u.cui = p.cui_usuario
+        WHERE u.cui = %s
+    """
+    params = [cui]
+
+    if fecha_inicio:
+        query += " AND p.fecha_pago >= %s"
+        params.append(fecha_inicio)
+    if fecha_fin:
+        query += " AND p.fecha_pago <= %s"
+        params.append(fecha_fin)
+
+    query += " ORDER BY p.fecha_pago DESC"
+    cursor.execute(query, params)
+    pagos = cursor.fetchall()
+    
+    nombre_socio = "Socio"
+    if pagos:
+        nombre_socio = f"{pagos[0]['nombre']} {pagos[0]['apellido']}"
+    else:
+        cursor.execute("SELECT nombre, apellido FROM usuarios WHERE cui = %s", (cui,))
+        socio = cursor.fetchone()
+        if socio:
+            nombre_socio = f"{socio['nombre']} {socio['apellido']}"
+            
+    conn.close()
+
+    headers = ["ID Pago", "Fecha Pago", "Periodo Pagado", "Monto", "Fecha Vencimiento"]
+    rows = []
+    for p in pagos:
+        rows.append([
+            p["id_pago"],
+            p["fecha_pago"],
+            p["mes_pagado"] or "—",
+            float(p["monto"]),
+            p["fecha_vencimiento"]
+        ])
+
+    excel_bytes = generar_reporte_excel(headers, rows, f"Historial Pagos — {nombre_socio}")
+    response = make_response(excel_bytes)
+    response.headers['Content-Type'] = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    response.headers['Content-Disposition'] = f'attachment; filename=pagos_{cui}.xlsx'
+    return response
+
+
+@app.route("/admin/pagos/<int:cui>/pdf")
+def exportar_pagos_pdf(cui):
+    if "usuario_id" not in session or session.get("rol") not in ("admin", "empleado"):
+        return redirect("/login")
+
+    fecha_inicio = request.args.get("fecha_inicio", "").strip()
+    fecha_fin    = request.args.get("fecha_fin", "").strip()
+
+    conn   = conectar_db()
+    cursor = conn.cursor(dictionary=True)
+
+    query = """
+        SELECT u.nombre, u.apellido,
+               p.id_pago, p.monto, p.fecha_pago, p.fecha_vencimiento, p.mes_pagado
+        FROM pagos p
+        JOIN usuarios u ON u.cui = p.cui_usuario
+        WHERE u.cui = %s
+    """
+    params = [cui]
+
+    if fecha_inicio:
+        query += " AND p.fecha_pago >= %s"
+        params.append(fecha_inicio)
+    if fecha_fin:
+        query += " AND p.fecha_pago <= %s"
+        params.append(fecha_fin)
+
+    query += " ORDER BY p.fecha_pago DESC"
+    cursor.execute(query, params)
+    pagos = cursor.fetchall()
+    
+    nombre_socio = "Socio"
+    if pagos:
+        nombre_socio = f"{pagos[0]['nombre']} {pagos[0]['apellido']}"
+    else:
+        cursor.execute("SELECT nombre, apellido FROM usuarios WHERE cui = %s", (cui,))
+        socio = cursor.fetchone()
+        if socio:
+            nombre_socio = f"{socio['nombre']} {socio['apellido']}"
+            
+    conn.close()
+
+    headers = ["No.", "Fecha Pago", "Mes Pagado", "Vencimiento", "Monto"]
+    rows = []
+    for idx, p in enumerate(pagos):
+        rows.append([
+            idx + 1,
+            p["fecha_pago"],
+            p["mes_pagado"] or "—",
+            p["fecha_vencimiento"],
+            float(p["monto"])
+        ])
+
+    sub = f"Historial de pagos de membresia de {nombre_socio} (CUI: {cui})"
+    if fecha_inicio or fecha_fin:
+        sub += f" | Rango: {fecha_inicio or '...'} a {fecha_fin or '...'}"
+
+    pdf_bytes = generar_reporte_pdf(headers, rows, "Historial de Pagos", sub)
+    response = make_response(pdf_bytes)
+    response.headers['Content-Type'] = 'application/pdf'
+    response.headers['Content-Disposition'] = f'attachment; filename=pagos_{cui}.pdf'
+    return response
+
 
 
 @app.route("/admin/desactivar/<int:cui>", methods=["POST"])
@@ -629,6 +805,8 @@ def registrar_pago(cui):
             mes_pagado = f"{nombres_sel[0]} {anio_i}"
         else:
             mes_pagado = f"{', '.join(nombres_sel[:-1])} y {nombres_sel[-1]} {anio_i}"
+        ultimo_mes = max(meses_nums)
+        ultimo_anio = anio_i
     else:
         meses  = int(request.form.get("meses", 1))
         mes_i  = fecha_base.month if fecha_base > hoy else hoy.month
@@ -639,6 +817,7 @@ def registrar_pago(cui):
             mes_fin  = ((mes_i - 1 + meses - 1) % 12) + 1
             anio_fin = anio_i + ((mes_i - 1 + meses - 1) // 12)
             mes_pagado = f"{MESES_NOMBRES[mes_i-1]} {anio_i} — {MESES_NOMBRES[mes_fin-1]} {anio_fin}"
+        ultimo_anio, ultimo_mes = max(periodos_solicitados)
 
     cursor.execute("SELECT mes_pagado FROM pagos WHERE cui_usuario=%s", (cui,))
     periodos_registrados = set()
@@ -651,8 +830,8 @@ def registrar_pago(cui):
         flash(f"No se puede registrar: {formatear_periodos(duplicados)} ya fue pagado para este socio.", "error")
         return redirect(redirect_destino)
 
-    nueva_fecha = fecha_base + timedelta(days=30 * meses)
-    monto_total = PRECIO_MENSUAL * meses
+    nueva_fecha = calcular_fecha_vencimiento_dia_3(ultimo_anio, ultimo_mes)
+    monto_total = calcular_monto_pago(meses)
 
     cursor = conn.cursor()
     cursor.execute("INSERT INTO pagos (cui_usuario, fecha_pago, fecha_vencimiento, monto, mes_pagado) VALUES (%s,%s,%s,%s,%s)",
@@ -660,10 +839,11 @@ def registrar_pago(cui):
     conn.commit(); conn.close()
 
     nombre_socio = f"{socio['nombre']} {socio['apellido']}" if socio else "—"
-    registrar_log("pago", f"Registró pago de {meses} mes(es) — Q{monto_total:.2f}",
+    registrar_log("pago", f"Registró pago de {meses} mes(es) — Q{int(monto_total):,}",
                   afectado_id=cui, afectado_nombre=nombre_socio)
 
-    flash(f"Pago de {meses} mes(es) registrado — Q{monto_total:.2f}", "success")
+    flash(f"Pago de {meses} mes(es) registrado — Q{int(monto_total):,}", "success")
+
 
     return redirect(redirect_destino)
 
@@ -677,11 +857,13 @@ def auditoria():
     if "usuario_id" not in session or session.get("rol") != "admin":
         return redirect("/login")
 
-    buscar      = request.args.get("buscar", "").strip()
-    tipo_filtro = request.args.get("tipo", "").strip()
-    pagina      = int(request.args.get("pagina", 1))
-    por_pagina  = 30
-    offset      = (pagina - 1) * por_pagina
+    buscar       = request.args.get("buscar", "").strip()
+    tipo_filtro  = request.args.get("tipo", "").strip()
+    fecha_inicio = request.args.get("fecha_inicio", "").strip()
+    fecha_fin    = request.args.get("fecha_fin", "").strip()
+    pagina       = int(request.args.get("pagina", 1))
+    por_pagina   = 30
+    offset       = (pagina - 1) * por_pagina
 
     conn   = conectar_db()
     cursor = conn.cursor(dictionary=True)
@@ -696,6 +878,13 @@ def auditoria():
     if tipo_filtro:
         condiciones.append("tipo = %s")
         params.append(tipo_filtro)
+
+    if fecha_inicio:
+        condiciones.append("DATE(fecha) >= %s")
+        params.append(fecha_inicio)
+    if fecha_fin:
+        condiciones.append("DATE(fecha) <= %s")
+        params.append(fecha_fin)
 
     where = ("WHERE " + " AND ".join(condiciones)) if condiciones else ""
 
@@ -734,6 +923,323 @@ def auditoria():
     )
 
 
+# Helper function to generate styled Excel report
+def generar_reporte_excel(headers, rows, title):
+    import openpyxl
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    from openpyxl.utils import get_column_letter
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = title[:30]
+    ws.views.sheetView[0].showGridLines = True
+
+    font_title = Font(name='Segoe UI', size=15, bold=True, color='FF6B00')
+    font_header = Font(name='Segoe UI', size=10, bold=True, color='FFFFFF')
+    font_data = Font(name='Segoe UI', size=9.5)
+    
+    fill_header = PatternFill(start_color='1F1F1F', end_color='1F1F1F', fill_type='solid')
+    align_center = Alignment(horizontal='center', vertical='center')
+    align_left = Alignment(horizontal='left', vertical='center')
+    align_right = Alignment(horizontal='right', vertical='center')
+
+    thin_border = Border(
+        left=Side(style='thin', color='D9D9D9'),
+        right=Side(style='thin', color='D9D9D9'),
+        top=Side(style='thin', color='D9D9D9'),
+        bottom=Side(style='thin', color='D9D9D9')
+    )
+
+    # Title Block
+    ws.cell(row=1, column=1, value=title).font = font_title
+    ws.row_dimensions[1].height = 36
+    ws.cell(row=1, column=1).alignment = align_left
+
+    # Headers
+    ws.append([]) # row 2 empty
+    ws.append(headers) # row 3
+    ws.row_dimensions[3].height = 24
+    
+    for col_idx in range(1, len(headers) + 1):
+        cell = ws.cell(row=3, column=col_idx)
+        cell.font = font_header
+        cell.fill = fill_header
+        cell.alignment = align_center
+        cell.border = thin_border
+
+    # Data Rows
+    current_row = 4
+    for r in rows:
+        row_values = []
+        for val in r:
+            if isinstance(val, datetime):
+                row_values.append(val.strftime('%Y-%m-%d %H:%M:%S'))
+            elif isinstance(val, date):
+                row_values.append(val.strftime('%Y-%m-%d'))
+            else:
+                row_values.append(val)
+        ws.append(row_values)
+        ws.row_dimensions[current_row].height = 20
+        
+        for col_idx in range(1, len(r) + 1):
+            cell = ws.cell(row=current_row, column=col_idx)
+            cell.font = font_data
+            cell.border = thin_border
+            
+            val = r[col_idx - 1]
+            if isinstance(val, (int, float, decimal.Decimal if 'decimal' in globals() else float)):
+                cell.alignment = align_right
+                header_name = headers[col_idx - 1].lower()
+                if "monto" in header_name or "ingreso" in header_name or "total" in header_name:
+                    cell.number_format = '"Q"#,##0'
+            elif isinstance(val, (date, datetime)):
+                cell.alignment = align_center
+            else:
+                cell.alignment = align_left
+        current_row += 1
+
+    # Auto-width
+    for col in ws.columns:
+        max_len = 0
+        col_letter = get_column_letter(col[0].column)
+        for cell in col:
+            val_str = str(cell.value or '')
+            if len(val_str) > max_len:
+                max_len = len(val_str)
+        ws.column_dimensions[col_letter].width = max(max_len + 4, 12)
+
+    buf = BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    return buf.read()
+
+
+# Helper function to generate multi-page PDF report
+def generar_reporte_pdf(headers, rows, title, subtitle):
+    from reportlab.lib.pagesizes import letter
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib import colors
+
+    buf = BytesIO()
+    doc = SimpleDocTemplate(
+        buf,
+        pagesize=letter,
+        leftMargin=36,
+        rightMargin=36,
+        topMargin=36,
+        bottomMargin=36
+    )
+    story = []
+
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle(
+        'DocTitle',
+        parent=styles['Normal'],
+        fontName='Helvetica-Bold',
+        fontSize=18,
+        textColor=colors.HexColor('#FF6B00'),
+        spaceAfter=4
+    )
+    sub_style = ParagraphStyle(
+        'DocSub',
+        parent=styles['Normal'],
+        fontName='Helvetica',
+        fontSize=9,
+        textColor=colors.HexColor('#666666'),
+        spaceAfter=15
+    )
+    cell_style = ParagraphStyle(
+        'Cell',
+        parent=styles['Normal'],
+        fontName='Helvetica',
+        fontSize=8,
+        textColor=colors.HexColor('#333333')
+    )
+    header_style = ParagraphStyle(
+        'HeaderCell',
+        parent=styles['Normal'],
+        fontName='Helvetica-Bold',
+        fontSize=8.5,
+        textColor=colors.white
+    )
+
+    story.append(Paragraph(title, title_style))
+    story.append(Paragraph(subtitle, sub_style))
+
+    data = [[Paragraph(h, header_style) for h in headers]]
+    for r in rows:
+        row_data = []
+        for cell_val in r:
+            if isinstance(cell_val, datetime):
+                txt = cell_val.strftime('%d/%m/%Y %H:%M:%S')
+            elif isinstance(cell_val, date):
+                txt = cell_val.strftime('%d/%m/%Y')
+            elif isinstance(cell_val, (int, float)):
+                txt = f"Q{int(cell_val):,}"
+            else:
+                txt = str(cell_val or '—')
+            row_data.append(Paragraph(txt, cell_style))
+        data.append(row_data)
+
+    width, height = letter
+    usable_width = width - 72
+    num_cols = len(headers)
+    col_widths = [usable_width / num_cols] * num_cols
+
+    if num_cols == 5: # Auditoria
+        col_widths = [usable_width * 0.16, usable_width * 0.14, usable_width * 0.18, usable_width * 0.36, usable_width * 0.16]
+    elif num_cols == 5 and headers[0] == "No.": # Pagos socio
+        col_widths = [usable_width * 0.08, usable_width * 0.22, usable_width * 0.22, usable_width * 0.30, usable_width * 0.18]
+
+    t = Table(data, colWidths=col_widths, repeatRows=1)
+    t.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#1F1F1F')),
+        ('ALIGN', (0,0), (-1,-1), 'LEFT'),
+        ('VALIGN', (0,0), (-1,-1), 'TOP'),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 5),
+        ('TOPPADDING', (0,0), (-1,-1), 5),
+        ('LEFTPADDING', (0,0), (-1,-1), 5),
+        ('RIGHTPADDING', (0,0), (-1,-1), 5),
+        ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#E5E5E5')),
+    ]))
+    story.append(t)
+    doc.build(story)
+    buf.seek(0)
+    return buf.read()
+
+
+@app.route("/admin/auditoria/excel")
+def exportar_auditoria_excel():
+    if "usuario_id" not in session or session.get("rol") != "admin":
+        return redirect("/login")
+
+    buscar       = request.args.get("buscar", "").strip()
+    tipo_filtro  = request.args.get("tipo", "").strip()
+    fecha_inicio = request.args.get("fecha_inicio", "").strip()
+    fecha_fin    = request.args.get("fecha_fin", "").strip()
+
+    conn   = conectar_db()
+    cursor = conn.cursor(dictionary=True)
+
+    condiciones = []
+    params      = []
+
+    if buscar:
+        condiciones.append("(actor_nombre LIKE %s OR afectado_nombre LIKE %s OR detalle LIKE %s)")
+        params.extend([f"%{buscar}%", f"%{buscar}%", f"%{buscar}%"])
+
+    if tipo_filtro:
+        condiciones.append("tipo = %s")
+        params.append(tipo_filtro)
+
+    if fecha_inicio:
+        condiciones.append("DATE(fecha) >= %s")
+        params.append(fecha_inicio)
+    if fecha_fin:
+        condiciones.append("DATE(fecha) <= %s")
+        params.append(fecha_fin)
+
+    where = ("WHERE " + " AND ".join(condiciones)) if condiciones else ""
+
+    cursor.execute(f"SELECT fecha, tipo, actor_nombre, actor_rol, detalle, afectado_nombre FROM auditoria {where} ORDER BY fecha DESC", params)
+    logs = cursor.fetchall()
+    conn.close()
+
+    headers = ["Fecha y Hora", "Tipo de Acción", "Realizado por", "Rol Actor", "Detalle", "Socio Afectado"]
+    rows = []
+    for log in logs:
+        rows.append([
+            log["fecha"],
+            log["tipo"].capitalize(),
+            log["actor_nombre"],
+            log["actor_rol"],
+            log["detalle"],
+            log["afectado_nombre"] or "—"
+        ])
+
+    excel_bytes = generar_reporte_excel(headers, rows, "Reporte de Auditoria — Bodyflex Gym")
+    response = make_response(excel_bytes)
+    response.headers['Content-Type'] = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    response.headers['Content-Disposition'] = 'attachment; filename=reporte_auditoria.xlsx'
+    return response
+
+
+@app.route("/admin/auditoria/pdf")
+def exportar_auditoria_pdf():
+    if "usuario_id" not in session or session.get("rol") != "admin":
+        return redirect("/login")
+
+    buscar       = request.args.get("buscar", "").strip()
+    tipo_filtro  = request.args.get("tipo", "").strip()
+    fecha_inicio = request.args.get("fecha_inicio", "").strip()
+    fecha_fin    = request.args.get("fecha_fin", "").strip()
+
+    conn   = conectar_db()
+    cursor = conn.cursor(dictionary=True)
+
+    condiciones = []
+    params      = []
+
+    if buscar:
+        condiciones.append("(actor_nombre LIKE %s OR afectado_nombre LIKE %s OR detalle LIKE %s)")
+        params.extend([f"%{buscar}%", f"%{buscar}%", f"%{buscar}%"])
+
+    if tipo_filtro:
+        condiciones.append("tipo = %s")
+        params.append(tipo_filtro)
+
+    if fecha_inicio:
+        condiciones.append("DATE(fecha) >= %s")
+        params.append(fecha_inicio)
+    if fecha_fin:
+        condiciones.append("DATE(fecha) <= %s")
+        params.append(fecha_fin)
+
+    where = ("WHERE " + " AND ".join(condiciones)) if condiciones else ""
+
+    cursor.execute(f"SELECT fecha, tipo, actor_nombre, actor_rol, detalle, afectado_nombre FROM auditoria {where} ORDER BY fecha DESC", params)
+    logs = cursor.fetchall()
+    conn.close()
+
+    headers = ["Fecha", "Acción", "Realizado por", "Detalle", "Afectado"]
+    rows = []
+    for log in logs:
+        rows.append([
+            log["fecha"],
+            log["tipo"].capitalize(),
+            f"{log['actor_nombre']} ({log['actor_rol']})",
+            log["detalle"],
+            log["afectado_nombre"] or "—"
+        ])
+
+    filtro_txt = f"Filtros: Busqueda: '{buscar or 'Todas'}' | Tipo: '{tipo_filtro or 'Todos'}'"
+    if fecha_inicio or fecha_fin:
+        filtro_txt += f" | Rango: {fecha_inicio or '...'} a {fecha_fin or '...'}"
+
+    pdf_bytes = generar_reporte_pdf(headers, rows, "Reporte de Auditoría", filtro_txt)
+    response = make_response(pdf_bytes)
+    response.headers['Content-Type'] = 'application/pdf'
+    response.headers['Content-Disposition'] = 'attachment; filename=reporte_auditoria.pdf'
+    return response
+
+
+@app.route("/admin/auditoria/limpiar", methods=["POST"])
+def limpiar_auditoria():
+    if "usuario_id" not in session or session.get("rol") != "admin":
+        return redirect("/login")
+
+    conn = conectar_db()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM auditoria WHERE actor_rol = 'user'")
+    conn.commit()
+    conn.close()
+
+    flash("Se eliminaron todos los registros de auditoría de usuarios regulares exitosamente.", "success")
+    return redirect("/admin/auditoria")
+
+
+
 # ─────────────────────────────────────────────
 # ADMIN — Restablecer contraseña de un socio
 # ─────────────────────────────────────────────
@@ -746,21 +1252,9 @@ def admin_reset_pass(cui):
 
     nueva_pass = request.form.get("nueva_pass", "").strip()
 
-    # Mismas validaciones que el registro
-    if len(nueva_pass) < 8:
-        flash("La contraseña debe tener al menos 8 caracteres", "error")
-        return redirect("/admin")
-    if not re.search(r"[A-Z]", nueva_pass):
-        flash("La contraseña debe tener al menos una mayúscula", "error")
-        return redirect("/admin")
-    if not re.search(r"[a-z]", nueva_pass):
-        flash("La contraseña debe tener al menos una minúscula", "error")
-        return redirect("/admin")
-    if not re.search(r"[0-9]", nueva_pass):
-        flash("La contraseña debe tener al menos un número", "error")
-        return redirect("/admin")
-    if not re.search(r"[^A-Za-z0-9]", nueva_pass):
-        flash("La contraseña debe tener al menos un carácter especial (ej: @, #, $, !)", "error")
+    es_valida, msg_error = validar_contrasena(nueva_pass)
+    if not es_valida:
+        flash(msg_error, "error")
         return redirect("/admin")
 
     conn = conectar_db(); cursor = conn.cursor(dictionary=True)
@@ -806,8 +1300,9 @@ def cambiar_password():
         flash("Las contraseñas nuevas no coinciden", "error")
         return redirect("/cambiar_password")
 
-    if len(nueva) < 6:
-        flash("La contraseña debe tener al menos 6 caracteres", "error")
+    es_valida, msg_error = validar_contrasena(nueva)
+    if not es_valida:
+        flash(msg_error, "error")
         return redirect("/cambiar_password")
 
     if nueva == actual:
@@ -915,8 +1410,9 @@ def reset_password_form(token):
         flash("Las contraseñas no coinciden", "error")
         return redirect(f"/reset_password/{token}")
 
-    if len(nueva) < 6:
-        flash("La contraseña debe tener al menos 6 caracteres", "error")
+    es_valida, msg_error = validar_contrasena(nueva)
+    if not es_valida:
+        flash(msg_error, "error")
         return redirect(f"/reset_password/{token}")
 
     conn   = conectar_db()
@@ -1351,6 +1847,171 @@ def logout():
 @app.route("/")
 def inicio():
     return render_template("inicio.html")
+
+
+@app.route("/contrato/<int:cui>")
+def generar_contrato_pdf(cui):
+    if "usuario_id" not in session:
+        return redirect("/login")
+        
+    es_admin_emp = session.get("rol") in ("admin", "empleado")
+    es_dueno     = cui == session.get("usuario_id")
+    if not es_admin_emp and not es_dueno:
+        return redirect("/panel")
+        
+    conn = conectar_db()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("SELECT nombre, apellido, email, tipo_doc, cui, fecha_registro FROM usuarios WHERE cui = %s", (cui,))
+    usuario = cursor.fetchone()
+    conn.close()
+    
+    if not usuario:
+        flash("Socio no encontrado", "error")
+        return redirect("/admin" if es_admin_emp else "/panel")
+        
+    buf = BytesIO()
+    from reportlab.lib.pagesizes import letter
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib import colors
+    
+    doc = SimpleDocTemplate(
+        buf,
+        pagesize=letter,
+        leftMargin=54,
+        rightMargin=54,
+        topMargin=54,
+        bottomMargin=54
+    )
+    story = []
+    
+    styles = getSampleStyleSheet()
+    
+    title_style = ParagraphStyle(
+        'DocTitle',
+        parent=styles['Normal'],
+        fontName='Helvetica-Bold',
+        fontSize=14,
+        alignment=1,
+        spaceAfter=15,
+        textColor=colors.HexColor('#1A1A1A')
+    )
+    section_style = ParagraphStyle(
+        'DocSection',
+        parent=styles['Normal'],
+        fontName='Helvetica-Bold',
+        fontSize=11,
+        spaceBefore=10,
+        spaceAfter=5,
+        textColor=colors.HexColor('#FF6B00')
+    )
+    body_style = ParagraphStyle(
+        'DocBody',
+        parent=styles['Normal'],
+        fontName='Helvetica',
+        fontSize=9.5,
+        leading=14,
+        spaceAfter=8,
+        textColor=colors.HexColor('#333333')
+    )
+    bullet_style = ParagraphStyle(
+        'DocBullet',
+        parent=styles['Normal'],
+        fontName='Helvetica',
+        fontSize=9.5,
+        leading=14,
+        leftIndent=15,
+        spaceAfter=4,
+        textColor=colors.HexColor('#333333')
+    )
+    
+    story.append(Paragraph("CONTRATO DE MEMBRESÍA Y REGLAMENTO DE CONVIVENCIA", title_style))
+    story.append(Paragraph("<b>BODYFLEX GYM</b>", ParagraphStyle('Sub', parent=title_style, fontSize=12, spaceAfter=20)))
+    
+    reg_fecha = usuario["fecha_registro"].strftime("%d/%m/%Y") if usuario["fecha_registro"] else "—"
+    detalles_texto = f"""
+    <b>DATOS DEL SOCIO:</b><br/>
+    <b>Nombre Completo:</b> {usuario['nombre']} {usuario['apellido']}<br/>
+    <b>Identificación ({usuario['tipo_doc']}):</b> {usuario['cui']}<br/>
+    <b>Correo Electrónico:</b> {usuario['email'] or '—'}<br/>
+    <b>Fecha de Registro:</b> {reg_fecha}
+    """
+    
+    t_data = [[Paragraph(detalles_texto, body_style)]]
+    t = Table(t_data, colWidths=[letter[0] - 108])
+    t.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,-1), colors.HexColor('#F9F9F9')),
+        ('BORDER', (0,0), (-1,-1), 1, colors.HexColor('#E5E5E5')),
+        ('PADDING', (0,0), (-1,-1), 12),
+    ]))
+    story.append(t)
+    story.append(Spacer(1, 15))
+    
+    story.append(Paragraph("DECLARACIONES Y CONDICIONES DEL SERVICIO", section_style))
+    story.append(Paragraph(
+        "Por medio del presente documento, el Socio arriba mencionado acepta y se adhiere formalmente al reglamento de "
+        "convivencia y condiciones de membresía de <b>Bodyflex Gym</b>, de conformidad con las siguientes cláusulas:",
+        body_style
+    ))
+    
+    story.append(Paragraph("<b>CLÁUSULA PRIMERA: DEL PAGO DE LA MEMBRESÍA Y DÍA DE COBRO</b>", body_style))
+    story.append(Paragraph(
+        "El socio se compromete expresamente a cancelar el monto correspondiente de su membresía mensualmente. "
+        "A partir de la presente fecha, se establece el <b>día 3 de cada mes</b> como el día límite de pago estandarizado "
+        "para todos los miembros activos. Los pagos se realizarán de manera anticipada por medio de efectivo, tarjeta de "
+        "crédito o débito en recepción, o bien, a través del sistema de cargo automático a tarjeta (débito recurrente) cuando "
+        "esta modalidad sea habilitada por la administración del gimnasio.",
+        body_style
+    ))
+    
+    story.append(Paragraph("<b>CLÁUSULA SEGUNDA: REGLAMENTO INTERNO DE CONVIVENCIA Y SEGURIDAD</b>", body_style))
+    story.append(Paragraph(
+        "Para garantizar un ambiente seguro y agradable, el Socio se compromete a respetar estrictamente las normas del establecimiento:",
+        body_style
+    ))
+    
+    rules = [
+        "<b>1. Prohibición de Fumar:</b> Queda terminantemente prohibido fumar o consumir cualquier tipo de vaporizador o cigarrillo electrónico dentro de todas las áreas físicas de las instalaciones.",
+        "<b>2. Cuidado del Equipo:</b> El Socio deberá utilizar las máquinas, mancuernas y accesorios de manera adecuada y segura, evitando azotar o dejar caer el peso bruscamente. Todo desperfecto provocado por negligencia será responsabilidad del Socio.",
+        "<b>3. Orden en Sala:</b> Es obligatorio retornar las mancuernas, barras y discos a sus respectivos racks inmediatamente al finalizar cada ejercicio.",
+        "<b>4. Higiene Personal:</b> Por respeto y salud, cada Socio debe traer una toalla personal para limpiar el sudor residual en las áreas de contacto de los equipos tras su uso.",
+        "<b>5. Responsabilidad:</b> Bodyflex Gym no se hace responsable por la pérdida, robo u olvido de objetos de valor o artículos personales dejados dentro de las instalaciones."
+    ]
+    
+    for r in rules:
+        story.append(Paragraph(r, bullet_style))
+        
+    story.append(Spacer(1, 10))
+    story.append(Paragraph(
+        "El incumplimiento de cualquiera de las reglas descritas anteriormente dará derecho a la administración de "
+        "cancelar temporal o definitivamente la membresía del Socio sin derecho a reembolso.",
+        body_style
+    ))
+    
+    story.append(Spacer(1, 20))
+    
+    sig_data = [
+        [
+            Paragraph("_______________________________<br/><b>Firma del Socio</b><br/>CUI: " + str(usuario['cui']), body_style),
+            Paragraph("_______________________________<br/><b>Por la Administración</b><br/>Bodyflex Gym", body_style)
+        ]
+    ]
+    sig_table = Table(sig_data, colWidths=[(letter[0] - 108)/2, (letter[0] - 108)/2])
+    sig_table.setStyle(TableStyle([
+        ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+        ('TOPPADDING', (0,0), (-1,-1), 20),
+    ]))
+    story.append(sig_table)
+    
+    doc.build(story)
+    buf.seek(0)
+    
+    response = make_response(buf.read())
+    response.headers['Content-Type'] = 'application/pdf'
+    response.headers['Content-Disposition'] = f'inline; filename=contrato_{usuario["cui"]}.pdf'
+    return response
+
 
 
 if __name__ == "__main__":
