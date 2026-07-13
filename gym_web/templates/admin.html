@@ -1284,6 +1284,8 @@
                                                 <button type="button" class="dropdown-item"
                                                     onclick="abrirResetPass('{{ u.cui }}', '{{ u.nombre }} {{ u.apellido }}')"><span
                                                         class="di-icon">🔑</span>Cambiar contraseña</button>
+                                                <a href="/contrato/{{ u.cui }}" target="_blank" class="dropdown-item"><span
+                                                        class="di-icon">📄</span>Generar contrato</a>
                                                 <div class="dropdown-sep"></div>
                                                 <form action="/admin/auditoria/borrar_usuario/{{ u.cui }}" method="POST"
                                                     style="margin:0;"
@@ -1291,7 +1293,7 @@
                                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                                     <button type="submit" class="dropdown-item red"><span
                                                             class="di-icon">👤🗑</span>Borrar logs</button>
-                                                </form
+                                                </form>
                                             </div>
                                         </div>
                                     </td>
@@ -1407,7 +1409,9 @@
                                                 <div class="dropdown-sep"></div>
                                                 <button type="button" class="dropdown-item"
                                                     onclick="abrirResetPass('{{ e.cui }}', '{{ e.nombre }} {{ e.apellido }}')"><span
-                                                        class="di-icon">🔑</span>Cambiar contraseña</button
+                                                        class="di-icon">🔑</span>Cambiar contraseña</button>
+                                                <a href="/contrato/{{ e.cui }}" target="_blank" class="dropdown-item"><span
+                                                        class="di-icon">📄</span>Generar contrato</a>
                                             </div>
                                         </div>
                                     </td>

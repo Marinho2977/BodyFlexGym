@@ -136,9 +136,19 @@
 <div class="main">
 
     <!-- HEADER -->
-    <div class="page-header">
-        <h1>Historial de <span>Auditoría</span></h1>
-        <p>Registro de todas las acciones realizadas en el sistema</p>
+    <div class="header-hero" style="display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:14px; margin-bottom:28px;">
+        <div>
+            <h1>Historial de <span>Auditoría</span></h1>
+            <p style="margin:0; color:var(--muted); font-size:15px;">Registro de todas las acciones realizadas en el sistema</p>
+        </div>
+        <div style="display:flex; gap:8px; align-items:center;">
+            <a href="/admin/auditoria/excel?{{ request.query_string.decode('utf-8') }}" class="btn btn-ghost" style="padding:6px 12px; font-size:13px; border-color:rgba(255,107,0,0.3);">📊 Excel</a>
+            <a href="/admin/auditoria/pdf?{{ request.query_string.decode('utf-8') }}" class="btn btn-ghost" style="padding:6px 12px; font-size:13px; border-color:rgba(239,68,68,0.3); color:#ef4444;">📄 PDF</a>
+            <form action="/admin/auditoria/limpiar" method="POST" style="margin:0;" onsubmit="return confirm('¿Eliminar todos los registros de usuarios (rol user)? Los logs de admin y empleados se conservarán.')">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-ghost" style="padding:6px 12px; font-size:13px; border-color:rgba(239,68,68,0.3); color:#ef4444;">🗑 Limpiar logs</button>
+            </form>
+        </div>
     </div>
 
     <!-- STATS -->
@@ -185,15 +195,7 @@
         {% endif %}
     </form>
 
-    <!-- EXPORTAR / LIMPIAR -->
-    <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;align-items:center;">
-        <a href="/admin/auditoria/excel?{{ request.query_string.decode('utf-8') }}" class="btn btn-yellow">⬇ Exportar Excel</a>
-        <a href="/admin/auditoria/pdf?{{ request.query_string.decode('utf-8') }}"   class="btn" style="background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);color:#ef4444;">⬇ Exportar PDF</a>
-        <form action="/admin/auditoria/limpiar" method="POST" style="margin:0;" onsubmit="return confirm('¿Eliminar todos los registros de usuarios (rol user)? Los logs de admin y empleados se conservarán.')">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <button type="submit" class="btn" style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.25);color:#ef4444;">🗑 Limpiar logs de usuarios</button>
-        </form>
-    </div>
+
 
     <!-- TABLA -->
     <div class="tabla-wrap">
