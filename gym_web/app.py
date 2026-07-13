@@ -444,30 +444,7 @@ def admin_panel():
 
     periodos_pagados = periodos_pagados_por_usuario(cursor, [u["cui"] for u in usuarios_all])
 
-    # ── Métricas de ingresos mensuales (últimos 12 meses) ──
-    cursor.execute("""
-        SELECT YEAR(fecha_pago) AS anio, MONTH(fecha_pago) AS mes,
-               SUM(monto) AS total
-        FROM pagos
-        WHERE fecha_pago >= DATE_SUB(CURDATE(), INTERVAL 12 MONTH)
-        GROUP BY YEAR(fecha_pago), MONTH(fecha_pago)
-        ORDER BY anio, mes
-    """)
-    ingresos_raw = cursor.fetchall()
-
-    cursor.execute("SELECT COALESCE(SUM(monto), 0) AS total FROM pagos")
-    total_ingresos_global = cursor.fetchone()["total"]
-
-    cursor.execute("""
-        SELECT COALESCE(SUM(monto), 0) AS total FROM pagos
-        WHERE YEAR(fecha_pago) = YEAR(CURDATE()) AND MONTH(fecha_pago) = MONTH(CURDATE())
-    """)
-    ingresos_mes_actual = cursor.fetchone()["total"]
-
     conn.close()
-
-    ingresos_labels = [f"{MESES_NOMBRES[r['mes']-1][:3]} {r['anio']}" for r in ingresos_raw]
-    ingresos_data   = [float(r['total']) for r in ingresos_raw]
 
     fecha_hoy = date.today()
 
@@ -487,11 +464,7 @@ def admin_panel():
                            fecha_hoy=fecha_hoy, precio_mensual=PRECIO_MENSUAL,
                            periodos_pagados=periodos_pagados,
                            pagina=pagina, total_paginas=total_paginas,
-                           total_socios=total_socios,
-                           ingresos_labels=ingresos_labels,
-                           ingresos_data=ingresos_data,
-                           total_ingresos_global=total_ingresos_global,
-                           ingresos_mes_actual=ingresos_mes_actual)
+                           total_socios=total_socios)
 
 
 @app.route("/admin/hacer_admin/<int:cui>", methods=["POST"])
@@ -865,6 +838,11 @@ def auditoria():
     por_pagina   = 30
     offset       = (pagina - 1) * por_pagina
 
+    # Por defecto, si es primera carga sin argumentos, solo mostrar importantes (ocultar login y perfil)
+    solo_importantes = request.args.get("solo_importantes", "0")
+    if not request.args:
+        solo_importantes = "1"
+
     conn   = conectar_db()
     cursor = conn.cursor(dictionary=True)
 
@@ -878,6 +856,8 @@ def auditoria():
     if tipo_filtro:
         condiciones.append("tipo = %s")
         params.append(tipo_filtro)
+    elif solo_importantes == "1":
+        condiciones.append("tipo NOT IN ('login', 'perfil')")
 
     if fecha_inicio:
         condiciones.append("DATE(fecha) >= %s")
@@ -920,6 +900,7 @@ def auditoria():
         tipo_filtro=tipo_filtro,
         pagina=pagina,
         total_paginas=total_paginas,
+        solo_importantes=solo_importantes,
     )
 
 
@@ -1237,6 +1218,79 @@ def limpiar_auditoria():
 
     flash("Se eliminaron todos los registros de auditoría de usuarios regulares exitosamente.", "success")
     return redirect("/admin/auditoria")
+
+
+@app.route("/admin/reportes")
+def admin_reportes():
+    if "usuario_id" not in session or session.get("rol") != "admin":
+        return redirect("/login")
+
+    conn   = conectar_db()
+    cursor = conn.cursor(dictionary=True)
+
+    # ── Métricas de ingresos mensuales (últimos 12 meses) ──
+    cursor.execute("""
+        SELECT YEAR(fecha_pago) AS anio, MONTH(fecha_pago) AS mes,
+               SUM(monto) AS total
+        FROM pagos
+        WHERE fecha_pago >= DATE_SUB(CURDATE(), INTERVAL 12 MONTH)
+        GROUP BY YEAR(fecha_pago), MONTH(fecha_pago)
+        ORDER BY anio, mes
+    """)
+    ingresos_raw = cursor.fetchall()
+
+    cursor.execute("SELECT COALESCE(SUM(monto), 0) AS total FROM pagos")
+    total_ingresos_global = cursor.fetchone()["total"]
+
+    cursor.execute("""
+        SELECT COALESCE(SUM(monto), 0) AS total FROM pagos
+        WHERE YEAR(fecha_pago) = YEAR(CURDATE()) AND MONTH(fecha_pago) = MONTH(CURDATE())
+    """)
+    ingresos_mes_actual = cursor.fetchone()["total"]
+
+    conn.close()
+
+    ingresos_labels = [f"{MESES_NOMBRES[r['mes']-1][:3]} {r['anio']}" for r in ingresos_raw]
+    ingresos_data   = [float(r['total']) for r in ingresos_raw]
+
+    fecha_hoy = date.today()
+
+    return render_template("reportes.html", 
+                           total_ingresos_global=total_ingresos_global,
+                           ingresos_mes_actual=ingresos_mes_actual,
+                           ingresos_labels=ingresos_labels,
+                           ingresos_data=ingresos_data,
+                           fecha_hoy=fecha_hoy)
+
+
+@app.route("/admin/auditoria/borrar_log/<int:id_log>", methods=["POST"])
+def borrar_log_individual(id_log):
+    if "usuario_id" not in session or session.get("rol") != "admin":
+        return redirect("/login")
+
+    conn = conectar_db()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM auditoria WHERE id_log = %s", (id_log,))
+    conn.commit()
+    conn.close()
+
+    flash("Registro de auditoría eliminado exitosamente.", "success")
+    return redirect(request.referrer or "/admin/auditoria")
+
+
+@app.route("/admin/auditoria/borrar_usuario/<int:cui>", methods=["POST"])
+def borrar_logs_usuario(cui):
+    if "usuario_id" not in session or session.get("rol") != "admin":
+        return redirect("/login")
+
+    conn = conectar_db()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM auditoria WHERE actor_id = %s OR afectado_id = %s", (cui, cui))
+    conn.commit()
+    conn.close()
+
+    flash("Se eliminaron todos los registros de auditoría asociados a este usuario.", "success")
+    return redirect(request.referrer or "/admin/auditoria")
 
 
 

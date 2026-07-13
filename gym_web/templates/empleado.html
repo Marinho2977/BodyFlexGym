@@ -697,6 +697,8 @@
                             {% else %}
                                 <span class="locked-text">Cuenta inactiva</span>
                             {% endif %}
+                            <br>
+                            <a href="/contrato/{{ u.cui }}" target="_blank" class="btn-limpiar" style="margin-top:8px; padding: 4px 8px; min-height: 28px; font-size: 12px; display: inline-flex;" title="Descargar Contrato">📄 Contrato</a>
                         </td>
                     </tr>
                     {% endfor %}

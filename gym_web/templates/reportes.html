@@ -1077,16 +1077,13 @@
             </div>
             <nav class="sidebar-nav">
                 <div class="sidebar-section-title">Principal</div>
-                <a href="/admin" class="sidebar-link active">
+                <a href="/admin" class="sidebar-link">
                     <span class="icon">👥</span><span class="sidebar-label">Socios</span>
                 </a>
                 <a href="/admin/auditoria" class="sidebar-link">
                     <span class="icon">📋</span><span class="sidebar-label">Auditoría</span>
                 </a>
-                <a href="/admin/reportes" class="sidebar-link">
-                    <span class="icon">📈</span><span class="sidebar-label">Reportes</span>
-                </a>
-                <div class="sidebar-section-title">Gestión</div>
+                <a href="/admin/reportes" class="sidebar-link active">\n                    <span class="icon">📈</span><span class="sidebar-label">Reportes</span>\n                </a>\n                <div class="sidebar-section-title">Gestión</div>
                 <a href="/cambiar_password" class="sidebar-link">
                     <span class="icon">🔑</span><span class="sidebar-label">Contraseña</span>
                 </a>
@@ -1126,304 +1123,33 @@
                 {% endfor %}{% endif %}
                 {% endwith %}
 
-                <!-- ─── BENTO STATS ─── -->
-                <div class="bento-stats">
-                    <div class="bento-card orange">
-                        <div class="bento-label">Total socios</div>
-                        <div class="bento-value orange">{{ total_socios }}</div>
-                        <div class="bento-sub">registrados en el sistema</div>
-                    </div>
-                    <div class="bento-card green">
-                        <div class="bento-label">Al día</div>
-                        <div class="bento-value green">{{ usuarios | selectattr("ultimo_vencimiento") | list | length }}
+                <div class="section-hd">\n                    <div class="section-hd-title">Reportes <small>métricas de ingresos</small></div>\n                </div>\n                    <!-- ─── METRICS DASHBOARD ─── -->
+                    <div class="metrics-section">
+                        <div class="section-hd">
+                            <div class="section-hd-title">Métricas de Ingresos <small>mensualidades cobradas</small>
+                            </div>
                         </div>
-                        <div class="bento-sub">membresía activa</div>
-                    </div>
-                    <div class="bento-card red">
-                        <div class="bento-label">Vencidos</div>
-                        <div class="bento-value red">
-                            {% set venc = [] %}{% for u in usuarios %}{% if u.ultimo_vencimiento and
-                            u.ultimo_vencimiento < fecha_hoy %}{% set _=venc.append(1) %}{% endif %}{% endfor %}{{ venc
-                                | length }} </div>
-                                <div class="bento-sub">requieren renovación</div>
+                        <div class="bento-stats" style="margin-bottom:14px;">
+                            <div class="bento-card green">
+                                <div class="bento-label">Ingresos totales</div>
+                                <div class="bento-value green">Q{{ "{:,.0f}".format(total_ingresos_global|float) }}</div>
+                                <div class="bento-sub">acumulado histórico</div>
+                            </div>
+                            <div class="bento-card orange">
+                                <div class="bento-label">Ingresos mes actual</div>
+                                <div class="bento-value orange">Q{{ "{:,.0f}".format(ingresos_mes_actual|float) }}</div>
+                                <div class="bento-sub">{{ fecha_hoy.strftime('%B %Y') }}</div>
+                            </div>
                         </div>
-                        <div class="bento-card blue">
-                            <div class="bento-label">Sin pagos</div>
-                            <div class="bento-value blue">{{ usuarios | rejectattr("ultimo_vencimiento") | list | length
-                                }}</div>
-                            <div class="bento-sub">sin historial de pago</div>
+                        <div class="metrics-row">
+                            <div class="chart-card">
+                                <div class="chart-title"><span class="chart-icon">📊</span> Ingresos mensuales (últimos
+                                    12 meses)</div>
+                                <canvas id="chartIngresos" height="220"></canvas>
+                            </div>
                         </div>
                     </div>
 
-
-
-                    <!-- ─── SOCIOS ─── -->
-                    <div class="section-hd">
-                        <div class="section-hd-title">Socios <small>clientes del gimnasio</small></div>
-                    </div>
-
-                    <!-- Filter bar -->
-                    <div class="filter-bar">
-                        <form class="filter-search" method="GET" action="/admin">
-                            <input type="text" name="buscar" placeholder="🔍  Buscar por nombre…"
-                                value="{{ request.args.get('buscar','') }}">
-                            <button type="submit" class="btn btn-yellow btn-sm">Buscar</button>
-                        </form>
-                        <div class="filter-tabs">
-                            <a href="/admin"
-                                class="filter-tab {% if not request.args.get('filtro') and not request.args.get('buscar') %}active{% endif %}">Todos</a>
-                            <a href="/admin?filtro=activos"
-                                class="filter-tab {% if request.args.get('filtro')=='activos' %}active{% endif %}">✓ Al
-                                día</a>
-                            <a href="/admin?filtro=vencidos"
-                                class="filter-tab {% if request.args.get('filtro')=='vencidos' %}active{% endif %}">✗
-                                Vencidos</a>
-                        </div>
-                    </div>
-
-                    <!-- Tabla socios -->
-                    <div class="tabla-wrap">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Socio</th>
-                                    <th>Datos físicos</th>
-                                    <th>Estado pago</th>
-                                    <th>Registrar pago (Q{{ "{:,.0f}".format(precio_mensual|float) }}/mes)</th>
-                                    <th>Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for u in usuarios %}
-                                <tr>
-                                    <td>
-                                        <div class="socio-cell">
-                                            <!-- Avatar con inicial -->
-                                            {% set ini = (u.nombre[0]|upper) if u.nombre else 'U' %}
-                                            <div class="avatar avatar-{{ ini }}">{{ ini }}</div>
-                                            <div>
-                                                <div class="socio-nombre">{{ u.nombre }} {{ u.apellido }}</div>
-                                                <div class="socio-email">{{ u.email }}</div>
-                                                <div class="socio-badge">
-                                                    {% if u.estado.lower() == "activo" %}
-                                                    <span class="badge badge-activo">Activo</span>
-                                                    {% else %}
-                                                    <span class="badge badge-inactivo">Inactivo</span>
-                                                    {% endif %}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        {% if u.edad %}
-                                        <span style="font-weight:500;">{{ u.edad }} años</span><br>
-                                        <span style="color:var(--muted);font-size:12px;">{{ u.peso }} lb · {{ u.altura
-                                            }} m</span><br>
-                                        <span style="color:var(--muted);font-size:11px;">{{ u.objetivo }}</span>
-                                        {% else %}
-                                        <span style="color:var(--muted);">Sin perfil</span>
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        {% if u.ultimo_vencimiento %}
-                                        {% set dias = (u.ultimo_vencimiento - fecha_hoy).days %}
-                                        {% if dias >= 0 %}
-                                        <span class="badge badge-aldía">Al día · {{ dias }}d</span>
-                                        {% else %}
-                                        <span class="badge badge-vencido">Vencido {{ dias * -1 }}d</span>
-                                        {% endif %}
-                                        {% else %}
-                                        <span class="badge badge-sinpago">Sin pagos</span>
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        <button class="btn-pago-inline btn-abrir-pago" data-id="{{ u.cui }}"
-                                            data-nombre="{{ u.nombre }} {{ u.apellido }}">+ Registrar pago</button>
-                                        <br>
-                                        <a href="/admin/pagos/{{ u.cui }}" class="btn btn-ghost btn-sm"
-                                            style="margin-top:6px;">Ver historial</a>
-                                        <a href="/contrato/{{ u.cui }}" target="_blank" class="btn btn-ghost btn-sm"
-                                            style="margin-top:6px;" title="Descargar Contrato">📄 Contrato</a>
-                                    </td>
-                                    <td>
-                                        <!-- Dropdown acciones -->
-                                        <div class="dropdown" id="dd-{{ u.cui }}">
-                                            <button class="dropdown-toggle"
-                                                onclick="toggleDd('dd-{{ u.cui }}', this)">⋮</button>
-                                            <div class="dropdown-menu">
-                                                {% if u.estado.lower() == "activo" %}
-                                                <form action="/admin/desactivar/{{ u.cui }}" method="POST"
-                                                    style="margin:0;"
-                                                    onsubmit="return confirm('¿Desactivar a {{ u.nombre }}?')">
-                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                                    <button type="submit" class="dropdown-item red"><span
-                                                            class="di-icon">🔴</span>Desactivar</button>
-                                                </form>
-                                                {% else %}
-                                                <form action="/admin/reactivar/{{ u.cui }}" method="POST"
-                                                    style="margin:0;">
-                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                                    <button type="submit" class="dropdown-item green"><span
-                                                            class="di-icon">🟢</span>Reactivar</button>
-                                                </form>
-                                                {% endif %}
-                                                <div class="dropdown-sep"></div>
-                                                <form action="/admin/hacer_empleado/{{ u.cui }}" method="POST"
-                                                    style="margin:0;">
-                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                                    <button type="submit" class="dropdown-item"><span
-                                                            class="di-icon">👔</span>→ Empleado</button>
-                                                </form>
-                                                <form action="/admin/hacer_admin/{{ u.cui }}" method="POST"
-                                                    style="margin:0;">
-                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                                    <button type="submit" class="dropdown-item blue"><span
-                                                            class="di-icon">⭐</span>→ Admin</button>
-                                                </form>
-                                                <div class="dropdown-sep"></div>
-                                                <button type="button" class="dropdown-item"
-                                                    onclick="abrirResetPass('{{ u.cui }}', '{{ u.nombre }} {{ u.apellido }}')"><span
-                                                        class="di-icon">🔑</span>Cambiar contraseña</button>
-                                                <div class="dropdown-sep"></div>
-                                                <form action="/admin/auditoria/borrar_usuario/{{ u.cui }}" method="POST"
-                                                    style="margin:0;"
-                                                    onsubmit="return confirm('¿Eliminar TODOS los logs de {{ u.nombre }}?')">
-                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                                    <button type="submit" class="dropdown-item red"><span
-                                                            class="di-icon">👤🗑</span>Borrar logs</button>
-                                                </form
-                                            </div>
-                                        </div>
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                                {% if not usuarios %}
-                                <tr>
-                                    <td colspan="5" class="empty">No hay socios registrados</td>
-                                </tr>
-                                {% endif %}
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <!-- ─── PAGINACIÓN ─── -->
-                    {% if total_paginas > 1 %}
-                    <div class="pagination">
-                        <a href="/admin?pagina={{ pagina - 1 }}{% if request.args.get('buscar') %}&buscar={{ request.args.get('buscar') }}{% endif %}{% if request.args.get('filtro') %}&filtro={{ request.args.get('filtro') }}{% endif %}"
-                            class="page-btn {% if pagina <= 1 %}disabled{% endif %}">← Anterior</a>
-                        {% for p in range(1, total_paginas + 1) %}
-                        {% if p == pagina %}
-                        <span class="page-btn active">{{ p }}</span>
-                        {% elif p <= 3 or p> total_paginas - 2 or (p >= pagina - 1 and p <= pagina + 1) %} <a
-                                href="/admin?pagina={{ p }}{% if request.args.get('buscar') %}&buscar={{ request.args.get('buscar') }}{% endif %}{% if request.args.get('filtro') %}&filtro={{ request.args.get('filtro') }}{% endif %}"
-                                class="page-btn">{{ p }}</a>
-                                {% elif p == 4 or p == total_paginas - 2 %}
-                                <span class="page-info">…</span>
-                                {% endif %}
-                                {% endfor %}
-                                <a href="/admin?pagina={{ pagina + 1 }}{% if request.args.get('buscar') %}&buscar={{ request.args.get('buscar') }}{% endif %}{% if request.args.get('filtro') %}&filtro={{ request.args.get('filtro') }}{% endif %}"
-                                    class="page-btn {% if pagina >= total_paginas %}disabled{% endif %}">Siguiente →</a>
-                                <span class="page-info">Página {{ pagina }} de {{ total_paginas }} · {{ total_socios }}
-                                    socios</span>
-                    </div>
-                    {% endif %}
-
-                    <hr class="sep">
-
-                    <!-- ─── EMPLEADOS ─── -->
-                    <div class="section-hd">
-                        <div class="section-hd-title">Empleados <small>pueden registrar pagos</small></div>
-                    </div>
-                    <div class="tabla-wrap">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Empleado</th>
-                                    <th>Email</th>
-                                    <th>Estado</th>
-                                    <th>Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for e in empleados %}
-                                <tr>
-                                    <td>
-                                        <div class="socio-cell">
-                                            {% set ini = (e.nombre[0]|upper) if e.nombre else 'E' %}
-                                            <div class="avatar avatar-{{ ini }}">{{ ini }}</div>
-                                            <div>
-                                                <div class="socio-nombre">{{ e.nombre }} {{ e.apellido }}</div>
-                                                <span class="badge badge-emp-rol">Empleado</span>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td style="color:var(--muted);">
-                                        {{ e.email }}<br>
-                                        <a href="/contrato/{{ e.cui }}" target="_blank" class="btn btn-ghost btn-sm"
-                                            style="margin-top:6px;" title="Descargar Contrato">📄 Contrato</a>
-                                    </td>
-                                    <td>
-                                        {% if e.estado.lower() == "activo" %}
-                                        <span class="badge badge-activo">Activo</span>
-                                        {% else %}
-                                        <span class="badge badge-inactivo">Inactivo</span>
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        <div class="dropdown" id="dd-e{{ e.cui }}">
-                                            <button class="dropdown-toggle"
-                                                onclick="toggleDd('dd-e{{ e.cui }}', this)">⋮</button>
-                                            <div class="dropdown-menu">
-                                                {% if e.estado.lower() == "activo" %}
-                                                <form action="/admin/desactivar/{{ e.cui }}" method="POST"
-                                                    style="margin:0;"
-                                                    onsubmit="return confirm('¿Desactivar cuenta de {{ e.nombre }}?')">
-                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                                    <button type="submit" class="dropdown-item red"><span
-                                                            class="di-icon">🔴</span>Desactivar</button>
-                                                </form>
-                                                {% else %}
-                                                <form action="/admin/reactivar/{{ e.cui }}" method="POST"
-                                                    style="margin:0;">
-                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                                    <button type="submit" class="dropdown-item green"><span
-                                                            class="di-icon">🟢</span>Reactivar</button>
-                                                </form>
-                                                {% endif %}
-                                                <div class="dropdown-sep"></div>
-                                                <form action="/admin/quitar_empleado/{{ e.cui }}" method="POST"
-                                                    style="margin:0;"
-                                                    onsubmit="return confirm('¿Quitar rol empleado a {{ e.nombre }}?')">
-                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                                    <button type="submit" class="dropdown-item"><span
-                                                            class="di-icon">👤</span>→ Usuario</button>
-                                                </form>
-                                                <form action="/admin/hacer_admin/{{ e.cui }}" method="POST"
-                                                    style="margin:0;">
-                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                                    <button type="submit" class="dropdown-item blue"><span
-                                                            class="di-icon">⭐</span>→ Admin</button>
-                                                </form>
-                                                <div class="dropdown-sep"></div>
-                                                <button type="button" class="dropdown-item"
-                                                    onclick="abrirResetPass('{{ e.cui }}', '{{ e.nombre }} {{ e.apellido }}')"><span
-                                                        class="di-icon">🔑</span>Cambiar contraseña</button
-                                            </div>
-                                        </div>
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                                {% if not empleados %}
-                                <tr>
-                                    <td colspan="4" class="empty">No hay empleados. Promueve un socio con el botón "→
-                                        Empleado" de la tabla de arriba.</td>
-                                </tr>
-                                {% endif %}
-                            </tbody>
-                        </table>
-                    </div>
-
-                </div><!-- /main -->
             </div><!-- /main-content -->
         </div><!-- /layout -->
 
@@ -1521,214 +1247,59 @@
             </div>
         </div>
 
-
+        <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
         <script>
             // ── Sidebar toggle ──
-            function toggleSidebar() {
-                document.getElementById('sidebar').classList.toggle('collapsed');
-            }
-
-            // ── Dropdown acciones — Portal pattern (bypasses overflow & stacking context) ──
-            let activePortal = null;
-            let activeToggle = null;
-
-            function toggleDd(id, btnEl) {
-                // Si el mismo menú está abierto, lo cerramos
-                if (activePortal && activePortal.dataset.sourceId === id) {
-                    closeActivePortal();
-                    return;
-                }
-                closeActivePortal();
-
-                const trigger = btnEl || document.querySelector('#' + id + ' .dropdown-toggle');
-                const sourceMenu = document.querySelector('#' + id + ' .dropdown-menu');
-                if (!sourceMenu || !trigger) return;
-
-                // Crear portal y clonarlo en <body>
-                const portal = document.createElement('div');
-                portal.className = 'dropdown-menu-portal';
-                portal.dataset.sourceId = id;
-                portal.innerHTML = sourceMenu.innerHTML;
-                document.body.appendChild(portal);
-
-                // Calcular posición
-                positionPortal(portal, trigger);
-
-                // Forzar reflow y mostrar
-                requestAnimationFrame(() => portal.classList.add('open'));
-
-                activePortal = portal;
-                activeToggle = trigger;
-            }
-
-            function positionPortal(portal, trigger) {
-                const rect = trigger.getBoundingClientRect();
-                const menuH = 220; // estimado máximo de altura del menú
-                const spaceBelow = window.innerHeight - rect.bottom;
-                const spaceAbove = rect.top;
-                const isDropup = spaceBelow < menuH && spaceAbove > spaceBelow;
-
-                portal.style.minWidth = '190px';
-
-                if (isDropup) {
-                    portal.classList.add('dropup');
-                    portal.style.top = '';
-                    portal.style.bottom = (window.innerHeight - rect.top + 6) + 'px';
-                } else {
-                    portal.classList.remove('dropup');
-                    portal.style.bottom = '';
-                    portal.style.top = (rect.bottom + 6) + 'px';
-                }
-
-                // Alinear a la derecha del botón
-                let left = rect.right - 190;
-                if (left < 8) left = 8;
-                portal.style.left = left + 'px';
-                portal.style.right = 'auto';
-            }
-
-            function closeActivePortal() {
-                if (activePortal) {
-                    activePortal.classList.remove('open');
-                    const p = activePortal;
-                    setTimeout(() => { if (p.parentNode) p.parentNode.removeChild(p); }, 200);
-                    activePortal = null;
-                    activeToggle = null;
-                }
-            }
-
-            document.addEventListener('click', e => {
-                if (activePortal && !e.target.closest('.dropdown-menu-portal') && !e.target.closest('.dropdown-toggle')) {
-                    closeActivePortal();
-                }
-            });
-
-            // Reposicionar al hacer scroll o resize
-            window.addEventListener('scroll', () => {
-                if (activePortal && activeToggle) positionPortal(activePortal, activeToggle);
-            }, true);
-            window.addEventListener('resize', () => {
-                if (activePortal && activeToggle) positionPortal(activePortal, activeToggle);
-            });
-
-            // ── Modal pago ──
-            const PRECIO = parseFloat(document.getElementById('modalPago').dataset.precio);
-            const MESES_NOMBRES = ['', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
-            const PAGOS_REGISTRADOS = {{ periodos_pagados| tojson }};
-            let socioPagoActual = null;
-
-            document.addEventListener('click', e => {
-                const btn = e.target.closest('.btn-abrir-pago');
-                if (btn) abrirPago(btn.dataset.id, btn.dataset.nombre);
-            });
-            document.addEventListener('change', e => {
-                if (e.target.name === 'meses_sel' && !e.target.disabled) { toggleLbl(e.target.dataset.mes, e.target.checked); actualizarResumen(); }
-            });
-            function abrirPago(id, nombre) {
-                socioPagoActual = String(id);
-                document.getElementById('modalNombre').textContent = nombre;
-                document.getElementById('formPago').action = '/admin/registrar_pago/' + id;
-                document.querySelectorAll('input[name="meses_sel"]').forEach(c => { c.checked = false; toggleLbl(c.value, false); });
-                actualizarMesesBloqueados();
-                document.getElementById('modalPago').classList.add('show');
-            }
-            function cerrarPago() { document.getElementById('modalPago').classList.remove('show'); }
-            function toggleLbl(m, checked) {
-                const lbl = document.getElementById('lbl-' + m);
-                if (lbl) lbl.style.borderColor = checked ? '#FF6B00' : 'var(--border)';
-            }
-            function actualizarMesesBloqueados() {
-                const anio = document.getElementById('anioModal').value;
-                const pagados = new Set(PAGOS_REGISTRADOS[socioPagoActual] || []);
-                document.querySelectorAll('input[name="meses_sel"]').forEach(c => {
-                    const bloqueado = pagados.has(`${anio}-${parseInt(c.value)}`);
-                    c.disabled = bloqueado;
-                    if (bloqueado) c.checked = false;
-                    const lbl = document.getElementById('lbl-' + c.value);
-                    if (lbl) {
-                        lbl.style.opacity = bloqueado ? '0.45' : '1';
-                        lbl.style.cursor = bloqueado ? 'not-allowed' : 'pointer';
-                        lbl.title = bloqueado ? 'Este mes ya fue pagado' : '';
+            // ── Chart.js — Ingresos mensuales ──
+            const ctxIngresos = document.getElementById('chartIngresos');
+            if (ctxIngresos) {
+                const labelsIngresos = {{ ingresos_labels| tojson
+            }};
+            const dataIngresos = {{ ingresos_data| tojson }};
+            new Chart(ctxIngresos, {
+                type: 'bar',
+                data: {
+                    labels: labelsIngresos,
+                    datasets: [{
+                        label: 'Ingresos (Q)',
+                        data: dataIngresos,
+                        backgroundColor: 'rgba(255,107,0,0.55)',
+                        borderColor: '#FF6B00',
+                        borderWidth: 2,
+                        borderRadius: 8,
+                        hoverBackgroundColor: 'rgba(255,107,0,0.85)',
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: '#1e1e1e',
+                            borderColor: '#FF6B00',
+                            borderWidth: 1,
+                            titleColor: '#f0f0f0',
+                            bodyColor: '#FF6B00',
+                            callbacks: {
+                                label: ctx => 'Q' + Number(ctx.parsed.y).toLocaleString('en-US')
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            ticks: { color: '#666', font: { size: 11 } },
+                            grid: { display: false }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            ticks: { color: '#666', font: { size: 11 }, callback: v => 'Q' + Number(v).toLocaleString('en-US') },
+                            grid: { color: 'rgba(255,255,255,0.05)' }
+                        }
                     }
-                    toggleLbl(c.value, c.checked);
-                });
-                actualizarResumen();
-            }
-            function calcularMontoPago(meses) {
-                const cant_6 = Math.floor(meses / 6);
-                const resto_6 = meses % 6;
-                const cant_3 = Math.floor(resto_6 / 3);
-                const resto_3 = resto_6 % 3;
-                return (cant_6 * 1100) + (cant_3 * 600) + (resto_3 * 225);
-            }
-            function actualizarResumen() {
-                const checks = [...document.querySelectorAll('input[name="meses_sel"]:checked:not(:disabled)')];
-                const anio = document.getElementById('anioModal').value;
-                const resumen = document.getElementById('resumenPago');
-                if (!checks.length) { resumen.innerHTML = '<span style="color:var(--muted)">Selecciona al menos un mes</span>'; return; }
-                const nombres = checks.map(c => MESES_NOMBRES[parseInt(c.value)]).join(', ');
-                const total = calcularMontoPago(checks.length);
-                const totalStr = Number(total).toLocaleString('en-US');
-                resumen.innerHTML = `<span style="color:#f0f0f0;font-weight:600;">${nombres} ${anio}</span><br><span style="color:#FF6B00;font-weight:700;font-size:18px;">Q${totalStr}</span> <span style="color:var(--muted)">(${checks.length} mes${checks.length > 1 ? 'es' : ''})</span>`;
-            }
-            function submitPago() {
-                const checks = [...document.querySelectorAll('input[name="meses_sel"]:checked:not(:disabled)')];
-                if (!checks.length) { alert('Selecciona al menos un mes'); return; }
-                document.getElementById('anioHidden').value = document.getElementById('anioModal').value;
-                document.getElementById('mesesHidden').value = checks.map(c => c.value).join(',');
-                document.getElementById('formPago').submit();
-            }
-            document.addEventListener('keydown', e => { if (e.key === 'Escape') { cerrarPago(); cerrarResetPass(); } });
-
-            // ── Modal reset contraseña ──
-            function verificarReqReset(val) {
-                function setR(id, ok) {
-                    const el = document.getElementById(id);
-                    el.style.color = ok ? 'var(--green)' : 'var(--muted)';
-                    el.querySelector('span').textContent = ok ? '✓' : '○';
                 }
-                setR('rr-largo', val.length >= 8);
-                setR('rr-mayus', /[A-Z]/.test(val));
-                setR('rr-minus', /[a-z]/.test(val));
-                setR('rr-numero', /[0-9]/.test(val));
-                setR('rr-especial', /[^A-Za-z0-9]/.test(val));
-            }
-            function abrirResetPass(cui, nombre) {
-                closeActivePortal();
-                document.getElementById('resetNombre').textContent = nombre;
-                document.getElementById('formResetPass').action = '/admin/reset_pass/' + cui;
-                document.getElementById('resetPassInput').value = '';
-                document.getElementById('resetPassConfirm').value = '';
-                document.getElementById('resetPassError').style.display = 'none';
-                // Reset requirement indicators
-                ['rr-largo', 'rr-mayus', 'rr-minus', 'rr-numero', 'rr-especial'].forEach(id => {
-                    const el = document.getElementById(id);
-                    el.style.color = 'var(--muted)';
-                    el.querySelector('span').textContent = '○';
-                });
-                document.getElementById('modalResetPass').classList.add('show');
-                setTimeout(() => document.getElementById('resetPassInput').focus(), 120);
-            }
-            function cerrarResetPass() {
-                document.getElementById('modalResetPass').classList.remove('show');
-            }
-            function submitResetPass() {
-                const p1 = document.getElementById('resetPassInput').value.trim();
-                const p2 = document.getElementById('resetPassConfirm').value.trim();
-                const err = document.getElementById('resetPassError');
-                if (p1.length < 8) { err.textContent = 'La contraseña debe tener al menos 8 caracteres.'; err.style.display = 'block'; return; }
-                if (!/[A-Z]/.test(p1)) { err.textContent = 'Debe tener al menos una mayúscula.'; err.style.display = 'block'; return; }
-                if (!/[a-z]/.test(p1)) { err.textContent = 'Debe tener al menos una minúscula.'; err.style.display = 'block'; return; }
-                if (!/[0-9]/.test(p1)) { err.textContent = 'Debe tener al menos un número.'; err.style.display = 'block'; return; }
-                if (!/[^A-Za-z0-9]/.test(p1)) { err.textContent = 'Debe tener al menos un carácter especial.'; err.style.display = 'block'; return; }
-                if (p1 !== p2) { err.textContent = 'Las contraseñas no coinciden.'; err.style.display = 'block'; return; }
-                err.style.display = 'none';
-                document.getElementById('formResetPass').submit();
-            }
-            document.getElementById('modalResetPass').addEventListener('click', e => { if (e.target === e.currentTarget) cerrarResetPass(); });
-            document.getElementById('modalPago').addEventListener('click', e => { if (e.target === e.currentTarget) cerrarPago(); });
-
-
+            });
+}
         </script>
 </body>
 

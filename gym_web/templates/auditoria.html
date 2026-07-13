@@ -173,6 +173,10 @@
             <option value="perfil"      {% if tipo_filtro == 'perfil' %}selected{% endif %}>👤 Perfil</option>
             <option value="login"       {% if tipo_filtro == 'login' %}selected{% endif %}>🔐 Inicios sesión</option>
         </select>
+        <label style="display:flex; align-items:center; gap:6px; font-size:13px; color:var(--muted); cursor:pointer;">
+            <input type="checkbox" name="solo_importantes" value="1" {% if solo_importantes == '1' %}checked{% endif %} style="width:14px;height:14px;accent-color:var(--accent);">
+            Solo importantes
+        </label>
         <input type="date" name="fecha_inicio" value="{{ request.args.get('fecha_inicio', '') }}" title="Desde" style="max-width:160px;">
         <input type="date" name="fecha_fin"    value="{{ request.args.get('fecha_fin', '') }}"    title="Hasta" style="max-width:160px;">
         <button type="submit" class="btn btn-yellow">Filtrar</button>
@@ -201,6 +205,7 @@
                     <th>Realizado por</th>
                     <th>Detalle</th>
                     <th>Afectado</th>
+                    <th>Acciones</th>
                 </tr>
             </thead>
             <tbody>
@@ -238,12 +243,18 @@
                     <td>
                         <div class="detalle-sub">{{ registro.afectado_nombre or '—' }}</div>
                     </td>
+                    <td>
+                        <form action="/admin/auditoria/borrar_log/{{ registro.id }}" method="POST" style="margin:0;" onsubmit="return confirm('¿Eliminar este registro de auditoría?')">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="btn btn-ghost" style="padding: 6px 10px; min-height: 0; font-size: 14px;" title="Borrar log">🗑</button>
+                        </form>
+                    </td>
                 </tr>
                 {% endfor %}
 
                 {% if not auditoria %}
                 <tr>
-                    <td colspan="5" class="empty">
+                    <td colspan="6" class="empty">
                         {% if buscar or tipo_filtro %}
                             No se encontraron registros con ese filtro
                         {% else %}
