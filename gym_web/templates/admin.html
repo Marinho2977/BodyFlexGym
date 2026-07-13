@@ -1286,14 +1286,6 @@
                                                         class="di-icon">🔑</span>Cambiar contraseña</button>
                                                 <a href="/contrato/{{ u.cui }}" target="_blank" class="dropdown-item"><span
                                                         class="di-icon">📄</span>Generar contrato</a>
-                                                <div class="dropdown-sep"></div>
-                                                <form action="/admin/auditoria/borrar_usuario/{{ u.cui }}" method="POST"
-                                                    style="margin:0;"
-                                                    onsubmit="return confirm('¿Eliminar TODOS los logs de {{ u.nombre }}?')">
-                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                                    <button type="submit" class="dropdown-item red"><span
-                                                            class="di-icon">👤🗑</span>Borrar logs</button>
-                                                </form>
                                             </div>
                                         </div>
                                     </td>
