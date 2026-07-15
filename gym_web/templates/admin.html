@@ -1076,10 +1076,17 @@
                 <button class="sidebar-toggle" onclick="toggleSidebar()" title="Colapsar menú">☰</button>
             </div>
             <nav class="sidebar-nav">
-                <div class="sidebar-section-title">Principal</div>
+                <div class="sidebar-section-title">Usuarios</div>
                 <a href="/admin" class="sidebar-link active">
                     <span class="icon">👥</span><span class="sidebar-label">Socios</span>
                 </a>
+                
+                <div class="sidebar-section-title">Personal</div>
+                <a href="/admin/empleados" class="sidebar-link">
+                    <span class="icon">👔</span><span class="sidebar-label">Empleados</span>
+                </a>
+                
+                <div class="sidebar-section-title">Sistema</div>
                 <a href="/admin/auditoria" class="sidebar-link">
                     <span class="icon">📋</span><span class="sidebar-label">Auditoría</span>
                 </a>
@@ -1320,100 +1327,7 @@
                     </div>
                     {% endif %}
 
-                    <hr class="sep">
 
-                    <!-- ─── EMPLEADOS ─── -->
-                    <div class="section-hd">
-                        <div class="section-hd-title">Empleados <small>pueden registrar pagos</small></div>
-                    </div>
-                    <div class="tabla-wrap">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Empleado</th>
-                                    <th>Email</th>
-                                    <th>Estado</th>
-                                    <th>Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for e in empleados %}
-                                <tr>
-                                    <td>
-                                        <div class="socio-cell">
-                                            {% set ini = (e.nombre[0]|upper) if e.nombre else 'E' %}
-                                            <div class="avatar avatar-{{ ini }}">{{ ini }}</div>
-                                            <div>
-                                                <div class="socio-nombre">{{ e.nombre }} {{ e.apellido }}</div>
-                                                <span class="badge badge-emp-rol">Empleado</span>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td style="color:var(--muted);">
-                                        {{ e.email }}
-                                    </td>
-                                    <td>
-                                        {% if e.estado.lower() == "activo" %}
-                                        <span class="badge badge-activo">Activo</span>
-                                        {% else %}
-                                        <span class="badge badge-inactivo">Inactivo</span>
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        <div class="dropdown" id="dd-e{{ e.cui }}">
-                                            <button class="dropdown-toggle"
-                                                onclick="toggleDd('dd-e{{ e.cui }}', this)">⋮</button>
-                                            <div class="dropdown-menu">
-                                                {% if e.estado.lower() == "activo" %}
-                                                <form action="/admin/desactivar/{{ e.cui }}" method="POST"
-                                                    style="margin:0;"
-                                                    onsubmit="return confirm('¿Desactivar cuenta de {{ e.nombre }}?')">
-                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                                    <button type="submit" class="dropdown-item red"><span
-                                                            class="di-icon">🔴</span>Desactivar</button>
-                                                </form>
-                                                {% else %}
-                                                <form action="/admin/reactivar/{{ e.cui }}" method="POST"
-                                                    style="margin:0;">
-                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                                    <button type="submit" class="dropdown-item green"><span
-                                                            class="di-icon">🟢</span>Reactivar</button>
-                                                </form>
-                                                {% endif %}
-                                                <div class="dropdown-sep"></div>
-                                                <form action="/admin/quitar_empleado/{{ e.cui }}" method="POST"
-                                                    style="margin:0;"
-                                                    onsubmit="return confirm('¿Quitar rol empleado a {{ e.nombre }}?')">
-                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                                    <button type="submit" class="dropdown-item"><span
-                                                            class="di-icon">👤</span>→ Usuario</button>
-                                                </form>
-                                                <form action="/admin/hacer_admin/{{ e.cui }}" method="POST"
-                                                    style="margin:0;">
-                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                                    <button type="submit" class="dropdown-item blue"><span
-                                                            class="di-icon">⭐</span>→ Admin</button>
-                                                </form>
-                                                <div class="dropdown-sep"></div>
-                                                <button type="button" class="dropdown-item"
-                                                    onclick="abrirResetPass('{{ e.cui }}', '{{ e.nombre }} {{ e.apellido }}')"><span
-                                                        class="di-icon">🔑</span>Cambiar contraseña</button>
-                                                <a href="/contrato/{{ e.cui }}" target="_blank" class="dropdown-item"><span
-                                                        class="di-icon">📄</span>Generar contrato</a>
-                                            </div>
-                                        </div>
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                                {% if not empleados %}
-                                <tr>
-                                    <td colspan="4" class="empty">No hay empleados. Promueve un socio con el botón "→
-                                        Empleado" de la tabla de arriba.</td>
-                                </tr>
-                                {% endif %}
-                            </tbody>
-                        </table>
-                    </div>
 
                 </div><!-- /main -->
             </div><!-- /main-content -->
