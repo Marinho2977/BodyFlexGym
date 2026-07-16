@@ -467,6 +467,14 @@ def admin_panel():
                            total_socios=total_socios)
 
 
+@app.route("/admin/empleados")
+def admin_empleados():
+    if "usuario_id" not in session or session.get("rol") != "admin":
+        return redirect("/login")
+    return redirect("/admin#seccion-empleados")
+
+
+
 @app.route("/admin/hacer_admin/<int:cui>", methods=["POST"])
 def hacer_admin(cui):
     if "usuario_id" not in session or session.get("rol") != "admin":
