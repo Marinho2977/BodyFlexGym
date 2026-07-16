@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Panel Admin — Bodyflex Gym</title>
+    <title>Empleados — Bodyflex Gym</title>
     <link
         href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap"
         rel="stylesheet">
@@ -1117,7 +1117,7 @@
 
             <!-- Topbar -->
             <div class="topbar">
-                <div class="topbar-title">Panel Administrativo</div>
+                <div class="topbar-title">Personal / Empleados</div>
                 <div class="topbar-right">
                     <span class="topbar-name">{{ session.nombre }}</span>
                     <a href="/logout" class="btn-logout">Cerrar sesión</a>
@@ -1133,86 +1133,31 @@
                 {% endfor %}{% endif %}
                 {% endwith %}
 
-                <!-- ─── BENTO STATS ─── -->
-                <div class="bento-stats">
-                    <div class="bento-card orange">
-                        <div class="bento-label">Total socios</div>
-                        <div class="bento-value orange">{{ total_socios }}</div>
-                        <div class="bento-sub">registrados en el sistema</div>
-                    </div>
-                    <div class="bento-card green">
-                        <div class="bento-label">Al día</div>
-                        <div class="bento-value green">{{ usuarios | selectattr("ultimo_vencimiento") | list | length }}
-                        </div>
-                        <div class="bento-sub">membresía activa</div>
-                    </div>
-                    <div class="bento-card red">
-                        <div class="bento-label">Vencidos</div>
-                        <div class="bento-value red">
-                            {% set venc = [] %}{% for u in usuarios %}{% if u.ultimo_vencimiento and
-                            u.ultimo_vencimiento < fecha_hoy %}{% set _=venc.append(1) %}{% endif %}{% endfor %}{{ venc
-                                | length }} </div>
-                                <div class="bento-sub">requieren renovación</div>
-                        </div>
-                        <div class="bento-card blue">
-                            <div class="bento-label">Sin pagos</div>
-                            <div class="bento-value blue">{{ usuarios | rejectattr("ultimo_vencimiento") | list | length
-                                }}</div>
-                            <div class="bento-sub">sin historial de pago</div>
-                        </div>
-                    </div>
-
-
-
-                    <!-- ─── SOCIOS ─── -->
+                    <!-- ─── EMPLEADOS ─── -->
                     <div class="section-hd">
-                        <div class="section-hd-title">Socios <small>clientes del gimnasio</small></div>
+                        <div class="section-hd-title">Empleados <small>personal del gimnasio</small></div>
                     </div>
-
-                    <!-- Filter bar -->
-                    <div class="filter-bar">
-                        <form class="filter-search" method="GET" action="/admin">
-                            <input type="text" name="buscar" placeholder="🔍  Buscar por nombre…"
-                                value="{{ request.args.get('buscar','') }}">
-                            <button type="submit" class="btn btn-yellow btn-sm">Buscar</button>
-                        </form>
-                        <div class="filter-tabs">
-                            <a href="/admin"
-                                class="filter-tab {% if not request.args.get('filtro') and not request.args.get('buscar') %}active{% endif %}">Todos</a>
-                            <a href="/admin?filtro=activos"
-                                class="filter-tab {% if request.args.get('filtro')=='activos' %}active{% endif %}">✓ Al
-                                día</a>
-                            <a href="/admin?filtro=vencidos"
-                                class="filter-tab {% if request.args.get('filtro')=='vencidos' %}active{% endif %}">✗
-                                Vencidos</a>
-                        </div>
-                    </div>
-
-                    <!-- Tabla socios -->
                     <div class="tabla-wrap">
                         <table>
                             <thead>
                                 <tr>
-                                    <th>Socio</th>
-                                    <th>Datos físicos</th>
-                                    <th>Estado pago</th>
-                                    <th>Registrar pago (Q{{ "{:,.0f}".format(precio_mensual|float) }}/mes)</th>
+                                    <th>Empleado</th>
+                                    <th>Documento</th>
                                     <th>Acciones</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {% for u in usuarios %}
+                                {% for e in empleados %}
                                 <tr>
                                     <td>
                                         <div class="socio-cell">
-                                            <!-- Avatar con inicial -->
-                                            {% set ini = (u.nombre[0]|upper) if u.nombre else 'U' %}
+                                            {% set ini = (e.nombre[0]|upper) if e.nombre else 'E' %}
                                             <div class="avatar avatar-{{ ini }}">{{ ini }}</div>
                                             <div>
-                                                <div class="socio-nombre">{{ u.nombre }} {{ u.apellido }}</div>
-                                                <div class="socio-email">{{ u.email }}</div>
+                                                <div class="socio-nombre">{{ e.nombre }} {{ e.apellido }}</div>
+                                                <div class="socio-email">{{ e.email }}</div>
                                                 <div class="socio-badge">
-                                                    {% if u.estado.lower() == "activo" %}
+                                                    {% if e.estado.lower() == "activo" %}
                                                     <span class="badge badge-activo">Activo</span>
                                                     {% else %}
                                                     <span class="badge badge-inactivo">Inactivo</span>
@@ -1222,50 +1167,25 @@
                                         </div>
                                     </td>
                                     <td>
-                                        {% if u.edad %}
-                                        <span style="font-weight:500;">{{ u.edad }} años</span><br>
-                                        <span style="color:var(--muted);font-size:12px;">{{ u.peso }} lb · {{ u.altura
-                                            }} m</span><br>
-                                        <span style="color:var(--muted);font-size:11px;">{{ u.objetivo }}</span>
-                                        {% else %}
-                                        <span style="color:var(--muted);">Sin perfil</span>
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        {% if u.ultimo_vencimiento %}
-                                        {% set dias = (u.ultimo_vencimiento - fecha_hoy).days %}
-                                        {% if dias >= 0 %}
-                                        <span class="badge badge-aldía">Al día · {{ dias }}d</span>
-                                        {% else %}
-                                        <span class="badge badge-vencido">Vencido {{ dias * -1 }}d</span>
-                                        {% endif %}
-                                        {% else %}
-                                        <span class="badge badge-sinpago">Sin pagos</span>
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        <button class="btn-pago-inline btn-abrir-pago" data-id="{{ u.cui }}"
-                                            data-nombre="{{ u.nombre }} {{ u.apellido }}">+ Registrar pago</button>
-                                        <br>
-                                        <a href="/admin/pagos/{{ u.cui }}" class="btn btn-ghost btn-sm"
-                                            style="margin-top:6px;">Ver historial</a>
+                                        <span style="font-weight:500;">{{ e.tipo_doc }}</span><br>
+                                        <span style="color:var(--muted);font-size:12px;">{{ e.cui }}</span>
                                     </td>
                                     <td>
                                         <!-- Dropdown acciones -->
-                                        <div class="dropdown" id="dd-{{ u.cui }}">
+                                        <div class="dropdown" id="dd-e-{{ e.cui }}">
                                             <button class="dropdown-toggle"
-                                                onclick="toggleDd('dd-{{ u.cui }}', this)">⋮</button>
+                                                onclick="toggleDd('dd-e-{{ e.cui }}', this)">⋮</button>
                                             <div class="dropdown-menu">
-                                                {% if u.estado.lower() == "activo" %}
-                                                <form action="/admin/desactivar/{{ u.cui }}" method="POST"
+                                                {% if e.estado.lower() == "activo" %}
+                                                <form action="/admin/desactivar/{{ e.cui }}" method="POST"
                                                     style="margin:0;"
-                                                    onsubmit="return confirm('¿Desactivar a {{ u.nombre }}?')">
+                                                    onsubmit="return confirm('¿Desactivar a {{ e.nombre }}?')">
                                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                                     <button type="submit" class="dropdown-item red"><span
                                                             class="di-icon">🔴</span>Desactivar</button>
                                                 </form>
                                                 {% else %}
-                                                <form action="/admin/reactivar/{{ u.cui }}" method="POST"
+                                                <form action="/admin/reactivar/{{ e.cui }}" method="POST"
                                                     style="margin:0;">
                                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                                     <button type="submit" class="dropdown-item green"><span
@@ -1273,28 +1193,20 @@
                                                 </form>
                                                 {% endif %}
                                                 <div class="dropdown-sep"></div>
-                                                <form action="/admin/hacer_empleado/{{ u.cui }}" method="POST"
+                                                <button type="button" class="dropdown-item"
+                                                    onclick="abrirResetPass('{{ e.cui }}', '{{ e.nombre }} {{ e.apellido }}')"><span
+                                                        class="di-icon">🔑</span>Cambiar contraseña</button>
+                                                <div class="dropdown-sep"></div>
+                                                <form action="/admin/quitar_empleado/{{ e.cui }}" method="POST"
                                                     style="margin:0;">
                                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                                     <button type="submit" class="dropdown-item"><span
-                                                            class="di-icon">👔</span>→ Empleado</button>
-                                                </form>
-                                                <form action="/admin/hacer_admin/{{ u.cui }}" method="POST"
-                                                    style="margin:0;">
-                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                                    <button type="submit" class="dropdown-item blue"><span
-                                                            class="di-icon">⭐</span>→ Admin</button>
+                                                            class="di-icon">👤</span>Quitar rol empleado</button>
                                                 </form>
                                                 <div class="dropdown-sep"></div>
-                                                <button type="button" class="dropdown-item"
-                                                    onclick="abrirResetPass('{{ u.cui }}', '{{ u.nombre }} {{ u.apellido }}')"><span
-                                                        class="di-icon">🔑</span>Cambiar contraseña</button>
-                                                <a href="/contrato/{{ u.cui }}" target="_blank" class="dropdown-item"><span
-                                                        class="di-icon">📄</span>Generar contrato</a>
-                                                <div class="dropdown-sep"></div>
-                                                <form action="/admin/eliminar_usuario/{{ u.cui }}" method="POST"
+                                                <form action="/admin/eliminar_usuario/{{ e.cui }}" method="POST"
                                                     style="margin:0;"
-                                                    onsubmit="return confirm('¿Eliminar a {{ u.nombre }} de forma permanente? Esta acción no se puede deshacer.')">
+                                                    onsubmit="return confirm('¿Eliminar a {{ e.nombre }} de forma permanente? Esta acción no se puede deshacer.')">
                                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                                     <button type="submit" class="dropdown-item red"><span
                                                             class="di-icon">🗑️</span>Eliminar</button>
@@ -1304,36 +1216,14 @@
                                     </td>
                                 </tr>
                                 {% endfor %}
-                                {% if not usuarios %}
+                                {% if not empleados %}
                                 <tr>
-                                    <td colspan="5" class="empty">No hay socios registrados</td>
+                                    <td colspan="3" class="empty">No hay empleados registrados</td>
                                 </tr>
                                 {% endif %}
                             </tbody>
                         </table>
                     </div>
-
-                    <!-- ─── PAGINACIÓN ─── -->
-                    {% if total_paginas > 1 %}
-                    <div class="pagination">
-                        <a href="/admin?pagina={{ pagina - 1 }}{% if request.args.get('buscar') %}&buscar={{ request.args.get('buscar') }}{% endif %}{% if request.args.get('filtro') %}&filtro={{ request.args.get('filtro') }}{% endif %}"
-                            class="page-btn {% if pagina <= 1 %}disabled{% endif %}">← Anterior</a>
-                        {% for p in range(1, total_paginas + 1) %}
-                        {% if p == pagina %}
-                        <span class="page-btn active">{{ p }}</span>
-                        {% elif p <= 3 or p> total_paginas - 2 or (p >= pagina - 1 and p <= pagina + 1) %} <a
-                                href="/admin?pagina={{ p }}{% if request.args.get('buscar') %}&buscar={{ request.args.get('buscar') }}{% endif %}{% if request.args.get('filtro') %}&filtro={{ request.args.get('filtro') }}{% endif %}"
-                                class="page-btn">{{ p }}</a>
-                                {% elif p == 4 or p == total_paginas - 2 %}
-                                <span class="page-info">…</span>
-                                {% endif %}
-                                {% endfor %}
-                                <a href="/admin?pagina={{ pagina + 1 }}{% if request.args.get('buscar') %}&buscar={{ request.args.get('buscar') }}{% endif %}{% if request.args.get('filtro') %}&filtro={{ request.args.get('filtro') }}{% endif %}"
-                                    class="page-btn {% if pagina >= total_paginas %}disabled{% endif %}">Siguiente →</a>
-                                <span class="page-info">Página {{ pagina }} de {{ total_paginas }} · {{ total_socios }}
-                                    socios</span>
-                    </div>
-                    {% endif %}
 
 
                 </div><!-- /main -->
