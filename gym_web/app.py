@@ -472,11 +472,11 @@ def admin_empleados():
     if "usuario_id" not in session or session.get("rol") != "admin":
         return redirect("/login")
     conn = conectar_db()
-    cursor = conn.cursor()
+    cursor = conn.cursor(dictionary=True)
     cursor.execute("SELECT cui, tipo_doc, nombre, apellido, email, estado FROM usuarios WHERE rol='empleado'")
     empleados = cursor.fetchall()
     conn.close()
-    return render_template("empleados_admin.html", empleados=empleados)
+    return render_template("empleados_admin.html", empleados=empleados, total_empleados=len(empleados))
 
 
 

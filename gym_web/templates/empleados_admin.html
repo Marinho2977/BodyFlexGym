@@ -1415,9 +1415,9 @@
             });
 
             // ── Modal pago ──
-            const PRECIO = parseFloat(document.getElementById('modalPago').dataset.precio);
+            const PRECIO = 0;
             const MESES_NOMBRES = ['', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
-            const PAGOS_REGISTRADOS = {{ periodos_pagados| tojson }};
+            const PAGOS_REGISTRADOS = {};
             let socioPagoActual = null;
 
             document.addEventListener('click', e => {
