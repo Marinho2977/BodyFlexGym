@@ -737,6 +737,55 @@ def reactivar_usuario(cui):
     return redirect("/admin")
 
 
+@app.route("/admin/eliminar_usuario/<int:cui>", methods=["POST"])
+def eliminar_usuario(cui):
+    if "usuario_id" not in session or session.get("rol") != "admin":
+        return redirect("/login")
+    
+    if cui == session["usuario_id"]:
+        flash("No puedes eliminarte a ti mismo", "error")
+        return redirect(request.referrer or "/admin")
+        
+    conn = conectar_db()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("SELECT nombre, apellido, rol FROM usuarios WHERE cui=%s", (cui,))
+        u = cursor.fetchone()
+        if not u:
+            flash("Usuario no encontrado", "error")
+            return redirect(request.referrer or "/admin")
+            
+        nombre_completo = f"{u[0]} {u[1]}"
+        rol = u[2]
+        
+        # Eliminar dependencias
+        cursor.execute("DELETE FROM pagos WHERE cui_usuario=%s", (cui,))
+        cursor.execute("DELETE FROM recuperar_contra WHERE cui_usuario=%s", (cui,))
+        
+        try:
+            cursor.execute("DELETE FROM asistencia WHERE cui_usuario=%s", (cui,))
+        except:
+            pass
+        try:
+            cursor.execute("DELETE FROM metas WHERE cui_usuario=%s", (cui,))
+        except:
+            pass
+            
+        cursor.execute("DELETE FROM usuarios WHERE cui=%s", (cui,))
+        
+        registrar_log("eliminacion", f"Eliminó cuenta de {rol}", afectado_id=cui, afectado_nombre=nombre_completo)
+        
+        conn.commit()
+        flash(f"{'Empleado' if rol == 'empleado' else 'Socio'} eliminado exitosamente", "success")
+    except Exception as e:
+        conn.rollback()
+        flash(f"Error al eliminar: {str(e)}", "error")
+    finally:
+        conn.close()
+        
+    return redirect(request.referrer or "/admin")
+
+
 @app.route("/admin/registrar_pago/<int:cui>", methods=["POST"])
 def registrar_pago(cui):
     if "usuario_id" not in session or session.get("rol") not in ("admin", "empleado"):

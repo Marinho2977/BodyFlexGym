@@ -1291,6 +1291,14 @@
                                                         class="di-icon">🔑</span>Cambiar contraseña</button>
                                                 <a href="/contrato/{{ u.cui }}" target="_blank" class="dropdown-item"><span
                                                         class="di-icon">📄</span>Generar contrato</a>
+                                                <div class="dropdown-sep"></div>
+                                                <form action="/admin/eliminar_usuario/{{ u.cui }}" method="POST"
+                                                    style="margin:0;"
+                                                    onsubmit="return confirm('¿Eliminar a {{ u.nombre }} de forma permanente? Esta acción no se puede deshacer.')">
+                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                    <button type="submit" class="dropdown-item red"><span
+                                                            class="di-icon">🗑️</span>Eliminar</button>
+                                                </form>
                                             </div>
                                         </div>
                                     </td>
@@ -1327,6 +1335,94 @@
                     </div>
                     {% endif %}
 
+                    <!-- ─── EMPLEADOS ─── -->
+                    <hr class="sep">
+                    <div class="section-hd">
+                        <div class="section-hd-title" id="seccion-empleados">Empleados <small>personal del gimnasio</small></div>
+                    </div>
+                    <div class="tabla-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Empleado</th>
+                                    <th>Documento</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for e in empleados %}
+                                <tr>
+                                    <td>
+                                        <div class="socio-cell">
+                                            {% set ini = (e.nombre[0]|upper) if e.nombre else 'E' %}
+                                            <div class="avatar avatar-{{ ini }}">{{ ini }}</div>
+                                            <div>
+                                                <div class="socio-nombre">{{ e.nombre }} {{ e.apellido }}</div>
+                                                <div class="socio-email">{{ e.email }}</div>
+                                                <div class="socio-badge">
+                                                    {% if e.estado.lower() == "activo" %}
+                                                    <span class="badge badge-activo">Activo</span>
+                                                    {% else %}
+                                                    <span class="badge badge-inactivo">Inactivo</span>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span style="font-weight:500;">{{ e.tipo_doc }}</span><br>
+                                        <span style="color:var(--muted);font-size:12px;">{{ e.cui }}</span>
+                                    </td>
+                                    <td>
+                                        <!-- Dropdown acciones -->
+                                        <div class="dropdown" id="dd-e-{{ e.cui }}">
+                                            <button class="dropdown-toggle"
+                                                onclick="toggleDd('dd-e-{{ e.cui }}', this)">⋮</button>
+                                            <div class="dropdown-menu">
+                                                {% if e.estado.lower() == "activo" %}
+                                                <form action="/admin/desactivar/{{ e.cui }}" method="POST"
+                                                    style="margin:0;"
+                                                    onsubmit="return confirm('¿Desactivar a {{ e.nombre }}?')">
+                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                    <button type="submit" class="dropdown-item red"><span
+                                                            class="di-icon">🔴</span>Desactivar</button>
+                                                </form>
+                                                {% else %}
+                                                <form action="/admin/reactivar/{{ e.cui }}" method="POST"
+                                                    style="margin:0;">
+                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                    <button type="submit" class="dropdown-item green"><span
+                                                            class="di-icon">🟢</span>Reactivar</button>
+                                                </form>
+                                                {% endif %}
+                                                <div class="dropdown-sep"></div>
+                                                <form action="/admin/quitar_empleado/{{ e.cui }}" method="POST"
+                                                    style="margin:0;">
+                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                    <button type="submit" class="dropdown-item"><span
+                                                            class="di-icon">👤</span>Quitar rol empleado</button>
+                                                </form>
+                                                <div class="dropdown-sep"></div>
+                                                <form action="/admin/eliminar_usuario/{{ e.cui }}" method="POST"
+                                                    style="margin:0;"
+                                                    onsubmit="return confirm('¿Eliminar a {{ e.nombre }} de forma permanente? Esta acción no se puede deshacer.')">
+                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                    <button type="submit" class="dropdown-item red"><span
+                                                            class="di-icon">🗑️</span>Eliminar</button>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                                {% if not empleados %}
+                                <tr>
+                                    <td colspan="3" class="empty">No hay empleados registrados</td>
+                                </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
 
 
                 </div><!-- /main -->
