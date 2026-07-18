@@ -133,6 +133,19 @@
                 </div>
             </div>
 
+            <!-- TELEFONO -->
+            <div class="field">
+                <label>Número de teléfono</label>
+                <input type="tel" name="telefono" id="telefono"
+                       placeholder="55554444"
+                       maxlength="8" minlength="8"
+                       pattern="\d{8}"
+                       title="8 dígitos exactos de Guatemala sin espacios"
+                       required
+                       oninput="this.value=this.value.replace(/\D/g,'')">
+                <div class="hint">Exactamente 8 dígitos (ej. 55554444)</div>
+            </div>
+
             <!-- EMAIL OPCIONAL -->
             <div class="field">
                 <div class="label-opcional">

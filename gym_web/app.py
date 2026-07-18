@@ -168,6 +168,18 @@ def formatear_periodos(periodos):
     return ", ".join(f"{MESES_NOMBRES[mes - 1]} {anio}" for anio, mes in ordenados)
 
 
+def cargos_pendientes_por_usuario(cursor, cuis):
+    resultado = {cui: [] for cui in cuis}
+    if not cuis:
+        return resultado
+    
+    placeholders = ",".join(["%s"] * len(cuis))
+    cursor.execute(f"SELECT id_cargo, cui_usuario, descripcion, monto, fecha_emision FROM cargos WHERE estado='pendiente' AND cui_usuario IN ({placeholders}) ORDER BY fecha_emision ASC", tuple(cuis))
+    for r in cursor.fetchall():
+        resultado[r['cui_usuario']].append(r)
+    return resultado
+
+
 def periodos_pagados_por_usuario(cursor, cuis):
     if not cuis:
         return {}
@@ -288,12 +300,13 @@ def registrar():
     password   = request.form.get("password",   "").strip()
     numero_doc = request.form.get("numero_doc", "").strip()
     tipo_doc   = request.form.get("tipo_doc",   "CUI").strip()
+    telefono   = request.form.get("telefono",   "").strip()
 
     # El correo es OPCIONAL — si viene vacío se guarda como NULL
     email = email_raw if email_raw else None
 
-    if not nombre or not apellido or not password or not numero_doc:
-        flash("Nombre, apellido, documento y contraseña son obligatorios", "error")
+    if not nombre or not apellido or not password or not numero_doc or not telefono:
+        flash("Nombre, apellido, documento, teléfono y contraseña son obligatorios", "error")
         return redirect("/registro")
 
     # Validar email solo si lo proporcionaron
@@ -303,6 +316,10 @@ def registrar():
 
     if not numero_doc.isdigit() or len(numero_doc) != 13:
         flash("El CUI/DPI debe tener exactamente 13 dígitos", "error")
+        return redirect("/registro")
+
+    if not telefono.isdigit() or len(telefono) != 8:
+        flash("El número de teléfono debe tener exactamente 8 dígitos", "error")
         return redirect("/registro")
 
     if tipo_doc not in ("CUI", "DPI"):
@@ -333,9 +350,9 @@ def registrar():
 
     password_hash = generate_password_hash(password)
     cursor.execute("""
-        INSERT INTO usuarios (cui, tipo_doc, nombre, apellido, email, password, estado)
-        VALUES (%s, %s, %s, %s, %s, %s, 'activo')
-    """, (int(numero_doc), tipo_doc, nombre, apellido, email, password_hash))
+        INSERT INTO usuarios (cui, tipo_doc, nombre, apellido, email, password, estado, telefono)
+        VALUES (%s, %s, %s, %s, %s, %s, 'activo', %s)
+    """, (int(numero_doc), tipo_doc, nombre, apellido, email, password_hash, telefono))
     conn.commit()
     conn.close()
 
@@ -362,13 +379,17 @@ def iniciar():
     # Detectar si ingresaron CUI (13 dígitos numéricos) o correo
     if identificador.isdigit() and len(identificador) == 13:
         cursor.execute("""
-            SELECT cui, nombre, apellido, email, password, estado, rol, edad
-            FROM usuarios WHERE cui = %s
+            SELECT u.cui, u.nombre, u.apellido, u.email, u.password, u.estado, r.descripcion AS rol, u.edad
+            FROM usuarios u
+            JOIN roles r ON u.id_rol = r.id_rol
+            WHERE u.cui = %s
         """, (int(identificador),))
     else:
         cursor.execute("""
-            SELECT cui, nombre, apellido, email, password, estado, rol, edad
-            FROM usuarios WHERE email = %s
+            SELECT u.cui, u.nombre, u.apellido, u.email, u.password, u.estado, r.descripcion AS rol, u.edad
+            FROM usuarios u
+            JOIN roles r ON u.id_rol = r.id_rol
+            WHERE u.email = %s
         """, (identificador,))
 
     usuario = cursor.fetchone()
@@ -424,11 +445,12 @@ def admin_panel():
     query = """
         SELECT
             u.cui, u.tipo_doc, u.nombre, u.apellido, u.email,
-            u.estado, u.rol,
-            u.edad, u.peso, u.altura, u.objetivo,
+            u.estado, r.descripcion AS rol,
+            u.edad, u.peso, u.altura, u.objetivo, u.telefono,
             (SELECT MAX(fecha_vencimiento) FROM pagos WHERE pagos.cui_usuario = u.cui) AS ultimo_vencimiento
         FROM usuarios u
-        WHERE u.rol NOT IN ('admin', 'empleado')
+        JOIN roles r ON u.id_rol = r.id_rol
+        WHERE u.id_rol = '03'
     """
     params = []
 
@@ -439,10 +461,11 @@ def admin_panel():
     cursor.execute(query, params)
     usuarios_all = cursor.fetchall()
 
-    cursor.execute("SELECT cui, tipo_doc, nombre, apellido, email, estado FROM usuarios WHERE rol='empleado'")
+    cursor.execute("SELECT cui, tipo_doc, nombre, apellido, email, estado FROM usuarios WHERE id_rol='02'")
     empleados = cursor.fetchall()
 
     periodos_pagados = periodos_pagados_por_usuario(cursor, [u["cui"] for u in usuarios_all])
+    cargos_pendientes = cargos_pendientes_por_usuario(cursor, [u["cui"] for u in usuarios_all])
 
     conn.close()
 
@@ -463,6 +486,7 @@ def admin_panel():
     return render_template("admin.html", usuarios=usuarios, empleados=empleados,
                            fecha_hoy=fecha_hoy, precio_mensual=PRECIO_MENSUAL,
                            periodos_pagados=periodos_pagados,
+                           cargos_pendientes=cargos_pendientes,
                            pagina=pagina, total_paginas=total_paginas,
                            total_socios=total_socios)
 
@@ -473,7 +497,7 @@ def admin_empleados():
         return redirect("/login")
     conn = conectar_db()
     cursor = conn.cursor(dictionary=True)
-    cursor.execute("SELECT cui, tipo_doc, nombre, apellido, email, estado FROM usuarios WHERE rol='empleado'")
+    cursor.execute("SELECT cui, tipo_doc, nombre, apellido, email, estado FROM usuarios WHERE id_rol='02'")
     empleados = cursor.fetchall()
     conn.close()
     return render_template("empleados_admin.html", empleados=empleados, total_empleados=len(empleados))
@@ -487,7 +511,7 @@ def hacer_admin(cui):
     conn = conectar_db(); cursor = conn.cursor()
     cursor.execute("SELECT nombre, apellido FROM usuarios WHERE cui=%s", (cui,))
     u = cursor.fetchone()
-    cursor.execute("UPDATE usuarios SET rol='admin' WHERE cui=%s", (cui,))
+    cursor.execute("UPDATE usuarios SET id_rol='01' WHERE cui=%s", (cui,))
     conn.commit(); conn.close()
     registrar_log("rol", "Promovió a Admin", afectado_id=cui,
                   afectado_nombre=f"{u[0]} {u[1]}" if u else None)
@@ -505,7 +529,7 @@ def quitar_admin(cui):
     conn = conectar_db(); cursor = conn.cursor()
     cursor.execute("SELECT nombre, apellido FROM usuarios WHERE cui=%s", (cui,))
     u = cursor.fetchone()
-    cursor.execute("UPDATE usuarios SET rol='user' WHERE cui=%s", (cui,))
+    cursor.execute("UPDATE usuarios SET id_rol='03' WHERE cui=%s", (cui,))
     conn.commit(); conn.close()
     registrar_log("rol", "Quitó rol Admin → Usuario", afectado_id=cui,
                   afectado_nombre=f"{u[0]} {u[1]}" if u else None)
@@ -520,7 +544,7 @@ def hacer_empleado(cui):
     conn = conectar_db(); cursor = conn.cursor()
     cursor.execute("SELECT nombre, apellido FROM usuarios WHERE cui=%s", (cui,))
     u = cursor.fetchone()
-    cursor.execute("UPDATE usuarios SET rol='empleado' WHERE cui=%s", (cui,))
+    cursor.execute("UPDATE usuarios SET id_rol='02' WHERE cui=%s", (cui,))
     conn.commit(); conn.close()
     registrar_log("rol", "Asignó como Empleado", afectado_id=cui,
                   afectado_nombre=f"{u[0]} {u[1]}" if u else None)
@@ -535,7 +559,7 @@ def quitar_empleado(cui):
     conn = conectar_db(); cursor = conn.cursor()
     cursor.execute("SELECT nombre, apellido FROM usuarios WHERE cui=%s", (cui,))
     u = cursor.fetchone()
-    cursor.execute("UPDATE usuarios SET rol='user' WHERE cui=%s", (cui,))
+    cursor.execute("UPDATE usuarios SET id_rol='03' WHERE cui=%s", (cui,))
     conn.commit(); conn.close()
     registrar_log("rol", "Quitó rol Empleado → Usuario", afectado_id=cui,
                   afectado_nombre=f"{u[0]} {u[1]}" if u else None)
@@ -884,6 +908,82 @@ def registrar_pago(cui):
 
 
 # ─────────────────────────────────────────────
+# CARGOS MANUALES
+# ─────────────────────────────────────────────
+
+@app.route("/crear_cargo/<int:cui>", methods=["POST"])
+def crear_cargo(cui):
+    if "usuario_id" not in session or session.get("rol") not in ("admin", "empleado"):
+        return redirect("/login")
+        
+    descripcion = request.form.get("descripcion", "").strip()
+    monto = request.form.get("monto", "").strip()
+    origen = request.form.get("origen", "/admin").strip()
+    
+    if not descripcion or not monto:
+        flash("Descripción y monto son obligatorios para el cargo", "error")
+        return redirect(origen)
+        
+    conn = conectar_db()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("SELECT nombre, apellido FROM usuarios WHERE cui=%s", (cui,))
+    socio = cursor.fetchone()
+    
+    hoy = date.today()
+    cursor.execute("INSERT INTO cargos (cui_usuario, descripcion, monto, fecha_emision, estado) VALUES (%s, %s, %s, %s, 'pendiente')",
+                   (cui, descripcion, monto, hoy))
+    conn.commit()
+    conn.close()
+    
+    nombre_socio = f"{socio['nombre']} {socio['apellido']}" if socio else "—"
+    registrar_log("cargo", f"Creó cargo manual: '{descripcion}' (Q{monto})", afectado_id=cui, afectado_nombre=nombre_socio)
+    
+    flash(f"Cargo '{descripcion}' creado exitosamente", "success")
+    return redirect(origen)
+
+
+@app.route("/pagar_cargo/<int:id_cargo>", methods=["POST"])
+def pagar_cargo(id_cargo):
+    if "usuario_id" not in session or session.get("rol") not in ("admin", "empleado"):
+        return redirect("/login")
+        
+    origen = request.form.get("origen", "/admin").strip()
+    conn = conectar_db()
+    cursor = conn.cursor(dictionary=True)
+    
+    cursor.execute("SELECT c.cui_usuario, c.monto, c.descripcion, c.estado, u.nombre, u.apellido FROM cargos c JOIN usuarios u ON c.cui_usuario = u.cui WHERE c.id_cargo=%s", (id_cargo,))
+    cargo = cursor.fetchone()
+    
+    if not cargo or cargo['estado'] == 'pagado':
+        conn.close()
+        flash("Cargo inválido o ya pagado", "error")
+        return redirect(origen)
+        
+    hoy = date.today()
+    
+    # Obtener el último fecha_vencimiento para no alterarlo
+    cursor.execute("SELECT MAX(fecha_vencimiento) as max_venc FROM pagos WHERE cui_usuario=%s", (cargo['cui_usuario'],))
+    res_venc = cursor.fetchone()
+    vencimiento_actual = res_venc['max_venc'] if res_venc and res_venc['max_venc'] else hoy
+    
+    # 1. Actualizar estado del cargo
+    cursor.execute("UPDATE cargos SET estado='pagado' WHERE id_cargo=%s", (id_cargo,))
+    
+    # 2. Insertar pago con el id_cargo
+    # Ponemos la misma fecha de vencimiento actual para no avanzar su membresía
+    cursor.execute("""
+        INSERT INTO pagos (cui_usuario, fecha_pago, fecha_vencimiento, monto, mes_pagado, id_cargo) 
+        VALUES (%s, %s, %s, %s, %s, %s)
+    """, (cargo['cui_usuario'], hoy, vencimiento_actual, cargo['monto'], f"Cargo: {cargo['descripcion']}", id_cargo))
+    
+    conn.commit()
+    conn.close()
+    
+    nombre_socio = f"{cargo['nombre']} {cargo['apellido']}"
+    registrar_log("pago", f"Pagó cargo manual '{cargo['descripcion']}' (Q{cargo['monto']})", afectado_id=cargo['cui_usuario'], afectado_nombre=nombre_socio)
+    
+    flash(f"El cargo '{cargo['descripcion']}' ha sido pagado", "success")
+    return redirect(origen)# ─────────────────────────────────────────────
 # AUDITORÍA
 # ─────────────────────────────────────────────
 
@@ -1274,7 +1374,7 @@ def limpiar_auditoria():
 
     conn = conectar_db()
     cursor = conn.cursor()
-    cursor.execute("DELETE FROM auditoria WHERE actor_rol = 'user'")
+    cursor.execute("DELETE FROM auditoria WHERE actor_rol IN ('user', 'socio')")
     conn.commit()
     conn.close()
 
@@ -1571,10 +1671,11 @@ def empleado_panel():
 
     query = """
         SELECT u.cui, u.tipo_doc, u.nombre, u.apellido, u.estado,
-               u.edad, u.peso, u.altura, u.objetivo,
+               u.edad, u.peso, u.altura, u.objetivo, u.telefono,
                (SELECT MAX(fecha_vencimiento) FROM pagos WHERE cui_usuario = u.cui) AS ultimo_vencimiento
         FROM usuarios u
-        WHERE u.rol = 'user'
+        JOIN roles r ON u.id_rol = r.id_rol
+        WHERE u.id_rol = '03'
     """
     params = []
     if buscar:
@@ -1584,12 +1685,14 @@ def empleado_panel():
     query += " ORDER BY u.nombre"
     cursor.execute(query, params)
     usuarios = cursor.fetchall()
-    periodos_pagados = periodos_pagados_por_usuario(cursor, [u["cui"] for u in usuarios])
+    cui_list = [u["cui"] for u in usuarios]
+    periodos_pagados = periodos_pagados_por_usuario(cursor, cui_list)
+    cargos_pendientes = cargos_pendientes_por_usuario(cursor, cui_list)
     conn.close()
 
     return render_template("empleado.html", usuarios=usuarios, fecha_hoy=date.today(),
                            precio_mensual=PRECIO_MENSUAL, buscar=buscar,
-                           periodos_pagados=periodos_pagados)
+                           periodos_pagados=periodos_pagados, cargos_pendientes=cargos_pendientes)
 
 
 # ─────────────────────────────────────────────
@@ -1605,7 +1708,7 @@ def panel():
 
     cursor.execute("""
         SELECT nombre, apellido, email,
-               edad, peso, altura, objetivo, fecha_registro
+               edad, peso, altura, objetivo, fecha_registro, telefono
         FROM usuarios
         WHERE cui=%s
     """, (session["usuario_id"],))
@@ -1716,13 +1819,20 @@ def guardar_perfil():
 def actualizar_info():
     if "usuario_id" not in session:
         return redirect("/login")
-    nombre = request.form.get("nombre"); apellido = request.form.get("apellido")
-    email  = request.form.get("email") or None   # Vacío → NULL
-    peso   = request.form.get("peso")
+    nombre   = request.form.get("nombre")
+    apellido = request.form.get("apellido")
+    email    = request.form.get("email") or None   # Vacío → NULL
+    peso     = request.form.get("peso")
+    telefono = request.form.get("telefono", "").strip()
+
+    if not telefono or not telefono.isdigit() or len(telefono) != 8:
+        flash("El número de teléfono debe tener exactamente 8 dígitos", "error")
+        return redirect("/panel")
+
     conn = conectar_db(); cursor = conn.cursor()
     if nombre and apellido:
-        cursor.execute("UPDATE usuarios SET nombre=%s, apellido=%s, email=%s WHERE cui=%s",
-                       (nombre, apellido, email, session["usuario_id"]))
+        cursor.execute("UPDATE usuarios SET nombre=%s, apellido=%s, email=%s, telefono=%s WHERE cui=%s",
+                       (nombre, apellido, email, telefono, session["usuario_id"]))
     if peso:
         cursor.execute("UPDATE usuarios SET peso=%s WHERE cui=%s", (peso, session["usuario_id"]))
     conn.commit(); conn.close()
@@ -1977,7 +2087,7 @@ def generar_contrato_pdf(cui):
         
     conn = conectar_db()
     cursor = conn.cursor(dictionary=True)
-    cursor.execute("SELECT nombre, apellido, email, tipo_doc, cui, fecha_registro FROM usuarios WHERE cui = %s", (cui,))
+    cursor.execute("SELECT nombre, apellido, email, tipo_doc, cui, fecha_registro, telefono FROM usuarios WHERE cui = %s", (cui,))
     usuario = cursor.fetchone()
     conn.close()
     
@@ -2049,6 +2159,7 @@ def generar_contrato_pdf(cui):
     <b>DATOS DEL SOCIO:</b><br/>
     <b>Nombre Completo:</b> {usuario['nombre']} {usuario['apellido']}<br/>
     <b>Identificación ({usuario['tipo_doc']}):</b> {usuario['cui']}<br/>
+    <b>Teléfono:</b> {usuario['telefono'] or '—'}<br/>
     <b>Correo Electrónico:</b> {usuario['email'] or '—'}<br/>
     <b>Fecha de Registro:</b> {reg_fecha}
     """
