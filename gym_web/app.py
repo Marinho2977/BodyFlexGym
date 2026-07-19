@@ -353,6 +353,12 @@ def registrar():
         INSERT INTO usuarios (cui, tipo_doc, nombre, apellido, email, password, estado, telefono)
         VALUES (%s, %s, %s, %s, %s, %s, 'activo', %s)
     """, (int(numero_doc), tipo_doc, nombre, apellido, email, password_hash, telefono))
+    
+    cursor.execute("""
+        INSERT INTO perfiles (cui_usuario)
+        VALUES (%s)
+    """, (int(numero_doc),))
+    
     conn.commit()
     conn.close()
 
@@ -446,10 +452,11 @@ def admin_panel():
         SELECT
             u.cui, u.tipo_doc, u.nombre, u.apellido, u.email,
             u.estado, r.descripcion AS rol,
-            u.edad, u.peso, u.altura, u.objetivo, u.telefono,
+            p.edad, p.peso, p.altura, p.objetivo, u.telefono,
             (SELECT MAX(fecha_vencimiento) FROM pagos WHERE pagos.cui_usuario = u.cui) AS ultimo_vencimiento
         FROM usuarios u
         JOIN roles r ON u.id_rol = r.id_rol
+        LEFT JOIN perfiles p ON u.cui = p.cui_usuario
         WHERE u.id_rol = '03'
     """
     params = []
@@ -1671,10 +1678,11 @@ def empleado_panel():
 
     query = """
         SELECT u.cui, u.tipo_doc, u.nombre, u.apellido, u.estado,
-               u.edad, u.peso, u.altura, u.objetivo, u.telefono,
+               p.edad, p.peso, p.altura, p.objetivo, u.telefono,
                (SELECT MAX(fecha_vencimiento) FROM pagos WHERE cui_usuario = u.cui) AS ultimo_vencimiento
         FROM usuarios u
         JOIN roles r ON u.id_rol = r.id_rol
+        LEFT JOIN perfiles p ON u.cui = p.cui_usuario
         WHERE u.id_rol = '03'
     """
     params = []
@@ -1707,10 +1715,11 @@ def panel():
     cursor = conn.cursor(dictionary=True)
 
     cursor.execute("""
-        SELECT nombre, apellido, email,
-               edad, peso, altura, objetivo, fecha_registro, telefono
-        FROM usuarios
-        WHERE cui=%s
+        SELECT u.nombre, u.apellido, u.email, u.fecha_registro, u.telefono,
+               p.edad, p.peso, p.altura, p.objetivo
+        FROM usuarios u
+        LEFT JOIN perfiles p ON u.cui = p.cui_usuario
+        WHERE u.cui=%s
     """, (session["usuario_id"],))
     perfil = cursor.fetchone()
 
@@ -1808,7 +1817,7 @@ def guardar_perfil():
     altura = request.form.get("altura", "").strip() or None
     objetivo = request.form.get("objetivo", "").strip()
     conn = conectar_db(); cursor = conn.cursor()
-    cursor.execute("UPDATE usuarios SET edad=%s, peso=%s, altura=%s, objetivo=%s WHERE cui=%s",
+    cursor.execute("UPDATE perfiles SET edad=%s, peso=%s, altura=%s, objetivo=%s WHERE cui_usuario=%s",
                    (edad, peso, altura, objetivo, session["usuario_id"]))
     conn.commit(); conn.close()
     registrar_log("perfil", f"Completó perfil — Objetivo: {objetivo}")
@@ -1834,7 +1843,7 @@ def actualizar_info():
         cursor.execute("UPDATE usuarios SET nombre=%s, apellido=%s, email=%s, telefono=%s WHERE cui=%s",
                        (nombre, apellido, email, telefono, session["usuario_id"]))
     if peso:
-        cursor.execute("UPDATE usuarios SET peso=%s WHERE cui=%s", (peso, session["usuario_id"]))
+        cursor.execute("UPDATE perfiles SET peso=%s WHERE cui_usuario=%s", (peso, session["usuario_id"]))
     conn.commit(); conn.close()
     if nombre: session["nombre"] = nombre
     registrar_log("perfil", "Actualizó su información personal")
@@ -1849,7 +1858,7 @@ def actualizar_objetivo():
     objetivo = request.form.get("objetivo")
     if objetivo:
         conn = conectar_db(); cursor = conn.cursor()
-        cursor.execute("UPDATE usuarios SET objetivo=%s WHERE cui=%s",
+        cursor.execute("UPDATE perfiles SET objetivo=%s WHERE cui_usuario=%s",
                        (objetivo, session["usuario_id"]))
         conn.commit(); conn.close()
         registrar_log("perfil", f"Cambió su objetivo a: {objetivo}")

@@ -22,16 +22,30 @@ CREATE TABLE `usuarios` (
   `estado`         ENUM('activo','inactivo') DEFAULT 'activo',
   `email`          VARCHAR(100) DEFAULT NULL,
   `password`       VARCHAR(255) DEFAULT NULL,
+  `telefono`       VARCHAR(20) DEFAULT NULL,
   `rol`            VARCHAR(20) DEFAULT 'user',
-  `edad`           INT(11) DEFAULT NULL,
-  `peso`           DECIMAL(5,2) DEFAULT NULL,
-  `altura`         DECIMAL(5,2) DEFAULT NULL,
-  `objetivo`       VARCHAR(100) DEFAULT NULL,
-  `clase`          VARCHAR(50) DEFAULT NULL,
-  `horario`        VARCHAR(50) DEFAULT NULL,
+  `id_rol`         INT(11) DEFAULT NULL,
   PRIMARY KEY (`cui`),
   UNIQUE KEY `email` (`email`),
   KEY `id_usuario` (`id_usuario`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- ============================================================
+-- TABLA: perfiles
+-- ============================================================
+CREATE TABLE `perfiles` (
+  `id_perfil`           INT(11) NOT NULL AUTO_INCREMENT,
+  `cui_usuario`         BIGINT UNSIGNED NOT NULL,
+  `edad`                INT(11) DEFAULT NULL,
+  `peso`                DECIMAL(5,2) DEFAULT NULL,
+  `altura`              DECIMAL(5,2) DEFAULT NULL,
+  `objetivo`            VARCHAR(100) DEFAULT NULL,
+  `clase`               VARCHAR(50) DEFAULT NULL,
+  `horario`             VARCHAR(50) DEFAULT NULL,
+  `fecha_actualizacion` DATETIME DEFAULT CURRENT_TIMESTAMP() ON UPDATE CURRENT_TIMESTAMP(),
+  PRIMARY KEY (`id_perfil`),
+  KEY `cui_usuario` (`cui_usuario`),
+  CONSTRAINT `perfiles_ibfk_1` FOREIGN KEY (`cui_usuario`) REFERENCES `usuarios` (`cui`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- ============================================================
