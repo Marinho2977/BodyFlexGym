@@ -706,13 +706,16 @@
                         </td>
                         <td>
                             {% if u.estado.lower() == "activo" %}
-                                <button class="btn-pago btn-abrir-pago" data-id="{{ u.cui }}" data-nombre="{{ u.nombre }} {{ u.apellido }}">Registrar pago</button>
+                                <div style="display:flex; gap:4px;">
+                                    <button class="btn-pago btn-abrir-pago" style="flex:1; margin:0;" data-id="{{ u.cui }}" data-nombre="{{ u.nombre }} {{ u.apellido }}">Registrar pago</button>
+                                    <button type="button" class="btn-pago" onclick="abrirCargo('{{ u.cui }}', '{{ u.nombre }} {{ u.apellido }}')" style="flex:1; margin:0; background:var(--gray-border);color:white;">+ Crear Cargo</button>
+                                </div>
                             {% else %}
                                 <span class="locked-text">Cuenta inactiva</span>
+                                <div style="display:flex; gap:4px; margin-top:4px;">
+                                    <button type="button" class="btn-pago" onclick="abrirCargo('{{ u.cui }}', '{{ u.nombre }} {{ u.apellido }}')" style="flex:1; margin:0; background:var(--gray-border);color:white;">+ Crear Cargo</button>
+                                </div>
                             {% endif %}
-                            <br>
-                            <button type="button" class="btn-pago" onclick="abrirCargo('{{ u.cui }}', '{{ u.nombre }} {{ u.apellido }}')" style="background:var(--gray-border);color:white;margin-top:4px;">+ Crear Cargo</button>
-                            <br>
                             <a href="/contrato/{{ u.cui }}" target="_blank" class="btn-limpiar" style="margin-top:8px; padding: 4px 8px; min-height: 28px; font-size: 12px; display: inline-flex;" title="Descargar Contrato">📄 Contrato</a>
                         </td>
                     </tr>

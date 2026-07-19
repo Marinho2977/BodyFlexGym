@@ -1260,8 +1260,6 @@
                                         <button class="btn-pago-inline btn-abrir-pago" data-id="{{ u.cui }}"
                                             data-nombre="{{ u.nombre }} {{ u.apellido }}">+ Registrar pago</button>
                                         <br>
-                                        <button type="button" class="btn-pago-inline" onclick="abrirCargo('{{ u.cui }}', '{{ u.nombre }} {{ u.apellido }}')" style="background:var(--gray-border);color:white;margin-top:4px;">+ Crear Cargo</button>
-                                        <br>
                                         <a href="/admin/pagos/{{ u.cui }}" class="btn btn-ghost btn-sm"
                                             style="margin-top:6px;">Ver historial</a>
                                     </td>
@@ -1271,6 +1269,8 @@
                                             <button class="dropdown-toggle"
                                                 onclick="toggleDd('dd-{{ u.cui }}', this)">⋮</button>
                                             <div class="dropdown-menu">
+                                                <button type="button" class="dropdown-item" onclick="abrirCargo('{{ u.cui }}', '{{ u.nombre }} {{ u.apellido }}')"><span class="di-icon">📋</span>Crear Cargo</button>
+                                                <div class="dropdown-sep"></div>
                                                 {% if u.estado.lower() == "activo" %}
                                                 <form action="/admin/desactivar/{{ u.cui }}" method="POST"
                                                     style="margin:0;"
@@ -1501,10 +1501,10 @@
             function abrirCargo(cui, nombre) {
                 document.getElementById('modalCargoNombre').textContent = nombre;
                 document.getElementById('formCrearCargo').action = '/crear_cargo/' + cui;
-                document.getElementById('modalCrearCargo').classList.add('active');
+                document.getElementById('modalCrearCargo').classList.add('show');
             }
             function cerrarCargo() {
-                document.getElementById('modalCrearCargo').classList.remove('active');
+                document.getElementById('modalCrearCargo').classList.remove('show');
             }
 
             function abrirPagarCargo(cui, nombre) {
@@ -1533,10 +1533,10 @@
                     });
                 }
                 
-                document.getElementById('modalPagarCargo').classList.add('active');
+                document.getElementById('modalPagarCargo').classList.add('show');
             }
             function cerrarPagarCargo() {
-                document.getElementById('modalPagarCargo').classList.remove('active');
+                document.getElementById('modalPagarCargo').classList.remove('show');
             }
 
             // ── Dropdown acciones — Portal pattern (bypasses overflow & stacking context) ──
