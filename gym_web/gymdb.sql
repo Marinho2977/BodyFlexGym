@@ -40,8 +40,6 @@ CREATE TABLE `perfiles` (
   `peso`                DECIMAL(5,2) DEFAULT NULL,
   `altura`              DECIMAL(5,2) DEFAULT NULL,
   `objetivo`            VARCHAR(100) DEFAULT NULL,
-  `clase`               VARCHAR(50) DEFAULT NULL,
-  `horario`             VARCHAR(50) DEFAULT NULL,
   `fecha_actualizacion` DATETIME DEFAULT CURRENT_TIMESTAMP() ON UPDATE CURRENT_TIMESTAMP(),
   PRIMARY KEY (`id_perfil`),
   KEY `cui_usuario` (`cui_usuario`),
