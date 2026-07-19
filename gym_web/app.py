@@ -130,11 +130,11 @@ def _sumar_meses(anio, mes, cantidad):
     return total // 12, (total % 12) + 1
 
 
-def periodos_desde_mes_pagado(mes_pagado):
-    if not mes_pagado:
+def periodos_desde_mes_pagado(descripcion):
+    if not descripcion:
         return set()
 
-    texto = re.sub(r"\s+", " ", str(mes_pagado)).strip()
+    texto = re.sub(r"\s+", " ", str(descripcion)).strip()
     meses_regex = "|".join(MESES_NOMBRES)
     rango = re.search(
         rf"\b({meses_regex})\s+(\d{{4}})\s*(?:-|\u2013|\u2014|a)\s*({meses_regex})\s+(\d{{4}})\b",
@@ -186,7 +186,7 @@ def periodos_pagados_por_usuario(cursor, cuis):
 
     placeholders = ", ".join(["%s"] * len(cuis))
     cursor.execute(f"""
-        SELECT cui_usuario, mes_pagado
+        SELECT cui_usuario, descripcion
         FROM pagos
         WHERE cui_usuario IN ({placeholders})
     """, tuple(cuis))
@@ -194,7 +194,7 @@ def periodos_pagados_por_usuario(cursor, cuis):
     periodos = {str(cui): [] for cui in cuis}
     for pago in cursor.fetchall():
         cui = str(pago["cui_usuario"])
-        for anio, mes in sorted(periodos_desde_mes_pagado(pago.get("mes_pagado"))):
+        for anio, mes in sorted(periodos_desde_mes_pagado(pago.get("descripcion"))):
             clave = f"{anio}-{mes}"
             if clave not in periodos.setdefault(cui, []):
                 periodos[cui].append(clave)
@@ -580,7 +580,7 @@ def ver_pagos(cui):
 
     query = """
         SELECT u.nombre, u.apellido,
-               p.id_pago, p.monto, p.fecha_pago, p.fecha_vencimiento, p.mes_pagado
+               p.id_pago, p.monto, p.fecha_pago, p.fecha_vencimiento, p.descripcion
         FROM pagos p
         JOIN usuarios u ON u.cui = p.cui_usuario
         WHERE u.cui = %s
@@ -632,7 +632,7 @@ def exportar_pagos_excel(cui):
 
     query = """
         SELECT u.nombre, u.apellido,
-               p.id_pago, p.monto, p.fecha_pago, p.fecha_vencimiento, p.mes_pagado
+               p.id_pago, p.monto, p.fecha_pago, p.fecha_vencimiento, p.descripcion
         FROM pagos p
         JOIN usuarios u ON u.cui = p.cui_usuario
         WHERE u.cui = %s
@@ -667,7 +667,7 @@ def exportar_pagos_excel(cui):
         rows.append([
             p["id_pago"],
             p["fecha_pago"],
-            p["mes_pagado"] or "—",
+            p["descripcion"] or "—",
             float(p["monto"]),
             p["fecha_vencimiento"]
         ])
@@ -692,7 +692,7 @@ def exportar_pagos_pdf(cui):
 
     query = """
         SELECT u.nombre, u.apellido,
-               p.id_pago, p.monto, p.fecha_pago, p.fecha_vencimiento, p.mes_pagado
+               p.id_pago, p.monto, p.fecha_pago, p.fecha_vencimiento, p.descripcion
         FROM pagos p
         JOIN usuarios u ON u.cui = p.cui_usuario
         WHERE u.cui = %s
@@ -727,7 +727,7 @@ def exportar_pagos_pdf(cui):
         rows.append([
             idx + 1,
             p["fecha_pago"],
-            p["mes_pagado"] or "—",
+            p["descripcion"] or "—",
             p["fecha_vencimiento"],
             float(p["monto"])
         ])
@@ -861,9 +861,9 @@ def registrar_pago(cui):
         periodos_solicitados = {(anio_i, m) for m in meses_nums}
         nombres_sel = [MESES_NOMBRES[m-1] for m in meses_nums]
         if meses == 1:
-            mes_pagado = f"{nombres_sel[0]} {anio_i}"
+            descripcion = f"{nombres_sel[0]} {anio_i}"
         else:
-            mes_pagado = f"{', '.join(nombres_sel[:-1])} y {nombres_sel[-1]} {anio_i}"
+            descripcion = f"{', '.join(nombres_sel[:-1])} y {nombres_sel[-1]} {anio_i}"
         ultimo_mes = max(meses_nums)
         ultimo_anio = anio_i
     else:
@@ -871,17 +871,17 @@ def registrar_pago(cui):
         mes_i  = fecha_base.month if fecha_base > hoy else hoy.month
         periodos_solicitados = {_sumar_meses(anio_i, mes_i, offset) for offset in range(meses)}
         if meses == 1:
-            mes_pagado = f"{MESES_NOMBRES[mes_i-1]} {anio_i}"
+            descripcion = f"{MESES_NOMBRES[mes_i-1]} {anio_i}"
         else:
             mes_fin  = ((mes_i - 1 + meses - 1) % 12) + 1
             anio_fin = anio_i + ((mes_i - 1 + meses - 1) // 12)
-            mes_pagado = f"{MESES_NOMBRES[mes_i-1]} {anio_i} — {MESES_NOMBRES[mes_fin-1]} {anio_fin}"
+            descripcion = f"{MESES_NOMBRES[mes_i-1]} {anio_i} — {MESES_NOMBRES[mes_fin-1]} {anio_fin}"
         ultimo_anio, ultimo_mes = max(periodos_solicitados)
 
-    cursor.execute("SELECT mes_pagado FROM pagos WHERE cui_usuario=%s", (cui,))
+    cursor.execute("SELECT descripcion FROM pagos WHERE cui_usuario=%s", (cui,))
     periodos_registrados = set()
     for pago in cursor.fetchall():
-        periodos_registrados.update(periodos_desde_mes_pagado(pago.get("mes_pagado")))
+        periodos_registrados.update(periodos_desde_mes_pagado(pago.get("descripcion")))
 
     duplicados = periodos_solicitados & periodos_registrados
     if duplicados:
@@ -893,8 +893,8 @@ def registrar_pago(cui):
     monto_total = calcular_monto_pago(meses)
 
     cursor = conn.cursor()
-    cursor.execute("INSERT INTO pagos (cui_usuario, fecha_pago, fecha_vencimiento, monto, mes_pagado) VALUES (%s,%s,%s,%s,%s)",
-                   (cui, hoy, nueva_fecha, monto_total, mes_pagado))
+    cursor.execute("INSERT INTO pagos (cui_usuario, fecha_pago, fecha_vencimiento, monto, descripcion) VALUES (%s,%s,%s,%s,%s)",
+                   (cui, hoy, nueva_fecha, monto_total, descripcion))
     conn.commit(); conn.close()
 
     nombre_socio = f"{socio['nombre']} {socio['apellido']}" if socio else "—"
@@ -972,7 +972,7 @@ def pagar_cargo(id_cargo):
     # 2. Insertar pago con el id_cargo
     # Ponemos la misma fecha de vencimiento actual para no avanzar su membresía
     cursor.execute("""
-        INSERT INTO pagos (cui_usuario, fecha_pago, fecha_vencimiento, monto, mes_pagado, id_cargo) 
+        INSERT INTO pagos (cui_usuario, fecha_pago, fecha_vencimiento, monto, descripcion, id_cargo) 
         VALUES (%s, %s, %s, %s, %s, %s)
     """, (cargo['cui_usuario'], hoy, vencimiento_actual, cargo['monto'], f"Cargo: {cargo['descripcion']}", id_cargo))
     
@@ -1756,7 +1756,7 @@ def panel():
         meses_miembro = (hoy.year - reg.year) * 12 + (hoy.month - reg.month)
 
     cursor.execute("""
-        SELECT id_pago, fecha_pago, fecha_vencimiento, monto, mes_pagado
+        SELECT id_pago, fecha_pago, fecha_vencimiento, monto, descripcion
         FROM pagos WHERE cui_usuario=%s
         ORDER BY fecha_pago DESC
     """, (session["usuario_id"],))
