@@ -385,16 +385,18 @@ def iniciar():
     # Detectar si ingresaron CUI (13 dígitos numéricos) o correo
     if identificador.isdigit() and len(identificador) == 13:
         cursor.execute("""
-            SELECT u.cui, u.nombre, u.apellido, u.email, u.password, u.estado, r.descripcion AS rol, u.edad
+            SELECT u.cui, u.nombre, u.apellido, u.email, u.password, u.estado, r.descripcion AS rol, p.edad
             FROM usuarios u
             JOIN roles r ON u.id_rol = r.id_rol
+            LEFT JOIN perfiles p ON u.cui = p.cui_usuario
             WHERE u.cui = %s
         """, (int(identificador),))
     else:
         cursor.execute("""
-            SELECT u.cui, u.nombre, u.apellido, u.email, u.password, u.estado, r.descripcion AS rol, u.edad
+            SELECT u.cui, u.nombre, u.apellido, u.email, u.password, u.estado, r.descripcion AS rol, p.edad
             FROM usuarios u
             JOIN roles r ON u.id_rol = r.id_rol
+            LEFT JOIN perfiles p ON u.cui = p.cui_usuario
             WHERE u.email = %s
         """, (identificador,))
 
