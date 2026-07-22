@@ -101,6 +101,40 @@ CREATE TABLE `auditoria` (
 -- ============================================================
 
 
+-- ============================================================
+-- TABLA: inventario
+-- ============================================================
+CREATE TABLE `inventario` (
+  `id_producto` INT(11) NOT NULL AUTO_INCREMENT,
+  `nombre` VARCHAR(100) NOT NULL,
+  `descripcion` VARCHAR(255) DEFAULT NULL,
+  `cantidad` INT(11) NOT NULL DEFAULT 0,
+  `precio_costo` DECIMAL(10,2) DEFAULT NULL,
+  `precio_venta` DECIMAL(10,2) NOT NULL,
+  `categoria` VARCHAR(50) DEFAULT 'General',
+  `foto_url` VARCHAR(255) DEFAULT NULL,
+  `fecha_agregado` DATETIME DEFAULT CURRENT_TIMESTAMP(),
+  PRIMARY KEY (`id_producto`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- ============================================================
+-- TABLA: cargos
+-- ============================================================
+CREATE TABLE `cargos` (
+  `id_cargo`          BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `cui_usuario`       BIGINT UNSIGNED NOT NULL,
+  `descripcion`       VARCHAR(255) NOT NULL,
+  `monto`             DECIMAL(10,2) NOT NULL,
+  `fecha_emision`     DATE NOT NULL,
+  `estado`            VARCHAR(20) NOT NULL DEFAULT 'pendiente',
+  `id_producto`       INT(11) DEFAULT NULL,
+  PRIMARY KEY (`id_cargo`),
+  KEY `cui_usuario` (`cui_usuario`),
+  KEY `id_producto` (`id_producto`),
+  CONSTRAINT `cargos_ibfk_1` FOREIGN KEY (`cui_usuario`) REFERENCES `usuarios` (`cui`),
+  CONSTRAINT `fk_cargo_producto` FOREIGN KEY (`id_producto`) REFERENCES `inventario` (`id_producto`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
 COMMIT;
 
 -- ============================================================
@@ -156,3 +190,35 @@ COMMIT;
 -- ALTER TABLE recuperar_contra ADD CONSTRAINT `recuperar_contra_ibfk_1` FOREIGN KEY (`cui_usuario`) REFERENCES `usuarios`(`cui`);
 -- ALTER TABLE asistencia ADD CONSTRAINT `asistencia_ibfk_1` FOREIGN KEY (`cui_usuario`) REFERENCES `usuarios`(`cui`);
 -- ALTER TABLE metas ADD CONSTRAINT `metas_ibfk_1` FOREIGN KEY (`cui_usuario`) REFERENCES `usuarios`(`cui`);
+
+-- ============================================================
+-- PASO 7: CREAR TABLA INVENTARIO Y CARGOS (Ejecutar en Railway si aún no existen)
+-- ============================================================
+-- CREATE TABLE IF NOT EXISTS `inventario` (
+--   `id_producto` INT(11) NOT NULL AUTO_INCREMENT,
+--   `nombre` VARCHAR(100) NOT NULL,
+--   `descripcion` VARCHAR(255) DEFAULT NULL,
+--   `cantidad` INT(11) NOT NULL DEFAULT 0,
+--   `precio_costo` DECIMAL(10,2) DEFAULT NULL,
+--   `precio_venta` DECIMAL(10,2) NOT NULL,
+--   `categoria` VARCHAR(50) DEFAULT 'General',
+--   `foto_url` VARCHAR(255) DEFAULT NULL,
+--   `fecha_agregado` DATETIME DEFAULT CURRENT_TIMESTAMP(),
+--   PRIMARY KEY (`id_producto`)
+-- ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+--
+-- CREATE TABLE IF NOT EXISTS `cargos` (
+--   `id_cargo`          BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+--   `cui_usuario`       BIGINT UNSIGNED NOT NULL,
+--   `descripcion`       VARCHAR(255) NOT NULL,
+--   `monto`             DECIMAL(10,2) NOT NULL,
+--   `fecha_emision`     DATE NOT NULL,
+--   `estado`            VARCHAR(20) NOT NULL DEFAULT 'pendiente',
+--   `id_producto`       INT(11) DEFAULT NULL,
+--   PRIMARY KEY (`id_cargo`),
+--   KEY `cui_usuario` (`cui_usuario`),
+--   KEY `id_producto` (`id_producto`),
+--   CONSTRAINT `cargos_ibfk_1` FOREIGN KEY (`cui_usuario`) REFERENCES `usuarios` (`cui`),
+--   CONSTRAINT `fk_cargo_producto` FOREIGN KEY (`id_producto`) REFERENCES `inventario` (`id_producto`) ON DELETE SET NULL
+-- ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+

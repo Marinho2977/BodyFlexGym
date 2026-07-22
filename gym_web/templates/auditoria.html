@@ -141,13 +141,25 @@
             <h1>Historial de <span>Auditoría</span></h1>
             <p style="margin:0; color:var(--muted); font-size:15px;">Registro de todas las acciones realizadas en el sistema</p>
         </div>
-        <div style="display:flex; gap:8px; align-items:center;">
-            <a href="/admin/auditoria/excel?{{ request.query_string.decode('utf-8') }}" class="btn btn-ghost" style="padding:6px 12px; font-size:13px; border-color:rgba(255,107,0,0.3);">📊 Excel</a>
-            <a href="/admin/auditoria/pdf?{{ request.query_string.decode('utf-8') }}" class="btn btn-ghost" style="padding:6px 12px; font-size:13px; border-color:rgba(239,68,68,0.3); color:#ef4444;">📄 PDF</a>
-            <form action="/admin/auditoria/limpiar" method="POST" style="margin:0;" onsubmit="return confirm('¿Eliminar todos los registros de usuarios (rol user)? Los logs de admin y empleados se conservarán.')">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <button type="submit" class="btn btn-ghost" style="padding:6px 12px; font-size:13px; border-color:rgba(239,68,68,0.3); color:#ef4444;">🗑 Limpiar logs</button>
-            </form>
+        <div style="position:relative;">
+            <button class="btn btn-ghost" onclick="toggleAuditoriaMenu()" style="padding:8px 16px; font-size:14px; display:inline-flex; align-items:center; gap:8px; border-color:rgba(255,107,0,0.3); color:#FF6B00; cursor:pointer;">
+                ⚙️ Opciones ▾
+            </button>
+            <div id="auditoriaMenu" style="display:none; position:absolute; right:0; top:44px; background:#18191c; border:1px solid rgba(255,255,255,0.12); border-radius:12px; width:220px; box-shadow:0 12px 36px rgba(0,0,0,0.6); z-index:100; padding:8px; flex-direction:column; gap:4px;">
+                <a href="/admin/auditoria/excel?{{ request.query_string.decode('utf-8') }}" style="display:flex; align-items:center; gap:10px; padding:10px 12px; color:#f3f4f6; text-decoration:none; font-size:13px; border-radius:8px; transition:background 0.2s;" onmouseover="this.style.background='rgba(255,107,0,0.15)'" onmouseout="this.style.background='transparent'">
+                    📊 Exportar a Excel
+                </a>
+                <a href="/admin/auditoria/pdf?{{ request.query_string.decode('utf-8') }}" style="display:flex; align-items:center; gap:10px; padding:10px 12px; color:#f3f4f6; text-decoration:none; font-size:13px; border-radius:8px; transition:background 0.2s;" onmouseover="this.style.background='rgba(239,68,68,0.15)'" onmouseout="this.style.background='transparent'">
+                    📄 Exportar a PDF
+                </a>
+                <div style="height:1px; background:rgba(255,255,255,0.08); margin:4px 0;"></div>
+                <form action="/admin/auditoria/limpiar" method="POST" style="margin:0;" onsubmit="return confirm('¿Eliminar todos los registros de usuarios regulares (rol user)?')">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" style="width:100%; text-align:left; background:transparent; border:none; color:#ef4444; padding:10px 12px; font-size:13px; border-radius:8px; cursor:pointer; display:flex; align-items:center; gap:10px;" onmouseover="this.style.background='rgba(239,68,68,0.15)'" onmouseout="this.style.background='transparent'">
+                        🗑️ Limpiar logs de usuarios
+                    </button>
+                </form>
+            </div>
         </div>
     </div>
 
@@ -290,5 +302,17 @@
     {% endif %}
 
 </div>
+<script>
+function toggleAuditoriaMenu() {
+    const menu = document.getElementById('auditoriaMenu');
+    menu.style.display = (menu.style.display === 'none' || menu.style.display === '') ? 'flex' : 'none';
+}
+window.addEventListener('click', function(e) {
+    const menu = document.getElementById('auditoriaMenu');
+    if (menu && !menu.parentElement.contains(e.target)) {
+        menu.style.display = 'none';
+    }
+});
+</script>
 </body>
 </html>

@@ -1,11 +1,13 @@
 from flask import Flask, render_template, request, redirect, session, flash, make_response
 from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.utils import secure_filename
 import mysql.connector
 from datetime import date, timedelta, datetime
 import os
 import secrets
 import smtplib
 import ssl
+import uuid
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from io import BytesIO
@@ -17,6 +19,17 @@ from reportlab.lib.colors import HexColor
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "clave_segura_de_kevin_123")
+
+UPLOAD_FOLDER = os.path.join(app.root_path, 'static', 'uploads', 'productos')
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'webp', 'gif'}
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024
+
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
 
 # ─────────────────────────────────────────────
 # CSRF PROTECTION
@@ -476,6 +489,9 @@ def admin_panel():
     periodos_pagados = periodos_pagados_por_usuario(cursor, [u["cui"] for u in usuarios_all])
     cargos_pendientes = cargos_pendientes_por_usuario(cursor, [u["cui"] for u in usuarios_all])
 
+    cursor.execute("SELECT * FROM inventario ORDER BY nombre ASC")
+    productos = cursor.fetchall()
+
     conn.close()
 
     fecha_hoy = date.today()
@@ -496,6 +512,7 @@ def admin_panel():
                            fecha_hoy=fecha_hoy, precio_mensual=PRECIO_MENSUAL,
                            periodos_pagados=periodos_pagados,
                            cargos_pendientes=cargos_pendientes,
+                           productos=productos,
                            pagina=pagina, total_paginas=total_paginas,
                            total_socios=total_socios)
 
@@ -928,6 +945,7 @@ def crear_cargo(cui):
     descripcion = request.form.get("descripcion", "").strip()
     monto = request.form.get("monto", "").strip()
     origen = request.form.get("origen", "/admin").strip()
+    id_producto = request.form.get("id_producto") or None
     
     if not descripcion or not monto:
         flash("Descripción y monto son obligatorios para el cargo", "error")
@@ -939,8 +957,15 @@ def crear_cargo(cui):
     socio = cursor.fetchone()
     
     hoy = date.today()
-    cursor.execute("INSERT INTO cargos (cui_usuario, descripcion, monto, fecha_emision, estado) VALUES (%s, %s, %s, %s, 'pendiente')",
-                   (cui, descripcion, monto, hoy))
+    cursor.execute("""
+        INSERT INTO cargos (cui_usuario, descripcion, monto, fecha_emision, estado, id_producto) 
+        VALUES (%s, %s, %s, %s, 'pendiente', %s)
+    """, (cui, descripcion, monto, hoy, id_producto))
+    
+    # Descontar del inventario si es un producto
+    if id_producto:
+        cursor.execute("UPDATE inventario SET cantidad = cantidad - 1 WHERE id_producto = %s", (id_producto,))
+        
     conn.commit()
     conn.close()
     
@@ -1284,6 +1309,8 @@ def exportar_auditoria_excel():
     if tipo_filtro:
         condiciones.append("tipo = %s")
         params.append(tipo_filtro)
+    else:
+        condiciones.append("LOWER(tipo) NOT IN ('login', 'logout', 'inicio_sesion', 'sesion')")
 
     if fecha_inicio:
         condiciones.append("DATE(fecha) >= %s")
@@ -1340,6 +1367,8 @@ def exportar_auditoria_pdf():
     if tipo_filtro:
         condiciones.append("tipo = %s")
         params.append(tipo_filtro)
+    else:
+        condiciones.append("LOWER(tipo) NOT IN ('login', 'logout', 'inicio_sesion', 'sesion')")
 
     if fecha_inicio:
         condiciones.append("DATE(fecha) >= %s")
@@ -1433,7 +1462,149 @@ def admin_reportes():
                            ingresos_data=ingresos_data,
                            fecha_hoy=fecha_hoy)
 
+# ─────────────────────────────────────────────
+# MÓDULO DE INVENTARIO
+# ─────────────────────────────────────────────
 
+import os
+from werkzeug.utils import secure_filename
+
+UPLOAD_FOLDER = os.path.join('static', 'uploads', 'inventario')
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+app.config['UPLOAD_FOLDER_INVENTARIO'] = UPLOAD_FOLDER
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+@app.route("/admin/inventario")
+def inventario_admin():
+    if "usuario_id" not in session or session.get("rol") not in ("admin", "empleado"):
+        return redirect("/login")
+    
+    buscar = request.args.get("buscar", "")
+    conn = conectar_db()
+    cursor = conn.cursor(dictionary=True)
+    
+    if buscar:
+        cursor.execute("SELECT * FROM inventario WHERE nombre LIKE %s OR categoria LIKE %s ORDER BY nombre", (f"%{buscar}%", f"%{buscar}%"))
+    else:
+        cursor.execute("SELECT * FROM inventario ORDER BY nombre")
+        
+    productos = cursor.fetchall()
+    conn.close()
+    
+    return render_template("inventario_admin.html", productos=productos, buscar=buscar)
+
+@app.route("/admin/inventario/agregar", methods=["POST"])
+def agregar_producto():
+    if "usuario_id" not in session or session.get("rol") not in ("admin", "empleado"):
+        return redirect("/login")
+        
+    nombre = request.form.get("nombre")
+    descripcion = request.form.get("descripcion", "")
+    cantidad = request.form.get("cantidad", 0)
+    precio_costo = request.form.get("precio_costo") or None
+    precio_venta = request.form.get("precio_venta", 0)
+    categoria = request.form.get("categoria", "General")
+    
+    foto = request.files.get("foto")
+    foto_url = None
+    if foto and allowed_file(foto.filename):
+        filename = secure_filename(foto.filename)
+        # Prefijo unico para evitar sobreescrituras
+        import time
+        filename = f"{int(time.time())}_{filename}"
+        foto.save(os.path.join(app.config['UPLOAD_FOLDER_INVENTARIO'], filename))
+        foto_url = f"/static/uploads/inventario/{filename}"
+        
+    conn = conectar_db()
+    cursor = conn.cursor()
+    cursor.execute("""
+        INSERT INTO inventario (nombre, descripcion, cantidad, precio_costo, precio_venta, categoria, foto_url)
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
+    """, (nombre, descripcion, cantidad, precio_costo, precio_venta, categoria, foto_url))
+    conn.commit()
+    conn.close()
+    
+    registrar_log("inventario", f"Agregó producto: {nombre}")
+    flash("Producto agregado exitosamente", "success")
+    return redirect("/admin/inventario")
+
+@app.route("/admin/inventario/editar/<int:id_producto>", methods=["POST"])
+def editar_producto(id_producto):
+    if "usuario_id" not in session or session.get("rol") not in ("admin", "empleado"):
+        return redirect("/login")
+        
+    nombre = request.form.get("nombre")
+    descripcion = request.form.get("descripcion", "")
+    precio_costo = request.form.get("precio_costo") or None
+    precio_venta = request.form.get("precio_venta", 0)
+    categoria = request.form.get("categoria", "General")
+    
+    conn = conectar_db()
+    cursor = conn.cursor()
+    
+    foto = request.files.get("foto")
+    if foto and allowed_file(foto.filename):
+        filename = secure_filename(foto.filename)
+        import time
+        filename = f"{int(time.time())}_{filename}"
+        foto.save(os.path.join(app.config['UPLOAD_FOLDER_INVENTARIO'], filename))
+        foto_url = f"/static/uploads/inventario/{filename}"
+        
+        cursor.execute("""
+            UPDATE inventario SET nombre=%s, descripcion=%s, precio_costo=%s, precio_venta=%s, categoria=%s, foto_url=%s
+            WHERE id_producto=%s
+        """, (nombre, descripcion, precio_costo, precio_venta, categoria, foto_url, id_producto))
+    else:
+        cursor.execute("""
+            UPDATE inventario SET nombre=%s, descripcion=%s, precio_costo=%s, precio_venta=%s, categoria=%s
+            WHERE id_producto=%s
+        """, (nombre, descripcion, precio_costo, precio_venta, categoria, id_producto))
+        
+    conn.commit()
+    conn.close()
+    
+    registrar_log("inventario", f"Editó producto: {nombre}")
+    flash("Producto editado exitosamente", "success")
+    return redirect("/admin/inventario")
+
+@app.route("/admin/inventario/stock/<int:id_producto>", methods=["POST"])
+def ajustar_stock(id_producto):
+    if "usuario_id" not in session or session.get("rol") not in ("admin", "empleado"):
+        return redirect("/login")
+        
+    ajuste = request.form.get("ajuste")
+    
+    if not ajuste:
+        flash("Ajuste inválido", "error")
+        return redirect("/admin/inventario")
+        
+    conn = conectar_db()
+    cursor = conn.cursor()
+    cursor.execute("UPDATE inventario SET cantidad = cantidad + %s WHERE id_producto=%s", (ajuste, id_producto))
+    conn.commit()
+    conn.close()
+    
+    registrar_log("inventario", f"Ajustó stock del producto ID {id_producto} en {ajuste}")
+    flash("Stock actualizado", "success")
+    return redirect("/admin/inventario")
+
+@app.route("/admin/inventario/eliminar/<int:id_producto>", methods=["POST"])
+def eliminar_producto(id_producto):
+    if "usuario_id" not in session or session.get("rol") not in ("admin", "empleado"):
+        return redirect("/login")
+        
+    conn = conectar_db()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM inventario WHERE id_producto=%s", (id_producto,))
+    conn.commit()
+    conn.close()
+    
+    registrar_log("inventario", f"Eliminó producto ID {id_producto}")
+    flash("Producto eliminado", "success")
+    return redirect("/admin/inventario")
 @app.route("/admin/auditoria/borrar_log/<int:id_log>", methods=["POST"])
 def borrar_log_individual(id_log):
     if "usuario_id" not in session or session.get("rol") != "admin":
@@ -2252,6 +2423,321 @@ def generar_contrato_pdf(cui):
 
 
 
+# ─────────────────────────────────────────────
+# MÓDULO DE INVENTARIO Y TIENDA
+# ─────────────────────────────────────────────
+
+@app.route("/inventario")
+def inventario():
+    if "usuario_id" not in session:
+        return redirect("/login")
+    if session.get("rol") not in ("admin", "empleado"):
+        flash("Acceso denegado. Permisos de personal requeridos.", "error")
+        return redirect("/panel")
+
+    categoria_filtro = request.args.get("categoria", "").strip()
+    busqueda = request.args.get("q", "").strip()
+
+    conn = conectar_db()
+    cursor = conn.cursor(dictionary=True)
+
+    sql = "SELECT * FROM inventario WHERE 1=1"
+    params = []
+
+    if categoria_filtro:
+        sql += " AND categoria = %s"
+        params.append(categoria_filtro)
+    if busqueda:
+        sql += " AND (nombre LIKE %s OR descripcion LIKE %s OR categoria LIKE %s)"
+        busq_param = f"%{busqueda}%"
+        params.extend([busq_param, busq_param, busq_param])
+
+    sql += " ORDER BY id_producto DESC"
+    cursor.execute(sql, tuple(params))
+    productos = cursor.fetchall()
+
+    # Estadísticas de inventario
+    cursor.execute("SELECT COUNT(*) AS total_prods, COALESCE(SUM(cantidad),0) AS total_stock, COALESCE(SUM(cantidad * precio_venta),0) AS valor_total, COALESCE(SUM(CASE WHEN cantidad < 5 THEN 1 ELSE 0 END),0) AS stock_bajo FROM inventario")
+    stats = cursor.fetchone() or {}
+
+    # Lista de categorías únicas para los filtros
+    cursor.execute("SELECT DISTINCT categoria FROM inventario WHERE categoria IS NOT NULL AND categoria != '' ORDER BY categoria ASC")
+    categorias = [r["categoria"] for r in cursor.fetchall()]
+
+    # Lista de usuarios activos para asignar cobros/ventas
+    cursor.execute("SELECT cui, nombre, apellido, email FROM usuarios WHERE estado = 'activo' ORDER BY nombre ASC, apellido ASC")
+    usuarios = cursor.fetchall()
+
+    conn.close()
+
+    return render_template(
+        "inventario.html",
+        productos=productos,
+        stats=stats,
+        categorias=categorias,
+        usuarios=usuarios,
+        categoria_actual=categoria_filtro,
+        busqueda=busqueda
+    )
+
+
+@app.route("/inventario/agregar", methods=["POST"])
+def inventario_agregar():
+    if "usuario_id" not in session or session.get("rol") not in ("admin", "empleado"):
+        flash("No tienes permiso para realizar esta acción", "error")
+        return redirect("/login")
+
+    nombre = request.form.get("nombre", "").strip()
+    descripcion = request.form.get("descripcion", "").strip()
+    cantidad_raw = request.form.get("cantidad", "0").strip()
+    precio_costo_raw = request.form.get("precio_costo", "").strip()
+    precio_venta_raw = request.form.get("precio_venta", "").strip()
+    categoria = request.form.get("categoria", "General").strip() or "General"
+
+    if not nombre or not precio_venta_raw:
+        flash("El nombre y el precio de venta son obligatorios", "error")
+        return redirect("/inventario")
+
+    try:
+        cantidad = int(cantidad_raw)
+        precio_venta = float(precio_venta_raw)
+        precio_costo = float(precio_costo_raw) if precio_costo_raw else None
+        if cantidad < 0 or precio_venta < 0 or (precio_costo is not None and precio_costo < 0):
+            raise ValueError()
+    except ValueError:
+        flash("Los valores numéricos (cantidad, precio) no son válidos", "error")
+        return redirect("/inventario")
+
+    foto_url = None
+    if "foto" in request.files:
+        file = request.files["foto"]
+        if file and file.filename != "" and allowed_file(file.filename):
+            filename = f"{uuid.uuid4().hex[:10]}_{secure_filename(file.filename)}"
+            filepath = os.path.join(app.config["UPLOAD_FOLDER"], filename)
+            file.save(filepath)
+            foto_url = f"/static/uploads/productos/{filename}"
+
+    conn = conectar_db()
+    cursor = conn.cursor()
+    cursor.execute("""
+        INSERT INTO inventario (nombre, descripcion, cantidad, precio_costo, precio_venta, categoria, foto_url)
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
+    """, (nombre, descripcion or None, cantidad, precio_costo, precio_venta, categoria, foto_url))
+    conn.commit()
+    conn.close()
+
+    registrar_log("INVENTARIO_AGREGAR", f"Producto '{nombre}' agregado (Stock: {cantidad}, Precio Venta: Q{precio_venta:.2f})")
+    flash(f"Producto '{nombre}' agregado exitosamente al inventario.", "success")
+    return redirect("/inventario")
+
+
+@app.route("/inventario/editar/<int:id_producto>", methods=["POST"])
+def inventario_editar(id_producto):
+    if "usuario_id" not in session or session.get("rol") not in ("admin", "empleado"):
+        flash("No tienes permiso para realizar esta acción", "error")
+        return redirect("/login")
+
+    nombre = request.form.get("nombre", "").strip()
+    descripcion = request.form.get("descripcion", "").strip()
+    cantidad_raw = request.form.get("cantidad", "0").strip()
+    precio_costo_raw = request.form.get("precio_costo", "").strip()
+    precio_venta_raw = request.form.get("precio_venta", "").strip()
+    categoria = request.form.get("categoria", "General").strip() or "General"
+
+    if not nombre or not precio_venta_raw:
+        flash("El nombre y precio de venta son requeridos", "error")
+        return redirect("/inventario")
+
+    try:
+        cantidad = int(cantidad_raw)
+        precio_venta = float(precio_venta_raw)
+        precio_costo = float(precio_costo_raw) if precio_costo_raw else None
+        if cantidad < 0 or precio_venta < 0:
+            raise ValueError()
+    except ValueError:
+        flash("Valores numéricos inválidos", "error")
+        return redirect("/inventario")
+
+    conn = conectar_db()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("SELECT foto_url FROM inventario WHERE id_producto = %s", (id_producto,))
+    prod_actual = cursor.fetchone()
+
+    if not prod_actual:
+        conn.close()
+        flash("Producto no encontrado", "error")
+        return redirect("/inventario")
+
+    foto_url = prod_actual["foto_url"]
+    if "foto" in request.files:
+        file = request.files["foto"]
+        if file and file.filename != "" and allowed_file(file.filename):
+            filename = f"{uuid.uuid4().hex[:10]}_{secure_filename(file.filename)}"
+            filepath = os.path.join(app.config["UPLOAD_FOLDER"], filename)
+            file.save(filepath)
+            foto_url = f"/static/uploads/productos/{filename}"
+
+    cursor.execute("""
+        UPDATE inventario
+        SET nombre = %s, descripcion = %s, cantidad = %s, precio_costo = %s, precio_venta = %s, categoria = %s, foto_url = %s
+        WHERE id_producto = %s
+    """, (nombre, descripcion or None, cantidad, precio_costo, precio_venta, categoria, foto_url, id_producto))
+    conn.commit()
+    conn.close()
+
+    registrar_log("INVENTARIO_EDITAR", f"Producto ID {id_producto} ('{nombre}') actualizado.")
+    flash(f"Producto '{nombre}' actualizado con éxito.", "success")
+    return redirect("/inventario")
+
+
+@app.route("/inventario/eliminar/<int:id_producto>", methods=["POST"])
+def inventario_eliminar(id_producto):
+    if "usuario_id" not in session or session.get("rol") not in ("admin", "empleado"):
+        flash("No tienes permiso para realizar esta acción", "error")
+        return redirect("/login")
+
+    conn = conectar_db()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("SELECT nombre FROM inventario WHERE id_producto = %s", (id_producto,))
+    prod = cursor.fetchone()
+
+    if prod:
+        cursor.execute("DELETE FROM inventario WHERE id_producto = %s", (id_producto,))
+        conn.commit()
+        registrar_log("INVENTARIO_ELIMINAR", f"Producto ID {id_producto} ('{prod['nombre']}') eliminado.")
+        flash(f"Producto '{prod['nombre']}' eliminado del inventario.", "info")
+
+    conn.close()
+    return redirect("/inventario")
+
+
+@app.route("/inventario/vender", methods=["POST"])
+def inventario_vender():
+    if "usuario_id" not in session:
+        flash("Debes iniciar sesión", "error")
+        return redirect("/login")
+
+    rol_actual = session.get("rol")
+    cui_sesion = session.get("usuario_id")
+
+    id_producto = request.form.get("id_producto")
+    cantidad_venta_raw = request.form.get("cantidad_venta", "1").strip()
+    tipo_venta = request.form.get("tipo_venta", "directa").strip()
+    cui_usuario_target = request.form.get("cui_usuario", "").strip()
+
+    if rol_actual not in ("admin", "empleado") or not cui_usuario_target:
+        cui_usuario_target = cui_sesion
+
+    try:
+        id_producto = int(id_producto)
+        cantidad_venta = int(cantidad_venta_raw)
+        cui_usuario_target = int(cui_usuario_target)
+        if cantidad_venta <= 0:
+            raise ValueError()
+    except (TypeError, ValueError):
+        flash("Datos de compra no válidos", "error")
+        return redirect(request.referrer or "/tienda")
+
+    conn = conectar_db()
+    cursor = conn.cursor(dictionary=True)
+
+    cursor.execute("SELECT cui, nombre, apellido FROM usuarios WHERE cui = %s", (cui_usuario_target,))
+    usuario_dest = cursor.fetchone()
+    if not usuario_dest:
+        conn.close()
+        flash("El socio especificado no existe", "error")
+        return redirect(request.referrer or "/inventario")
+
+    cursor.execute("SELECT id_producto, nombre, cantidad, precio_venta FROM inventario WHERE id_producto = %s", (id_producto,))
+    prod = cursor.fetchone()
+
+    if not prod:
+        conn.close()
+        flash("El producto seleccionado no existe", "error")
+        return redirect(request.referrer or "/tienda")
+
+    if prod["cantidad"] < cantidad_venta:
+        conn.close()
+        flash(f"Stock insuficiente para '{prod['nombre']}'. Disponible: {prod['cantidad']} unidades.", "error")
+        return redirect(request.referrer or "/tienda")
+
+    # Restar stock atómicamente ('q se reste auto')
+    cursor.execute("""
+        UPDATE inventario
+        SET cantidad = cantidad - %s
+        WHERE id_producto = %s AND cantidad >= %s
+    """, (cantidad_venta, id_producto, cantidad_venta))
+
+    if cursor.rowcount == 0:
+        conn.close()
+        flash("No se pudo completar la transacción debido a un cambio en el inventario. Inténtalo de nuevo.", "error")
+        return redirect(request.referrer or "/tienda")
+
+    monto_total = float(prod["precio_venta"]) * cantidad_venta
+    estado_cargo = "pagado" if tipo_venta == "directa" else "pendiente"
+    descripcion_cargo = f"Compra: {cantidad_venta}x {prod['nombre']}"
+    fecha_hoy = date.today()
+
+    cursor.execute("""
+        INSERT INTO cargos (cui_usuario, descripcion, monto, fecha_emision, estado, id_producto)
+        VALUES (%s, %s, %s, %s, %s, %s)
+    """, (cui_usuario_target, descripcion_cargo, monto_total, fecha_hoy, estado_cargo, id_producto))
+
+    conn.commit()
+    conn.close()
+
+    log_msg = f"Venta de {cantidad_venta}x '{prod['nombre']}' a {usuario_dest['nombre']} {usuario_dest['apellido']} (CUI: {cui_usuario_target}) por Q{monto_total:.2f}. Estado: {estado_cargo}"
+    registrar_log("INVENTARIO_VENTA", log_msg, afectado_id=cui_usuario_target, afectado_nombre=f"{usuario_dest['nombre']} {usuario_dest['apellido']}")
+
+    msg_exito = f"¡Venta realizada exitosamente! Se descontaron {cantidad_venta} unidades de '{prod['nombre']}' del inventario."
+    if estado_cargo == "pendiente":
+        msg_exito += " El cargo quedó registrado como PENDIENTE de pago."
+
+    flash(msg_exito, "success")
+    return redirect(request.referrer or "/inventario")
+
+
+@app.route("/tienda")
+def tienda():
+    if "usuario_id" not in session:
+        return redirect("/login")
+
+    categoria_filtro = request.args.get("categoria", "").strip()
+    busqueda = request.args.get("q", "").strip()
+
+    conn = conectar_db()
+    cursor = conn.cursor(dictionary=True)
+
+    sql = "SELECT * FROM inventario WHERE 1=1"
+    params = []
+
+    if categoria_filtro:
+        sql += " AND categoria = %s"
+        params.append(categoria_filtro)
+    if busqueda:
+        sql += " AND (nombre LIKE %s OR descripcion LIKE %s OR categoria LIKE %s)"
+        busq_param = f"%{busqueda}%"
+        params.extend([busq_param, busq_param, busq_param])
+
+    sql += " ORDER BY cantidad DESC, nombre ASC"
+    cursor.execute(sql, tuple(params))
+    productos = cursor.fetchall()
+
+    cursor.execute("SELECT DISTINCT categoria FROM inventario WHERE categoria IS NOT NULL AND categoria != '' ORDER BY categoria ASC")
+    categorias = [r["categoria"] for r in cursor.fetchall()]
+
+    conn.close()
+
+    return render_template(
+        "tienda.html",
+        productos=productos,
+        categorias=categorias,
+        categoria_actual=categoria_filtro,
+        busqueda=busqueda
+    )
+
+
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=False)
+

@@ -252,6 +252,7 @@
     </div>
     <div class="topbar-right">
         <span class="topbar-nombre">{{ session.nombre }}</span>
+        <a href="/tienda" class="btn-admin-link" style="background:rgba(255,107,0,0.15); border-color:rgba(255,107,0,0.3); color:#FF6B00;">🛒 Tienda Virtual</a>
         {% if session.rol == "admin" %}
             <a href="/admin" class="btn-admin-link">Panel Admin →</a>
         {% endif %}
