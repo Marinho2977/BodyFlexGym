@@ -19,6 +19,7 @@
             --success: #10b981;
             --warning: #f59e0b;
             --danger: #ef4444;
+            --info: #3b82f6;
         }
 
         body {
@@ -115,6 +116,40 @@
             font-size: 14px;
         }
 
+        /* Tabs Navigation */
+        .tabs-nav {
+            display: flex;
+            gap: 12px;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 24px;
+        }
+
+        .tab-btn {
+            background: transparent;
+            border: none;
+            border-bottom: 3px solid transparent;
+            color: var(--text-muted);
+            padding: 12px 20px;
+            font-size: 15px;
+            font-weight: 600;
+            font-family: 'DM Sans', sans-serif;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+        }
+
+        .tab-btn:hover {
+            color: #fff;
+        }
+
+        .tab-btn.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -190,11 +225,20 @@
             align-items: center;
             gap: 8px;
             text-decoration: none;
-            transition: background 0.2s;
+            transition: all 0.2s;
         }
 
         .btn-primary:hover {
             background: var(--primary-hover);
+            transform: translateY(-1px);
+        }
+
+        .btn-equipo {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        }
+
+        .btn-equipo:hover {
+            background: linear-gradient(135deg, #34d399 0%, #10b981 100%);
         }
 
         .btn-secondary {
@@ -280,6 +324,8 @@
         .badge-success { background: rgba(16, 185, 129, 0.15); color: #34d399; }
         .badge-warning { background: rgba(245, 158, 11, 0.15); color: #fbbf24; }
         .badge-danger { background: rgba(239, 68, 68, 0.15); color: #f87171; }
+        .badge-info { background: rgba(59, 130, 246, 0.15); color: #60a5fa; }
+        .badge-zone { background: rgba(255, 107, 0, 0.12); color: #ff8526; border: 1px solid rgba(255, 107, 0, 0.25); }
 
         .actions-cell {
             display: flex;
@@ -432,152 +478,268 @@
 
             <div class="header-section">
                 <div class="page-title">
-                    <h1>Inventario del Gym</h1>
-                    <p>Gestiona equipos, máquinas, pesas y materiales del gimnasio.</p>
+                    <h1>Inventario del Gimnasio</h1>
+                    <p>Gestiona los productos de venta y los equipos/maquinaria por zonas.</p>
                 </div>
-                <div style="display: flex; gap: 10px;">
-                    <button class="btn-primary" onclick="openAddModal()">➕ Agregar Equipo</button>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <button class="btn-primary" onclick="openAddProductModal()">🛍️ Agregar Producto</button>
+                    <button class="btn-primary btn-equipo" onclick="openAddEquipoModal()">🏋️ Agregar Equipo</button>
                 </div>
             </div>
 
-            <!-- Stats Overview -->
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-label">Total Productos</div>
-                    <div class="stat-value">{{ stats.total_prods or 0 }}</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-label">Unidades en Stock</div>
-                    <div class="stat-value">{{ stats.total_stock or 0 }}</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-label">Valor Estimado del Stock</div>
-                    <div class="stat-value" style="color: var(--primary);">Q{{ "%.2f"|format(stats.valor_total or 0) }}</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-label">Alertas Stock Bajo (< 5)</div>
-                    <div class="stat-value" style="color: {{ 'var(--danger)' if stats.stock_bajo > 0 else 'var(--success)' }};">
-                        {{ stats.stock_bajo or 0 }}
+            <!-- Navigation Tabs -->
+            <div class="tabs-nav">
+                <a href="/inventario?tab=productos" class="tab-btn {% if tab_activa != 'equipos' %}active{% endif %}">
+                    🛍️ Productos de Venta ({{ productos|length }})
+                </a>
+                <a href="/inventario?tab=equipos" class="tab-btn {% if tab_activa == 'equipos' %}active{% endif %}">
+                    🏋️ Maquinaria y Equipos ({{ equipos|length }})
+                </a>
+            </div>
+
+            {% if tab_activa != 'equipos' %}
+                <!-- STATS PRODUCTOS -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-label">Total Productos</div>
+                        <div class="stat-value">{{ stats.total_prods or 0 }}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Unidades en Stock</div>
+                        <div class="stat-value">{{ stats.total_stock or 0 }}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Valor Estimado del Stock</div>
+                        <div class="stat-value" style="color: var(--primary);">Q{{ "%.2f"|format(stats.valor_total or 0) }}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Alertas Stock Bajo (< 5)</div>
+                        <div class="stat-value" style="color: {{ 'var(--danger)' if stats.stock_bajo > 0 else 'var(--success)' }};">
+                            {{ stats.stock_bajo or 0 }}
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- Filters & Search Toolbar -->
-            <form method="GET" action="/inventario" class="toolbar">
-                <div class="search-box">
-                    <input type="text" name="q" value="{{ busqueda }}" placeholder="Buscar producto por nombre o descripción..." class="input-field">
-                    <select name="categoria" class="input-field" style="width: auto;">
-                        <option value="">Todas las categorías</option>
-                        {% for cat in categorias %}
-                            <option value="{{ cat }}" {% if categoria_actual == cat %}selected{% endif %}>{{ cat }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <button type="submit" class="btn-secondary">🔍 Filtrar</button>
-                {% if busqueda or categoria_actual %}
-                    <a href="/inventario" class="btn-secondary" style="color: var(--danger);">✕ Limpiar</a>
-                {% endif %}
-            </form>
-
-            <!-- Products Table -->
-            <div class="table-container">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Imagen</th>
-                            <th>Producto</th>
-                            <th>Categoría</th>
-                            <th>Stock</th>
-                            <th>P. Costo</th>
-                            <th>P. Venta</th>
-                            <th>Estado</th>
-                            <th>Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% if productos %}
-                            {% for p in productos %}
-                            <tr>
-                                <td>
-                                    {% if p.foto_url %}
-                                        <img src="{{ p.foto_url }}" alt="{{ p.nombre }}" class="product-img">
-                                    {% else %}
-                                        <div class="no-img">📦</div>
-                                    {% endif %}
-                                </td>
-                                <td>
-                                    <strong style="font-size: 15px;">{{ p.nombre }}</strong>
-                                    {% if p.descripcion %}
-                                        <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">{{ p.descripcion }}</div>
-                                    {% endif %}
-                                </td>
-                                <td><span class="badge" style="background: rgba(255,255,255,0.06);">{{ p.categoria }}</span></td>
-                                <td><strong style="font-size: 15px;">{{ p.cantidad }}</strong> uds</td>
-                                <td>{% if p.precio_costo %}Q{{ "%.2f"|format(p.precio_costo) }}{% else %}—{% endif %}</td>
-                                <td><strong style="color: var(--primary);">Q{{ "%.2f"|format(p.precio_venta) }}</strong></td>
-                                <td>
-                                    {% if p.cantidad <= 0 %}
-                                        <span class="badge badge-danger">Agotado</span>
-                                    {% elif p.cantidad < 5 %}
-                                        <span class="badge badge-warning">Stock Bajo</span>
-                                    {% else %}
-                                        <span class="badge badge-success">En Stock</span>
-                                    {% endif %}
-                                </td>
-                                <td>
-                                    <div class="actions-cell">
-                                        {% if p.cantidad > 0 %}
-                                            <button class="btn-action btn-sell" onclick='openSellModal({{ p.id_producto }}, "{{ p.nombre }}", {{ p.cantidad }}, {{ p.precio_venta }})'>🛒 Vender</button>
-                                        {% endif %}
-                                        <button class="btn-action" onclick='openEditModal({{ p | tojson }})'>✏️ Editar</button>
-                                        <form method="POST" action="/inventario/eliminar/{{ p.id_producto }}" onsubmit="return confirm('¿Seguro que deseas eliminar este producto?')" style="display:inline;">
-                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                            <button type="submit" class="btn-action" style="color: var(--danger);">🗑️</button>
-                                        </form>
-                                    </div>
-                                </td>
-                            </tr>
+                <!-- FILTROS PRODUCTOS -->
+                <form method="GET" action="/inventario" class="toolbar">
+                    <input type="hidden" name="tab" value="productos">
+                    <div class="search-box">
+                        <input type="text" name="q" value="{{ busqueda }}" placeholder="Buscar producto por nombre o descripción..." class="input-field">
+                        <select name="categoria" class="input-field" style="width: auto;">
+                            <option value="">Todas las categorías</option>
+                            {% for cat in categorias %}
+                                <option value="{{ cat }}" {% if categoria_actual == cat %}selected{% endif %}>{{ cat }}</option>
                             {% endfor %}
-                        {% else %}
+                        </select>
+                    </div>
+                    <button type="submit" class="btn-secondary">🔍 Filtrar</button>
+                    {% if busqueda or categoria_actual %}
+                        <a href="/inventario?tab=productos" class="btn-secondary" style="color: var(--danger);">✕ Limpiar</a>
+                    {% endif %}
+                </form>
+
+                <!-- TABLA PRODUCTOS -->
+                <div class="table-container">
+                    <table>
+                        <thead>
                             <tr>
-                                <td colspan="8" style="text-align: center; padding: 40px; color: var(--text-muted);">
-                                    No se encontraron productos en el inventario.
-                                </td>
+                                <th>Imagen</th>
+                                <th>Producto</th>
+                                <th>Categoría</th>
+                                <th>Stock</th>
+                                <th>P. Costo</th>
+                                <th>P. Venta</th>
+                                <th>Estado</th>
+                                <th>Acciones</th>
                             </tr>
-                        {% endif %}
-                    </tbody>
-                </table>
-            </div>
+                        </thead>
+                        <tbody>
+                            {% if productos %}
+                                {% for p in productos %}
+                                <tr>
+                                    <td>
+                                        {% if p.foto_url %}
+                                            <img src="{{ p.foto_url }}" alt="{{ p.nombre }}" class="product-img">
+                                        {% else %}
+                                            <div class="no-img">🛍️</div>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <strong style="font-size: 15px;">{{ p.nombre }}</strong>
+                                        {% if p.descripcion %}
+                                            <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">{{ p.descripcion }}</div>
+                                        {% endif %}
+                                    </td>
+                                    <td><span class="badge" style="background: rgba(255,255,255,0.06);">{{ p.categoria }}</span></td>
+                                    <td><strong style="font-size: 15px;">{{ p.cantidad }}</strong> uds</td>
+                                    <td>{% if p.precio_costo %}Q{{ "%.2f"|format(p.precio_costo) }}{% else %}—{% endif %}</td>
+                                    <td><strong style="color: var(--primary);">Q{{ "%.2f"|format(p.precio_venta) }}</strong></td>
+                                    <td>
+                                        {% if p.cantidad <= 0 %}
+                                            <span class="badge badge-danger">Agotado</span>
+                                        {% elif p.cantidad < 5 %}
+                                            <span class="badge badge-warning">Stock Bajo</span>
+                                        {% else %}
+                                            <span class="badge badge-success">En Stock</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="actions-cell">
+                                            {% if p.cantidad > 0 %}
+                                                <button class="btn-action btn-sell" onclick='openSellModal({{ p.id_producto }}, "{{ p.nombre }}", {{ p.cantidad }}, {{ p.precio_venta }})'>🛒 Vender</button>
+                                            {% endif %}
+                                            <button class="btn-action" onclick='openEditProductModal({{ p | tojson }})'>✏️ Editar</button>
+                                            <form method="POST" action="/inventario/producto/eliminar/{{ p.id_producto }}" onsubmit="return confirm('¿Seguro que deseas eliminar este producto?')" style="display:inline;">
+                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                <button type="submit" class="btn-action" style="color: var(--danger);">🗑️</button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="8" style="text-align: center; padding: 40px; color: var(--text-muted);">
+                                        No se encontraron productos registrados en el inventario.
+                                    </td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+
+            {% else %}
+                <!-- STATS MAQUINARIA -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-label">Total Equipos Registrados</div>
+                        <div class="stat-value">{{ stats_equipos.total_equipos or 0 }}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Unidades Físicas Totales</div>
+                        <div class="stat-value" style="color: #34d399;">{{ stats_equipos.unidades_equipos or 0 }}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Equipos en Mantenimiento / F. Servicio</div>
+                        <div class="stat-value" style="color: {{ 'var(--danger)' if stats_equipos.equipos_mantenimiento > 0 else 'var(--success)' }};">
+                            {{ stats_equipos.equipos_mantenimiento or 0 }}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- FILTROS MAQUINARIA -->
+                <form method="GET" action="/inventario" class="toolbar">
+                    <input type="hidden" name="tab" value="equipos">
+                    <div class="search-box">
+                        <input type="text" name="q" value="{{ busqueda }}" placeholder="Buscar equipo por nombre, zona o estado..." class="input-field">
+                        <select name="zona" class="input-field" style="width: auto;">
+                            <option value="">Todas las Zonas</option>
+                            {% for z in zonas_equipos %}
+                                <option value="{{ z }}" {% if zona_actual == z %}selected{% endif %}>{{ z }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <button type="submit" class="btn-secondary">🔍 Filtrar</button>
+                    {% if busqueda or zona_actual %}
+                        <a href="/inventario?tab=equipos" class="btn-secondary" style="color: var(--danger);">✕ Limpiar</a>
+                    {% endif %}
+                </form>
+
+                <!-- TABLA MAQUINARIA -->
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Imagen</th>
+                                <th>Equipo / Máquina</th>
+                                <th>Zona Gym</th>
+                                <th>Cantidad</th>
+                                <th>Estado Conservación</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if equipos %}
+                                {% for eq in equipos %}
+                                <tr>
+                                    <td>
+                                        {% if eq.foto_url %}
+                                            <img src="{{ eq.foto_url }}" alt="{{ eq.nombre }}" class="product-img">
+                                        {% else %}
+                                            <div class="no-img" style="background: rgba(16, 185, 129, 0.1); color: var(--success);">🏋️</div>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <strong style="font-size: 15px;">{{ eq.nombre }}</strong>
+                                        {% if eq.descripcion %}
+                                            <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">{{ eq.descripcion }}</div>
+                                        {% endif %}
+                                    </td>
+                                    <td><span class="badge badge-zone">📍 {{ eq.zona }}</span></td>
+                                    <td><strong style="font-size: 15px;">{{ eq.cantidad }}</strong> {{ 'unidad' if eq.cantidad == 1 else 'unidades' }}</td>
+                                    <td>
+                                        {% if eq.estado == 'Excelente' %}
+                                            <span class="badge badge-success">✨ Excelente</span>
+                                        {% elif eq.estado == 'Bueno' %}
+                                            <span class="badge badge-info">👍 Buen Estado</span>
+                                        {% elif eq.estado == 'En Mantenimiento' %}
+                                            <span class="badge badge-warning">🛠️ En Mantenimiento</span>
+                                        {% else %}
+                                            <span class="badge badge-danger">⚠️ Fuera de Servicio</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="actions-cell">
+                                            <button class="btn-action" onclick='openEditEquipoModal({{ eq | tojson }})'>✏️ Editar</button>
+                                            <form method="POST" action="/inventario/equipo/eliminar/{{ eq.id_equipo }}" onsubmit="return confirm('¿Seguro que deseas eliminar este equipo?')" style="display:inline;">
+                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                <button type="submit" class="btn-action" style="color: var(--danger);">🗑️</button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="6" style="text-align: center; padding: 40px; color: var(--text-muted);">
+                                        No se encontraron máquinas o equipos registrados.
+                                    </td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            {% endif %}
         </main>
     </div>
 
-    <!-- Modal Agregar Producto -->
-    <div id="addModal" class="modal-overlay">
+    <!-- MODAL AGREGAR PRODUCTO (con precios y categoría) -->
+    <div id="addProductModal" class="modal-overlay">
         <div class="modal-card">
             <div class="modal-header">
-                <h3>Registrar Nuevo Equipo / Material</h3>
-                <button class="btn-close" onclick="closeAddModal()">✕</button>
+                <h3>🛍️ Registrar Nuevo Producto de Venta</h3>
+                <button class="btn-close" onclick="closeAddProductModal()">✕</button>
             </div>
-            <form method="POST" action="/inventario/agregar" enctype="multipart/form-data" class="form-grid">
+            <form method="POST" action="/inventario/producto/agregar" enctype="multipart/form-data" class="form-grid">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 
                 <div class="form-group">
-                    <label>Nombre del Equipo / Material *</label>
-                    <input type="text" name="nombre" required placeholder="Ej. Mancuerna 20kg, Barra Olímpica, Caminadora" class="input-field">
+                    <label>Nombre del Producto *</label>
+                    <input type="text" name="nombre" required placeholder="Ej. Proteína Whey 2lb, Bebida Electrolítica, Toalla Gym" class="input-field">
                 </div>
 
                 <div class="form-group">
-                    <label>Descripción / Observaciones</label>
-                    <textarea name="descripcion" rows="2" placeholder="Estado, ubicación, características del equipo..." class="input-field"></textarea>
+                    <label>Descripción / Detalle</label>
+                    <textarea name="descripcion" rows="2" placeholder="Marca, sabor, presentación o especificaciones..." class="input-field"></textarea>
                 </div>
 
                 <div class="form-row">
                     <div class="form-group">
-                        <label>Categoría</label>
-                        <input type="text" name="categoria" placeholder="Ej. Máquinas, Pesas, Cardio, Accesorios" class="input-field">
+                        <label>Categoría Comercial</label>
+                        <input type="text" name="categoria" placeholder="Ej. Suplementos, Bebidas, Ropa, Accesorios" class="input-field">
                     </div>
                     <div class="form-group">
-                        <label>Cantidad en Stock *</label>
+                        <label>Stock Inicial *</label>
                         <input type="number" name="cantidad" value="10" min="0" required class="input-field">
                     </div>
                 </div>
@@ -599,52 +761,52 @@
                 </div>
 
                 <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 10px;">
-                    <button type="button" class="btn-secondary" onclick="closeAddModal()">Cancelar</button>
-                    <button type="submit" class="btn-primary">Guardar en Inventario</button>
+                    <button type="button" class="btn-secondary" onclick="closeAddProductModal()">Cancelar</button>
+                    <button type="submit" class="btn-primary">Guardar Producto</button>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- Modal Editar Producto -->
-    <div id="editModal" class="modal-overlay">
+    <!-- MODAL EDITAR PRODUCTO -->
+    <div id="editProductModal" class="modal-overlay">
         <div class="modal-card">
             <div class="modal-header">
-                <h3>Editar Equipo / Material</h3>
-                <button class="btn-close" onclick="closeEditModal()">✕</button>
+                <h3>Editar Producto</h3>
+                <button class="btn-close" onclick="closeEditProductModal()">✕</button>
             </div>
-            <form id="editForm" method="POST" enctype="multipart/form-data" class="form-grid">
+            <form id="editProductForm" method="POST" enctype="multipart/form-data" class="form-grid">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 
                 <div class="form-group">
-                    <label>Nombre del Equipo / Material *</label>
-                    <input type="text" id="edit_nombre" name="nombre" required class="input-field">
+                    <label>Nombre del Producto *</label>
+                    <input type="text" id="edit_prod_nombre" name="nombre" required class="input-field">
                 </div>
 
                 <div class="form-group">
                     <label>Descripción</label>
-                    <textarea id="edit_descripcion" name="descripcion" rows="2" class="input-field"></textarea>
+                    <textarea id="edit_prod_descripcion" name="descripcion" rows="2" class="input-field"></textarea>
                 </div>
 
                 <div class="form-row">
                     <div class="form-group">
                         <label>Categoría</label>
-                        <input type="text" id="edit_categoria" name="categoria" class="input-field">
+                        <input type="text" id="edit_prod_categoria" name="categoria" class="input-field">
                     </div>
                     <div class="form-group">
                         <label>Cantidad en Stock *</label>
-                        <input type="number" id="edit_cantidad" name="cantidad" min="0" required class="input-field">
+                        <input type="number" id="edit_prod_cantidad" name="cantidad" min="0" required class="input-field">
                     </div>
                 </div>
 
                 <div class="form-row">
                     <div class="form-group">
                         <label>Precio Costo (Q)</label>
-                        <input type="number" step="0.01" id="edit_precio_costo" name="precio_costo" class="input-field">
+                        <input type="number" step="0.01" id="edit_prod_precio_costo" name="precio_costo" class="input-field">
                     </div>
                     <div class="form-group">
                         <label>Precio Venta (Q) *</label>
-                        <input type="number" step="0.01" id="edit_precio_venta" name="precio_venta" required class="input-field">
+                        <input type="number" step="0.01" id="edit_prod_precio_venta" name="precio_venta" required class="input-field">
                     </div>
                 </div>
 
@@ -654,14 +816,128 @@
                 </div>
 
                 <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 10px;">
-                    <button type="button" class="btn-secondary" onclick="closeEditModal()">Cancelar</button>
-                    <button type="submit" class="btn-primary">Actualizar Equipo</button>
+                    <button type="button" class="btn-secondary" onclick="closeEditProductModal()">Cancelar</button>
+                    <button type="submit" class="btn-primary">Actualizar Producto</button>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- Modal Vender Producto (Resta Automática) -->
+    <!-- MODAL AGREGAR EQUIPO (Sin Precios, con Zonas y Estado) -->
+    <div id="addEquipoModal" class="modal-overlay">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3>🏋️ Registrar Nueva Máquina / Equipo</h3>
+                <button class="btn-close" onclick="closeAddEquipoModal()">✕</button>
+            </div>
+            <form method="POST" action="/inventario/equipo/agregar" enctype="multipart/form-data" class="form-grid">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                
+                <div class="form-group">
+                    <label>Nombre de la Máquina / Equipo *</label>
+                    <input type="text" name="nombre" required placeholder="Ej. Caminadora Pro 2026, Prensa de Piernas, Set Mancuernas" class="input-field">
+                </div>
+
+                <div class="form-group">
+                    <label>Descripción / Estado Físico / Ubicación</label>
+                    <textarea name="descripcion" rows="2" placeholder="Ej. Marca Matrix, motor 4HP, junto a ventana norte..." class="input-field"></textarea>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Zona Normalizada *</label>
+                        <select name="zona" required class="input-field">
+                            {% for z in zonas_equipos %}
+                                <option value="{{ z }}">{{ z }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Cantidad de Unidades *</label>
+                        <input type="number" name="cantidad" value="1" min="1" required class="input-field">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Estado de Conservación *</label>
+                    <select name="estado" required class="input-field">
+                        {% for est in estados_equipos %}
+                            <option value="{{ est }}">{{ est }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Foto de la Máquina / Equipo (Opcional)</label>
+                    <input type="file" name="foto" accept="image/*" class="input-field" style="padding: 6px;">
+                </div>
+
+                <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 10px;">
+                    <button type="button" class="btn-secondary" onclick="closeAddEquipoModal()">Cancelar</button>
+                    <button type="submit" class="btn-primary btn-equipo">Guardar Equipo</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL EDITAR EQUIPO -->
+    <div id="editEquipoModal" class="modal-overlay">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3>Editar Máquina / Equipo</h3>
+                <button class="btn-close" onclick="closeEditEquipoModal()">✕</button>
+            </div>
+            <form id="editEquipoForm" method="POST" enctype="multipart/form-data" class="form-grid">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                
+                <div class="form-group">
+                    <label>Nombre del Equipo *</label>
+                    <input type="text" id="edit_eq_nombre" name="nombre" required class="input-field">
+                </div>
+
+                <div class="form-group">
+                    <label>Descripción / Observaciones</label>
+                    <textarea id="edit_eq_descripcion" name="descripcion" rows="2" class="input-field"></textarea>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Zona Normalizada *</label>
+                        <select id="edit_eq_zona" name="zona" required class="input-field">
+                            {% for z in zonas_equipos %}
+                                <option value="{{ z }}">{{ z }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Cantidad de Unidades *</label>
+                        <input type="number" id="edit_eq_cantidad" name="cantidad" min="0" required class="input-field">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Estado de Conservación *</label>
+                    <select id="edit_eq_estado" name="estado" required class="input-field">
+                        {% for est in estados_equipos %}
+                            <option value="{{ est }}">{{ est }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Cambiar Foto (Opcional)</label>
+                    <input type="file" name="foto" accept="image/*" class="input-field" style="padding: 6px;">
+                </div>
+
+                <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 10px;">
+                    <button type="button" class="btn-secondary" onclick="closeEditEquipoModal()">Cancelar</button>
+                    <button type="submit" class="btn-primary btn-equipo">Actualizar Equipo</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL VENDER PRODUCTO -->
     <div id="sellModal" class="modal-overlay">
         <div class="modal-card">
             <div class="modal-header">
@@ -713,25 +989,45 @@
     </div>
 
     <script>
-        function openAddModal() {
-            document.getElementById('addModal').style.display = 'flex';
+        function openAddProductModal() {
+            document.getElementById('addProductModal').style.display = 'flex';
         }
-        function closeAddModal() {
-            document.getElementById('addModal').style.display = 'none';
+        function closeAddProductModal() {
+            document.getElementById('addProductModal').style.display = 'none';
         }
 
-        function openEditModal(prod) {
-            document.getElementById('editForm').action = '/inventario/editar/' + prod.id_producto;
-            document.getElementById('edit_nombre').value = prod.nombre;
-            document.getElementById('edit_descripcion').value = prod.descripcion || '';
-            document.getElementById('edit_categoria').value = prod.categoria || 'General';
-            document.getElementById('edit_cantidad').value = prod.cantidad;
-            document.getElementById('edit_precio_costo').value = prod.precio_costo || '';
-            document.getElementById('edit_precio_venta').value = prod.precio_venta;
-            document.getElementById('editModal').style.display = 'flex';
+        function openEditProductModal(prod) {
+            document.getElementById('editProductForm').action = '/inventario/producto/editar/' + prod.id_producto;
+            document.getElementById('edit_prod_nombre').value = prod.nombre;
+            document.getElementById('edit_prod_descripcion').value = prod.descripcion || '';
+            document.getElementById('edit_prod_categoria').value = prod.categoria || 'General';
+            document.getElementById('edit_prod_cantidad').value = prod.cantidad;
+            document.getElementById('edit_prod_precio_costo').value = prod.precio_costo || '';
+            document.getElementById('edit_prod_precio_venta').value = prod.precio_venta;
+            document.getElementById('editProductModal').style.display = 'flex';
         }
-        function closeEditModal() {
-            document.getElementById('editModal').style.display = 'none';
+        function closeEditProductModal() {
+            document.getElementById('editProductModal').style.display = 'none';
+        }
+
+        function openAddEquipoModal() {
+            document.getElementById('addEquipoModal').style.display = 'flex';
+        }
+        function closeAddEquipoModal() {
+            document.getElementById('addEquipoModal').style.display = 'none';
+        }
+
+        function openEditEquipoModal(eq) {
+            document.getElementById('editEquipoForm').action = '/inventario/equipo/editar/' + eq.id_equipo;
+            document.getElementById('edit_eq_nombre').value = eq.nombre;
+            document.getElementById('edit_eq_descripcion').value = eq.descripcion || '';
+            document.getElementById('edit_eq_zona').value = eq.zona || 'Cardio';
+            document.getElementById('edit_eq_cantidad').value = eq.cantidad;
+            document.getElementById('edit_eq_estado').value = eq.estado || 'Excelente';
+            document.getElementById('editEquipoModal').style.display = 'flex';
+        }
+        function closeEditEquipoModal() {
+            document.getElementById('editEquipoModal').style.display = 'none';
         }
 
         function openSellModal(id, nombre, stock, precio) {

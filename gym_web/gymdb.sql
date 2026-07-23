@@ -102,9 +102,9 @@ CREATE TABLE `auditoria` (
 
 
 -- ============================================================
--- TABLA: inventario
+-- TABLA: productos (productos de venta y consumibles)
 -- ============================================================
-CREATE TABLE `inventario` (
+CREATE TABLE `productos` (
   `id_producto` INT(11) NOT NULL AUTO_INCREMENT,
   `nombre` VARCHAR(100) NOT NULL,
   `descripcion` VARCHAR(255) DEFAULT NULL,
@@ -115,6 +115,21 @@ CREATE TABLE `inventario` (
   `foto_url` VARCHAR(255) DEFAULT NULL,
   `fecha_agregado` DATETIME DEFAULT CURRENT_TIMESTAMP(),
   PRIMARY KEY (`id_producto`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- ============================================================
+-- TABLA: maquinaria (equipos y máquinas del gimnasio)
+-- ============================================================
+CREATE TABLE `maquinaria` (
+  `id_equipo` INT(11) NOT NULL AUTO_INCREMENT,
+  `nombre` VARCHAR(100) NOT NULL,
+  `descripcion` VARCHAR(255) DEFAULT NULL,
+  `cantidad` INT(11) NOT NULL DEFAULT 1,
+  `zona` VARCHAR(50) NOT NULL DEFAULT 'Cardio',
+  `estado` VARCHAR(50) NOT NULL DEFAULT 'Excelente',
+  `foto_url` VARCHAR(255) DEFAULT NULL,
+  `fecha_registro` DATETIME DEFAULT CURRENT_TIMESTAMP(),
+  PRIMARY KEY (`id_equipo`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- ============================================================
@@ -132,93 +147,27 @@ CREATE TABLE `cargos` (
   KEY `cui_usuario` (`cui_usuario`),
   KEY `id_producto` (`id_producto`),
   CONSTRAINT `cargos_ibfk_1` FOREIGN KEY (`cui_usuario`) REFERENCES `usuarios` (`cui`),
-  CONSTRAINT `fk_cargo_producto` FOREIGN KEY (`id_producto`) REFERENCES `inventario` (`id_producto`) ON DELETE SET NULL
+  CONSTRAINT `fk_cargo_producto` FOREIGN KEY (`id_producto`) REFERENCES `productos` (`id_producto`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 COMMIT;
 
 -- ============================================================
--- SCRIPT DE MIGRACION (ejecutar si ya tienes datos en Railway)
--- Copia estas lineas, quita los comentarios (--) y ejecutalas
--- en orden en phpMyAdmin de Railway.
--- Si la DB esta vacia, el schema de arriba es suficiente.
+-- PASO 7: MIGRACIÓN EN RAILWAY (Ejecutar en Railway para separar productos y maquinaria)
 -- ============================================================
---
--- PASO 1: Quitar FK
--- ALTER TABLE pagos DROP FOREIGN KEY pagos_ibfk_1;
--- ALTER TABLE recuperar_contra DROP FOREIGN KEY recuperar_contra_ibfk_1;
--- ALTER TABLE asistencia DROP FOREIGN KEY asistencia_ibfk_1;
--- ALTER TABLE metas DROP FOREIGN KEY metas_ibfk_1;
---
--- PASO 2: Agregar cui y tipo_doc
--- ALTER TABLE usuarios ADD COLUMN `cui` BIGINT UNSIGNED NOT NULL DEFAULT 0 FIRST;
--- ALTER TABLE usuarios ADD COLUMN `tipo_doc` ENUM('CUI','DPI') NOT NULL DEFAULT 'CUI' AFTER `cui`;
--- ALTER TABLE usuarios ADD UNIQUE KEY `cui_unique` (`cui`);
---
--- PASO 3: Asignar CUI/DPI reales a usuarios existentes
--- UPDATE usuarios SET cui=TU_CUI_REAL, tipo_doc='DPI' WHERE id_usuario=15;
--- UPDATE usuarios SET cui=TU_CUI_REAL, tipo_doc='DPI' WHERE id_usuario=16;
--- (repetir para cada usuario)
---
--- PASO 4: Cambiar PK de id_usuario a cui
--- ALTER TABLE usuarios DROP PRIMARY KEY;
--- ALTER TABLE usuarios MODIFY `id_usuario` INT(11) NOT NULL;
--- ALTER TABLE usuarios ADD PRIMARY KEY (`cui`);
---
--- PASO 5: Migrar tablas hijas
--- ALTER TABLE pagos ADD COLUMN `cui_usuario` BIGINT UNSIGNED NOT NULL DEFAULT 0 AFTER `id_pago`;
--- UPDATE pagos p JOIN usuarios u ON u.id_usuario=p.id_usuario SET p.cui_usuario=u.cui;
--- ALTER TABLE pagos DROP COLUMN `id_usuario`;
---
--- ALTER TABLE recuperar_contra ADD COLUMN `cui_usuario` BIGINT UNSIGNED NOT NULL DEFAULT 0 AFTER `id`;
--- UPDATE recuperar_contra r JOIN usuarios u ON u.id_usuario=r.id_usuario SET r.cui_usuario=u.cui;
--- ALTER TABLE recuperar_contra DROP COLUMN `id_usuario`;
---
--- ALTER TABLE auditoria MODIFY `actor_id` BIGINT UNSIGNED DEFAULT NULL;
--- ALTER TABLE auditoria MODIFY `afectado_id` BIGINT UNSIGNED DEFAULT NULL;
---
--- ALTER TABLE asistencia ADD COLUMN `cui_usuario` BIGINT UNSIGNED NOT NULL DEFAULT 0;
--- UPDATE asistencia a JOIN usuarios u ON u.id_usuario=a.usuario_id SET a.cui_usuario=u.cui;
--- ALTER TABLE asistencia DROP COLUMN `usuario_id`;
---
--- ALTER TABLE metas ADD COLUMN `cui_usuario` BIGINT UNSIGNED NOT NULL DEFAULT 0;
--- UPDATE metas m JOIN usuarios u ON u.id_usuario=m.usuario_id SET m.cui_usuario=u.cui;
--- ALTER TABLE metas DROP COLUMN `usuario_id`;
---
--- PASO 6: Restaurar FK
--- ALTER TABLE pagos ADD CONSTRAINT `pagos_ibfk_1` FOREIGN KEY (`cui_usuario`) REFERENCES `usuarios`(`cui`);
--- ALTER TABLE recuperar_contra ADD CONSTRAINT `recuperar_contra_ibfk_1` FOREIGN KEY (`cui_usuario`) REFERENCES `usuarios`(`cui`);
--- ALTER TABLE asistencia ADD CONSTRAINT `asistencia_ibfk_1` FOREIGN KEY (`cui_usuario`) REFERENCES `usuarios`(`cui`);
--- ALTER TABLE metas ADD CONSTRAINT `metas_ibfk_1` FOREIGN KEY (`cui_usuario`) REFERENCES `usuarios`(`cui`);
-
--- ============================================================
--- PASO 7: CREAR TABLA INVENTARIO Y CARGOS (Ejecutar en Railway si aún no existen)
--- ============================================================
--- CREATE TABLE IF NOT EXISTS `inventario` (
---   `id_producto` INT(11) NOT NULL AUTO_INCREMENT,
+-- ALTER TABLE `cargos` DROP FOREIGN KEY `fk_cargo_producto`;
+-- RENAME TABLE `inventario` TO `productos`;
+-- ALTER TABLE `cargos` ADD CONSTRAINT `fk_cargo_producto` FOREIGN KEY (`id_producto`) REFERENCES `productos` (`id_producto`) ON DELETE SET NULL;
+-- CREATE TABLE IF NOT EXISTS `maquinaria` (
+--   `id_equipo` INT(11) NOT NULL AUTO_INCREMENT,
 --   `nombre` VARCHAR(100) NOT NULL,
 --   `descripcion` VARCHAR(255) DEFAULT NULL,
---   `cantidad` INT(11) NOT NULL DEFAULT 0,
---   `precio_costo` DECIMAL(10,2) DEFAULT NULL,
---   `precio_venta` DECIMAL(10,2) NOT NULL,
---   `categoria` VARCHAR(50) DEFAULT 'General',
+--   `cantidad` INT(11) NOT NULL DEFAULT 1,
+--   `zona` VARCHAR(50) NOT NULL DEFAULT 'Cardio',
+--   `estado` VARCHAR(50) NOT NULL DEFAULT 'Excelente',
 --   `foto_url` VARCHAR(255) DEFAULT NULL,
---   `fecha_agregado` DATETIME DEFAULT CURRENT_TIMESTAMP(),
---   PRIMARY KEY (`id_producto`)
+--   `fecha_registro` DATETIME DEFAULT CURRENT_TIMESTAMP(),
+--   PRIMARY KEY (`id_equipo`)
 -- ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
---
--- CREATE TABLE IF NOT EXISTS `cargos` (
---   `id_cargo`          BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
---   `cui_usuario`       BIGINT UNSIGNED NOT NULL,
---   `descripcion`       VARCHAR(255) NOT NULL,
---   `monto`             DECIMAL(10,2) NOT NULL,
---   `fecha_emision`     DATE NOT NULL,
---   `estado`            VARCHAR(20) NOT NULL DEFAULT 'pendiente',
---   `id_producto`       INT(11) DEFAULT NULL,
---   PRIMARY KEY (`id_cargo`),
---   KEY `cui_usuario` (`cui_usuario`),
---   KEY `id_producto` (`id_producto`),
---   CONSTRAINT `cargos_ibfk_1` FOREIGN KEY (`cui_usuario`) REFERENCES `usuarios` (`cui`),
---   CONSTRAINT `fk_cargo_producto` FOREIGN KEY (`id_producto`) REFERENCES `inventario` (`id_producto`) ON DELETE SET NULL
--- ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
 

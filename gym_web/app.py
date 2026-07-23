@@ -489,7 +489,7 @@ def admin_panel():
     periodos_pagados = periodos_pagados_por_usuario(cursor, [u["cui"] for u in usuarios_all])
     cargos_pendientes = cargos_pendientes_por_usuario(cursor, [u["cui"] for u in usuarios_all])
 
-    cursor.execute("SELECT * FROM inventario ORDER BY nombre ASC")
+    cursor.execute("SELECT * FROM productos ORDER BY nombre ASC")
     productos = cursor.fetchall()
 
     conn.close()
@@ -964,7 +964,7 @@ def crear_cargo(cui):
     
     # Descontar del inventario si es un producto
     if id_producto:
-        cursor.execute("UPDATE inventario SET cantidad = cantidad - 1 WHERE id_producto = %s", (id_producto,))
+        cursor.execute("UPDATE productos SET cantidad = cantidad - 1 WHERE id_producto = %s", (id_producto,))
         
     conn.commit()
     conn.close()
@@ -1487,9 +1487,9 @@ def inventario_admin():
     cursor = conn.cursor(dictionary=True)
     
     if buscar:
-        cursor.execute("SELECT * FROM inventario WHERE nombre LIKE %s OR categoria LIKE %s ORDER BY nombre", (f"%{buscar}%", f"%{buscar}%"))
+        cursor.execute("SELECT * FROM productos WHERE nombre LIKE %s OR categoria LIKE %s ORDER BY nombre", (f"%{buscar}%", f"%{buscar}%"))
     else:
-        cursor.execute("SELECT * FROM inventario ORDER BY nombre")
+        cursor.execute("SELECT * FROM productos ORDER BY nombre")
         
     productos = cursor.fetchall()
     conn.close()
@@ -1512,7 +1512,6 @@ def agregar_producto():
     foto_url = None
     if foto and allowed_file(foto.filename):
         filename = secure_filename(foto.filename)
-        # Prefijo unico para evitar sobreescrituras
         import time
         filename = f"{int(time.time())}_{filename}"
         foto.save(os.path.join(app.config['UPLOAD_FOLDER_INVENTARIO'], filename))
@@ -1521,7 +1520,7 @@ def agregar_producto():
     conn = conectar_db()
     cursor = conn.cursor()
     cursor.execute("""
-        INSERT INTO inventario (nombre, descripcion, cantidad, precio_costo, precio_venta, categoria, foto_url)
+        INSERT INTO productos (nombre, descripcion, cantidad, precio_costo, precio_venta, categoria, foto_url)
         VALUES (%s, %s, %s, %s, %s, %s, %s)
     """, (nombre, descripcion, cantidad, precio_costo, precio_venta, categoria, foto_url))
     conn.commit()
@@ -1554,12 +1553,12 @@ def editar_producto(id_producto):
         foto_url = f"/static/uploads/inventario/{filename}"
         
         cursor.execute("""
-            UPDATE inventario SET nombre=%s, descripcion=%s, precio_costo=%s, precio_venta=%s, categoria=%s, foto_url=%s
+            UPDATE productos SET nombre=%s, descripcion=%s, precio_costo=%s, precio_venta=%s, categoria=%s, foto_url=%s
             WHERE id_producto=%s
         """, (nombre, descripcion, precio_costo, precio_venta, categoria, foto_url, id_producto))
     else:
         cursor.execute("""
-            UPDATE inventario SET nombre=%s, descripcion=%s, precio_costo=%s, precio_venta=%s, categoria=%s
+            UPDATE productos SET nombre=%s, descripcion=%s, precio_costo=%s, precio_venta=%s, categoria=%s
             WHERE id_producto=%s
         """, (nombre, descripcion, precio_costo, precio_venta, categoria, id_producto))
         
@@ -1583,7 +1582,7 @@ def ajustar_stock(id_producto):
         
     conn = conectar_db()
     cursor = conn.cursor()
-    cursor.execute("UPDATE inventario SET cantidad = cantidad + %s WHERE id_producto=%s", (ajuste, id_producto))
+    cursor.execute("UPDATE productos SET cantidad = cantidad + %s WHERE id_producto=%s", (ajuste, id_producto))
     conn.commit()
     conn.close()
     
@@ -1598,7 +1597,7 @@ def eliminar_producto(id_producto):
         
     conn = conectar_db()
     cursor = conn.cursor()
-    cursor.execute("DELETE FROM inventario WHERE id_producto=%s", (id_producto,))
+    cursor.execute("DELETE FROM productos WHERE id_producto=%s", (id_producto,))
     conn.commit()
     conn.close()
     
@@ -2427,6 +2426,9 @@ def generar_contrato_pdf(cui):
 # MÓDULO DE INVENTARIO Y TIENDA
 # ─────────────────────────────────────────────
 
+ZONAS_EQUIPOS = ["Cardio", "Musculación", "Pesas Libres", "Funcional", "Estiramiento", "General / Vestuarios"]
+ESTADOS_EQUIPOS = ["Excelente", "Bueno", "En Mantenimiento", "Fuera de Servicio"]
+
 @app.route("/inventario")
 def inventario():
     if "usuario_id" not in session:
@@ -2436,33 +2438,53 @@ def inventario():
         return redirect("/panel")
 
     categoria_filtro = request.args.get("categoria", "").strip()
+    zona_filtro = request.args.get("zona", "").strip()
     busqueda = request.args.get("q", "").strip()
+    tab_activa = request.args.get("tab", "productos").strip()
 
     conn = conectar_db()
     cursor = conn.cursor(dictionary=True)
 
-    sql = "SELECT * FROM inventario WHERE 1=1"
-    params = []
-
+    # 1. Obtener productos
+    sql_prod = "SELECT * FROM productos WHERE 1=1"
+    params_prod = []
     if categoria_filtro:
-        sql += " AND categoria = %s"
-        params.append(categoria_filtro)
-    if busqueda:
-        sql += " AND (nombre LIKE %s OR descripcion LIKE %s OR categoria LIKE %s)"
+        sql_prod += " AND categoria = %s"
+        params_prod.append(categoria_filtro)
+    if busqueda and tab_activa != "equipos":
+        sql_prod += " AND (nombre LIKE %s OR descripcion LIKE %s OR categoria LIKE %s)"
         busq_param = f"%{busqueda}%"
-        params.extend([busq_param, busq_param, busq_param])
+        params_prod.extend([busq_param, busq_param, busq_param])
 
-    sql += " ORDER BY id_producto DESC"
-    cursor.execute(sql, tuple(params))
+    sql_prod += " ORDER BY id_producto DESC"
+    cursor.execute(sql_prod, tuple(params_prod))
     productos = cursor.fetchall()
 
-    # Estadísticas de inventario
-    cursor.execute("SELECT COUNT(*) AS total_prods, COALESCE(SUM(cantidad),0) AS total_stock, COALESCE(SUM(cantidad * precio_venta),0) AS valor_total, COALESCE(SUM(CASE WHEN cantidad < 5 THEN 1 ELSE 0 END),0) AS stock_bajo FROM inventario")
-    stats = cursor.fetchone() or {}
+    # Estadísticas de productos
+    cursor.execute("SELECT COUNT(*) AS total_prods, COALESCE(SUM(cantidad),0) AS total_stock, COALESCE(SUM(cantidad * precio_venta),0) AS valor_total, COALESCE(SUM(CASE WHEN cantidad < 5 THEN 1 ELSE 0 END),0) AS stock_bajo FROM productos")
+    stats_prods = cursor.fetchone() or {}
 
-    # Lista de categorías únicas para los filtros
-    cursor.execute("SELECT DISTINCT categoria FROM inventario WHERE categoria IS NOT NULL AND categoria != '' ORDER BY categoria ASC")
+    cursor.execute("SELECT DISTINCT categoria FROM productos WHERE categoria IS NOT NULL AND categoria != '' ORDER BY categoria ASC")
     categorias = [r["categoria"] for r in cursor.fetchall()]
+
+    # 2. Obtener maquinaria / equipos
+    sql_maq = "SELECT * FROM maquinaria WHERE 1=1"
+    params_maq = []
+    if zona_filtro:
+        sql_maq += " AND zona = %s"
+        params_maq.append(zona_filtro)
+    if busqueda and tab_activa == "equipos":
+        sql_maq += " AND (nombre LIKE %s OR descripcion LIKE %s OR zona LIKE %s OR estado LIKE %s)"
+        busq_param = f"%{busqueda}%"
+        params_maq.extend([busq_param, busq_param, busq_param, busq_param])
+
+    sql_maq += " ORDER BY zona ASC, nombre ASC"
+    cursor.execute(sql_maq, tuple(params_maq))
+    equipos = cursor.fetchall()
+
+    # Estadísticas de maquinaria
+    cursor.execute("SELECT COUNT(*) AS total_equipos, COALESCE(SUM(cantidad),0) AS unidades_equipos, COALESCE(SUM(CASE WHEN estado IN ('En Mantenimiento', 'Fuera de Servicio') THEN cantidad ELSE 0 END),0) AS equipos_mantenimiento FROM maquinaria")
+    stats_equipos = cursor.fetchone() or {}
 
     # Lista de usuarios activos para asignar cobros/ventas
     cursor.execute("SELECT cui, nombre, apellido, email FROM usuarios WHERE estado = 'activo' ORDER BY nombre ASC, apellido ASC")
@@ -2473,15 +2495,22 @@ def inventario():
     return render_template(
         "inventario.html",
         productos=productos,
-        stats=stats,
+        equipos=equipos,
+        stats=stats_prods,
+        stats_equipos=stats_equipos,
         categorias=categorias,
+        zonas_equipos=ZONAS_EQUIPOS,
+        estados_equipos=ESTADOS_EQUIPOS,
         usuarios=usuarios,
         categoria_actual=categoria_filtro,
-        busqueda=busqueda
+        zona_actual=zona_filtro,
+        busqueda=busqueda,
+        tab_activa=tab_activa
     )
 
 
 @app.route("/inventario/agregar", methods=["POST"])
+@app.route("/inventario/producto/agregar", methods=["POST"])
 def inventario_agregar():
     if "usuario_id" not in session or session.get("rol") not in ("admin", "empleado"):
         flash("No tienes permiso para realizar esta acción", "error")
@@ -2495,8 +2524,8 @@ def inventario_agregar():
     categoria = request.form.get("categoria", "General").strip() or "General"
 
     if not nombre or not precio_venta_raw:
-        flash("El nombre y el precio de venta son obligatorios", "error")
-        return redirect("/inventario")
+        flash("El nombre y el precio de venta son obligatorios para productos", "error")
+        return redirect("/inventario?tab=productos")
 
     try:
         cantidad = int(cantidad_raw)
@@ -2506,7 +2535,7 @@ def inventario_agregar():
             raise ValueError()
     except ValueError:
         flash("Los valores numéricos (cantidad, precio) no son válidos", "error")
-        return redirect("/inventario")
+        return redirect("/inventario?tab=productos")
 
     foto_url = None
     if "foto" in request.files:
@@ -2520,7 +2549,7 @@ def inventario_agregar():
     conn = conectar_db()
     cursor = conn.cursor()
     cursor.execute("""
-        INSERT INTO inventario (nombre, descripcion, cantidad, precio_costo, precio_venta, categoria, foto_url)
+        INSERT INTO productos (nombre, descripcion, cantidad, precio_costo, precio_venta, categoria, foto_url)
         VALUES (%s, %s, %s, %s, %s, %s, %s)
     """, (nombre, descripcion or None, cantidad, precio_costo, precio_venta, categoria, foto_url))
     conn.commit()
@@ -2528,10 +2557,11 @@ def inventario_agregar():
 
     registrar_log("INVENTARIO_AGREGAR", f"Producto '{nombre}' agregado (Stock: {cantidad}, Precio Venta: Q{precio_venta:.2f})")
     flash(f"Producto '{nombre}' agregado exitosamente al inventario.", "success")
-    return redirect("/inventario")
+    return redirect("/inventario?tab=productos")
 
 
 @app.route("/inventario/editar/<int:id_producto>", methods=["POST"])
+@app.route("/inventario/producto/editar/<int:id_producto>", methods=["POST"])
 def inventario_editar(id_producto):
     if "usuario_id" not in session or session.get("rol") not in ("admin", "empleado"):
         flash("No tienes permiso para realizar esta acción", "error")
@@ -2546,7 +2576,7 @@ def inventario_editar(id_producto):
 
     if not nombre or not precio_venta_raw:
         flash("El nombre y precio de venta son requeridos", "error")
-        return redirect("/inventario")
+        return redirect("/inventario?tab=productos")
 
     try:
         cantidad = int(cantidad_raw)
@@ -2556,17 +2586,17 @@ def inventario_editar(id_producto):
             raise ValueError()
     except ValueError:
         flash("Valores numéricos inválidos", "error")
-        return redirect("/inventario")
+        return redirect("/inventario?tab=productos")
 
     conn = conectar_db()
     cursor = conn.cursor(dictionary=True)
-    cursor.execute("SELECT foto_url FROM inventario WHERE id_producto = %s", (id_producto,))
+    cursor.execute("SELECT foto_url FROM productos WHERE id_producto = %s", (id_producto,))
     prod_actual = cursor.fetchone()
 
     if not prod_actual:
         conn.close()
         flash("Producto no encontrado", "error")
-        return redirect("/inventario")
+        return redirect("/inventario?tab=productos")
 
     foto_url = prod_actual["foto_url"]
     if "foto" in request.files:
@@ -2578,7 +2608,7 @@ def inventario_editar(id_producto):
             foto_url = f"/static/uploads/productos/{filename}"
 
     cursor.execute("""
-        UPDATE inventario
+        UPDATE productos
         SET nombre = %s, descripcion = %s, cantidad = %s, precio_costo = %s, precio_venta = %s, categoria = %s, foto_url = %s
         WHERE id_producto = %s
     """, (nombre, descripcion or None, cantidad, precio_costo, precio_venta, categoria, foto_url, id_producto))
@@ -2587,10 +2617,11 @@ def inventario_editar(id_producto):
 
     registrar_log("INVENTARIO_EDITAR", f"Producto ID {id_producto} ('{nombre}') actualizado.")
     flash(f"Producto '{nombre}' actualizado con éxito.", "success")
-    return redirect("/inventario")
+    return redirect("/inventario?tab=productos")
 
 
 @app.route("/inventario/eliminar/<int:id_producto>", methods=["POST"])
+@app.route("/inventario/producto/eliminar/<int:id_producto>", methods=["POST"])
 def inventario_eliminar(id_producto):
     if "usuario_id" not in session or session.get("rol") not in ("admin", "empleado"):
         flash("No tienes permiso para realizar esta acción", "error")
@@ -2598,17 +2629,143 @@ def inventario_eliminar(id_producto):
 
     conn = conectar_db()
     cursor = conn.cursor(dictionary=True)
-    cursor.execute("SELECT nombre FROM inventario WHERE id_producto = %s", (id_producto,))
+    cursor.execute("SELECT nombre FROM productos WHERE id_producto = %s", (id_producto,))
     prod = cursor.fetchone()
 
     if prod:
-        cursor.execute("DELETE FROM inventario WHERE id_producto = %s", (id_producto,))
+        cursor.execute("DELETE FROM productos WHERE id_producto = %s", (id_producto,))
         conn.commit()
         registrar_log("INVENTARIO_ELIMINAR", f"Producto ID {id_producto} ('{prod['nombre']}') eliminado.")
         flash(f"Producto '{prod['nombre']}' eliminado del inventario.", "info")
 
     conn.close()
-    return redirect("/inventario")
+    return redirect("/inventario?tab=productos")
+
+
+# ── Rutas para Maquinaria y Equipos ──
+
+@app.route("/inventario/equipo/agregar", methods=["POST"])
+def equipo_agregar():
+    if "usuario_id" not in session or session.get("rol") not in ("admin", "empleado"):
+        flash("No tienes permiso para realizar esta acción", "error")
+        return redirect("/login")
+
+    nombre = request.form.get("nombre", "").strip()
+    descripcion = request.form.get("descripcion", "").strip()
+    cantidad_raw = request.form.get("cantidad", "1").strip()
+    zona = request.form.get("zona", "Cardio").strip() or "Cardio"
+    estado = request.form.get("estado", "Excelente").strip() or "Excelente"
+
+    if not nombre:
+        flash("El nombre del equipo es obligatorio", "error")
+        return redirect("/inventario?tab=equipos")
+
+    try:
+        cantidad = int(cantidad_raw)
+        if cantidad < 0:
+            raise ValueError()
+    except ValueError:
+        flash("La cantidad de equipos debe ser un número válido", "error")
+        return redirect("/inventario?tab=equipos")
+
+    foto_url = None
+    if "foto" in request.files:
+        file = request.files["foto"]
+        if file and file.filename != "" and allowed_file(file.filename):
+            filename = f"{uuid.uuid4().hex[:10]}_{secure_filename(file.filename)}"
+            filepath = os.path.join(app.config["UPLOAD_FOLDER"], filename)
+            file.save(filepath)
+            foto_url = f"/static/uploads/productos/{filename}"
+
+    conn = conectar_db()
+    cursor = conn.cursor()
+    cursor.execute("""
+        INSERT INTO maquinaria (nombre, descripcion, cantidad, zona, estado, foto_url)
+        VALUES (%s, %s, %s, %s, %s, %s)
+    """, (nombre, descripcion or None, cantidad, zona, estado, foto_url))
+    conn.commit()
+    conn.close()
+
+    registrar_log("EQUIPO_AGREGAR", f"Equipo '{nombre}' registrado en Zona '{zona}' (Cantidad: {cantidad}, Estado: {estado})")
+    flash(f"Equipo '{nombre}' registrado exitosamente en la zona {zona}.", "success")
+    return redirect("/inventario?tab=equipos")
+
+
+@app.route("/inventario/equipo/editar/<int:id_equipo>", methods=["POST"])
+def equipo_editar(id_equipo):
+    if "usuario_id" not in session or session.get("rol") not in ("admin", "empleado"):
+        flash("No tienes permiso para realizar esta acción", "error")
+        return redirect("/login")
+
+    nombre = request.form.get("nombre", "").strip()
+    descripcion = request.form.get("descripcion", "").strip()
+    cantidad_raw = request.form.get("cantidad", "1").strip()
+    zona = request.form.get("zona", "Cardio").strip() or "Cardio"
+    estado = request.form.get("estado", "Excelente").strip() or "Excelente"
+
+    if not nombre:
+        flash("El nombre del equipo es obligatorio", "error")
+        return redirect("/inventario?tab=equipos")
+
+    try:
+        cantidad = int(cantidad_raw)
+        if cantidad < 0:
+            raise ValueError()
+    except ValueError:
+        flash("Cantidad inválida", "error")
+        return redirect("/inventario?tab=equipos")
+
+    conn = conectar_db()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("SELECT foto_url FROM maquinaria WHERE id_equipo = %s", (id_equipo,))
+    eq_actual = cursor.fetchone()
+
+    if not eq_actual:
+        conn.close()
+        flash("Equipo no encontrado", "error")
+        return redirect("/inventario?tab=equipos")
+
+    foto_url = eq_actual["foto_url"]
+    if "foto" in request.files:
+        file = request.files["foto"]
+        if file and file.filename != "" and allowed_file(file.filename):
+            filename = f"{uuid.uuid4().hex[:10]}_{secure_filename(file.filename)}"
+            filepath = os.path.join(app.config["UPLOAD_FOLDER"], filename)
+            file.save(filepath)
+            foto_url = f"/static/uploads/productos/{filename}"
+
+    cursor.execute("""
+        UPDATE maquinaria
+        SET nombre = %s, descripcion = %s, cantidad = %s, zona = %s, estado = %s, foto_url = %s
+        WHERE id_equipo = %s
+    """, (nombre, descripcion or None, cantidad, zona, estado, foto_url, id_equipo))
+    conn.commit()
+    conn.close()
+
+    registrar_log("EQUIPO_EDITAR", f"Equipo ID {id_equipo} ('{nombre}') actualizado.")
+    flash(f"Equipo '{nombre}' actualizado con éxito.", "success")
+    return redirect("/inventario?tab=equipos")
+
+
+@app.route("/inventario/equipo/eliminar/<int:id_equipo>", methods=["POST"])
+def equipo_eliminar(id_equipo):
+    if "usuario_id" not in session or session.get("rol") not in ("admin", "empleado"):
+        flash("No tienes permiso para realizar esta acción", "error")
+        return redirect("/login")
+
+    conn = conectar_db()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("SELECT nombre FROM maquinaria WHERE id_equipo = %s", (id_equipo,))
+    eq = cursor.fetchone()
+
+    if eq:
+        cursor.execute("DELETE FROM maquinaria WHERE id_equipo = %s", (id_equipo,))
+        conn.commit()
+        registrar_log("EQUIPO_ELIMINAR", f"Equipo ID {id_equipo} ('{eq['nombre']}') eliminado.")
+        flash(f"Equipo '{eq['nombre']}' eliminado de maquinaria.", "info")
+
+    conn.close()
+    return redirect("/inventario?tab=equipos")
 
 
 @app.route("/inventario/vender", methods=["POST"])
@@ -2648,7 +2805,7 @@ def inventario_vender():
         flash("El socio especificado no existe", "error")
         return redirect(request.referrer or "/inventario")
 
-    cursor.execute("SELECT id_producto, nombre, cantidad, precio_venta FROM inventario WHERE id_producto = %s", (id_producto,))
+    cursor.execute("SELECT id_producto, nombre, cantidad, precio_venta FROM productos WHERE id_producto = %s", (id_producto,))
     prod = cursor.fetchone()
 
     if not prod:
@@ -2661,9 +2818,9 @@ def inventario_vender():
         flash(f"Stock insuficiente para '{prod['nombre']}'. Disponible: {prod['cantidad']} unidades.", "error")
         return redirect(request.referrer or "/tienda")
 
-    # Restar stock atómicamente ('q se reste auto')
+    # Restar stock atómicamente
     cursor.execute("""
-        UPDATE inventario
+        UPDATE productos
         SET cantidad = cantidad - %s
         WHERE id_producto = %s AND cantidad >= %s
     """, (cantidad_venta, id_producto, cantidad_venta))
@@ -2708,7 +2865,7 @@ def tienda():
     conn = conectar_db()
     cursor = conn.cursor(dictionary=True)
 
-    sql = "SELECT * FROM inventario WHERE 1=1"
+    sql = "SELECT * FROM productos WHERE 1=1"
     params = []
 
     if categoria_filtro:
@@ -2723,7 +2880,7 @@ def tienda():
     cursor.execute(sql, tuple(params))
     productos = cursor.fetchall()
 
-    cursor.execute("SELECT DISTINCT categoria FROM inventario WHERE categoria IS NOT NULL AND categoria != '' ORDER BY categoria ASC")
+    cursor.execute("SELECT DISTINCT categoria FROM productos WHERE categoria IS NOT NULL AND categoria != '' ORDER BY categoria ASC")
     categorias = [r["categoria"] for r in cursor.fetchall()]
 
     conn.close()
