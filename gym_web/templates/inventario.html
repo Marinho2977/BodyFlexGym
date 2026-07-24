@@ -501,22 +501,12 @@
                 <!-- STATS PRODUCTOS -->
                 <div class="stats-grid">
                     <div class="stat-card">
-                        <div class="stat-label">Total Productos</div>
-                        <div class="stat-value">{{ stats.total_prods or 0 }}</div>
-                    </div>
-                    <div class="stat-card">
                         <div class="stat-label">Unidades en Stock</div>
                         <div class="stat-value">{{ stats.total_stock or 0 }}</div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-label">Valor Estimado del Stock</div>
                         <div class="stat-value" style="color: var(--primary);">Q{{ "%.2f"|format(stats.valor_total or 0) }}</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-label">Alertas Stock Bajo (< 5)</div>
-                        <div class="stat-value" style="color: {{ 'var(--danger)' if stats.stock_bajo > 0 else 'var(--success)' }};">
-                            {{ stats.stock_bajo or 0 }}
-                        </div>
                     </div>
                 </div>
 

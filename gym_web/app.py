@@ -122,6 +122,48 @@ def procesar_envio_automatico_whatsapp(dias_anticipacion=7):
         print(f"[ERROR WHATSAPP AUTO] {e}")
         return 0, []
 
+def procesar_envio_manual_whatsapp():
+    """Envía recordatorio a TODOS los socios activos con teléfono y pagos registrados, sin importar cuántos días faltan."""
+    try:
+        conn = conectar_db()
+        cursor = conn.cursor(dictionary=True)
+        hoy = date.today()
+        
+        cursor.execute("""
+            SELECT u.cui, u.nombre, u.apellido, u.telefono, MAX(p.fecha_vencimiento) AS ultimo_vencimiento
+            FROM usuarios u
+            LEFT JOIN pagos p ON u.cui = p.cui_usuario
+            WHERE u.estado = 'activo' AND u.telefono IS NOT NULL AND u.telefono != ''
+            GROUP BY u.cui, u.nombre, u.apellido, u.telefono
+        """)
+        usuarios_all = cursor.fetchall()
+        
+        envios_exitosos = 0
+        detalles_envio = []
+
+        for u in usuarios_all:
+            if u["ultimo_vencimiento"]:
+                dias_restantes = (u["ultimo_vencimiento"] - hoy).days
+                venc_str = u["ultimo_vencimiento"].strftime('%d/%m/%Y')
+                if dias_restantes < 0:
+                    mensaje = f"Hola {u['nombre']}, tu mensualidad en Bodyflex Gym venció el {venc_str} (hace {abs(dias_restantes)} días). ¡Acércate a renovar para seguir entrenando! 💪"
+                elif dias_restantes == 0:
+                    mensaje = f"Hola {u['nombre']}, tu mensualidad en Bodyflex Gym vence HOY {venc_str}. ¡Renueva hoy para no perder tu acceso! 💪"
+                else:
+                    mensaje = f"Hola {u['nombre']}, te recordamos que tu mensualidad en Bodyflex Gym vence el {venc_str} (en {dias_restantes} días). ¡Renueva a tiempo para seguir entrenando sin interrupciones! 💪"
+                
+                ok, res = enviar_whatsapp_api(u["telefono"], mensaje)
+                if ok:
+                    envios_exitosos += 1
+                    detalles_envio.append(f"{u['nombre']} {u['apellido']} ({u['telefono']}) — {'vencido' if dias_restantes < 0 else f'{dias_restantes}d'}")
+                    registrar_log("whatsapp_manual", f"Aviso manual enviado para {u['nombre']} {u['apellido']} (vence {venc_str})", u["cui"], f"{u['nombre']} {u['apellido']}")
+
+        conn.close()
+        return envios_exitosos, detalles_envio
+    except Exception as e:
+        print(f"[ERROR WHATSAPP MANUAL] {e}")
+        return 0, []
+
 def iniciar_planificador_whatsapp():
     def ejecutor_loop():
         time.sleep(15)
@@ -138,17 +180,21 @@ def iniciar_planificador_whatsapp():
 iniciar_planificador_whatsapp()
 
 @app.route("/admin/whatsapp/enviar_automatico", methods=["POST", "GET"])
-@app.route("/cron/recordatorios_whatsapp", methods=["POST", "GET"])
-def ejecutar_whatsapp_automatico():
+def ejecutar_whatsapp_manual():
     if request.method == "POST" and session.get("rol") not in ("admin", "empleado"):
         return redirect("/login")
     
-    cant, detalles = procesar_envio_automatico_whatsapp(dias_anticipacion=7)
+    cant, detalles = procesar_envio_manual_whatsapp()
     if request.method == "POST":
-        flash(f"⚡ Avisos automáticos de WhatsApp ejecutados (7 días antes). Se notificaron/procesaron {cant} socio(s).", "success")
+        flash(f"⚡ Avisos de WhatsApp enviados a TODOS los socios con teléfono registrado. Se procesaron {cant} socio(s).", "success")
         return redirect(request.referrer or "/admin")
     else:
         return {"status": "ok", "procesados": cant, "socios": detalles}
+
+@app.route("/cron/recordatorios_whatsapp", methods=["POST", "GET"])
+def ejecutar_whatsapp_cron():
+    cant, detalles = procesar_envio_automatico_whatsapp(dias_anticipacion=7)
+    return {"status": "ok", "procesados": cant, "socios": detalles}
 
 # ─────────────────────────────────────────────
 # CSRF PROTECTION
