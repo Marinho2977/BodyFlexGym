@@ -602,7 +602,7 @@ def iniciar():
     session["nombre"]     = usuario["nombre"]
     session["rol"]        = usuario["rol"]
 
-    registrar_log("login", "Inició sesión")
+    # registrar_log("login", "Inició sesión")
 
     if usuario["rol"] == "admin":
         return redirect("/admin")
@@ -2417,7 +2417,7 @@ def registro():
 
 @app.route("/logout")
 def logout():
-    registrar_log("login", "Cerró sesión")
+    # registrar_log("login", "Cerró sesión")
     session.clear()
     return redirect("/login")
 
