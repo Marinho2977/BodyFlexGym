@@ -1579,11 +1579,12 @@ def limpiar_auditoria():
 
     conn = conectar_db()
     cursor = conn.cursor()
-    cursor.execute("DELETE FROM auditoria WHERE actor_rol IN ('user', 'socio')")
+    # Eliminar todos los registros de tipo login y logs de usuarios regulares
+    cursor.execute("DELETE FROM auditoria WHERE actor_rol IN ('user', 'socio') OR tipo = 'login'")
     conn.commit()
     conn.close()
 
-    flash("Se eliminaron todos los registros de auditoría de usuarios regulares exitosamente.", "success")
+    flash("Se eliminaron todos los registros de inicios de sesión y logs de usuarios regulares exitosamente.", "success")
     return redirect("/admin/auditoria")
 
 
