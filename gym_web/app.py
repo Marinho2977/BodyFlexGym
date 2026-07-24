@@ -114,7 +114,6 @@ def procesar_envio_automatico_whatsapp(dias_anticipacion=7):
                     if ok:
                         envios_exitosos += 1
                         detalles_envio.append(f"{u['nombre']} {u['apellido']} ({u['telefono']})")
-                        registrar_log("whatsapp_auto", f"Aviso automático 7 días enviado para {u['nombre']} {u['apellido']} (vence {venc_str})", u["cui"], f"{u['nombre']} {u['apellido']}")
 
         conn.close()
         return envios_exitosos, detalles_envio
@@ -156,7 +155,6 @@ def procesar_envio_manual_whatsapp():
                 if ok:
                     envios_exitosos += 1
                     detalles_envio.append(f"{u['nombre']} {u['apellido']} ({u['telefono']}) — {'vencido' if dias_restantes < 0 else f'{dias_restantes}d'}")
-                    registrar_log("whatsapp_manual", f"Aviso manual enviado para {u['nombre']} {u['apellido']} (vence {venc_str})", u["cui"], f"{u['nombre']} {u['apellido']}")
 
         conn.close()
         return envios_exitosos, detalles_envio

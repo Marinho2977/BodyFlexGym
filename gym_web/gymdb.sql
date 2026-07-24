@@ -170,16 +170,6 @@ COMMIT;
 --   PRIMARY KEY (`id_equipo`)
 -- ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- ============================================================
--- PASO 8: TABLA DE ASISTENCIAS (Control de accesos/check-in diario)
--- ============================================================
-CREATE TABLE IF NOT EXISTS `asistencias` (
-  `id_asistencia` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-  `cui_usuario` BIGINT UNSIGNED NOT NULL,
-  `fecha_hora` DATETIME DEFAULT CURRENT_TIMESTAMP(),
-  PRIMARY KEY (`id_asistencia`),
-  KEY `cui_usuario` (`cui_usuario`),
-  CONSTRAINT `fk_asistencias_usuario` FOREIGN KEY (`cui_usuario`) REFERENCES `usuarios` (`cui`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
 
 
