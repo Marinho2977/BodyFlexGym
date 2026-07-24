@@ -66,20 +66,19 @@ def enviar_whatsapp_api(telefono, mensaje):
     if api_url and api_token:
         try:
             payload = {
-                "token": api_token,
-                "to": f"+{num_gt}",
-                "body": mensaje
+                "phone": f"+{num_gt}",
+                "message": mensaje
             }
             data = json.dumps(payload).encode("utf-8")
             req = urllib.request.Request(
                 api_url,
                 data=data,
-                headers={"Content-Type": "application/json", "User-Agent": "BodyflexGymApp/1.0"},
+                headers={"Content-Type": "application/json", "Token": api_token},
                 method="POST"
             )
             with urllib.request.urlopen(req, timeout=10) as response:
                 res_body = response.read().decode("utf-8")
-                return True, f"Enviado por API Gateway: {res_body[:100]}"
+                return True, f"Enviado por Wassenger API: {res_body[:100]}"
         except Exception as e:
             return False, f"Error al llamar API WhatsApp: {str(e)}"
     else:
@@ -233,7 +232,28 @@ def conectar_db():
         port=int(os.environ.get('MYSQLPORT', 3306))
     )
 
-PRECIO_MENSUAL = 225.00
+def obtener_precio_plan(meses_buscados, default_precio):
+    try:
+        conn = mysql.connector.connect(
+            host=os.environ.get('MYSQLHOST'),
+            user=os.environ.get('MYSQLUSER'),
+            password=os.environ.get('MYSQLPASSWORD'),
+            database=os.environ.get('MYSQLDATABASE'),
+            port=int(os.environ.get('MYSQLPORT', 3306))
+        )
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT precio FROM planes_membresia WHERE duracion_meses=%s AND estado='activo' LIMIT 1", (meses_buscados,))
+        plan = cursor.fetchone()
+        conn.close()
+        if plan:
+            return float(plan["precio"])
+    except:
+        pass
+    return default_precio
+
+def obtener_precio_mensual():
+    return obtener_precio_plan(1, 225.0)
+
 MESES_NOMBRES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
                  "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
 MESES_POR_NOMBRE = {nombre.lower(): i + 1 for i, nombre in enumerate(MESES_NOMBRES)}
@@ -243,7 +263,12 @@ def calcular_monto_pago(meses):
     resto_6 = meses % 6
     cant_3 = resto_6 // 3
     resto_3 = resto_6 % 3
-    return float((cant_6 * 1100) + (cant_3 * 600) + (resto_3 * 225))
+    
+    precio_1 = obtener_precio_plan(1, 225.0)
+    precio_3 = obtener_precio_plan(3, 600.0)
+    precio_6 = obtener_precio_plan(6, 1100.0)
+    
+    return float((cant_6 * precio_6) + (cant_3 * precio_3) + (resto_3 * precio_1))
 
 def calcular_fecha_vencimiento_dia_3(anio, mes):
     siguiente_anio = anio + (mes // 12)
@@ -674,7 +699,7 @@ def admin_panel():
     usuarios = usuarios_all[offset:offset + por_pagina]
 
     return render_template("admin.html", usuarios=usuarios, empleados=empleados,
-                           fecha_hoy=fecha_hoy, precio_mensual=PRECIO_MENSUAL,
+                           fecha_hoy=fecha_hoy, precio_mensual=obtener_precio_mensual(),
                            periodos_pagados=periodos_pagados,
                            cargos_pendientes=cargos_pendientes,
                            productos=productos,
@@ -791,7 +816,7 @@ def ver_pagos(cui):
 
     # Recalculate based on active list
     total_ingresos = sum(float(p["monto"]) for p in pagos)
-    total_meses  = int(total_ingresos / PRECIO_MENSUAL)
+    total_meses  = int(total_ingresos / obtener_precio_mensual()) if obtener_precio_mensual() > 0 else 0
 
     nombre_socio = "Sin pagos"
     if pagos:
@@ -2037,7 +2062,7 @@ def empleado_panel():
     conn.close()
 
     return render_template("empleado.html", usuarios=usuarios, fecha_hoy=date.today(),
-                           precio_mensual=PRECIO_MENSUAL, buscar=buscar,
+                           precio_mensual=obtener_precio_mensual(), buscar=buscar,
                            periodos_pagados=periodos_pagados, cargos_pendientes=cargos_pendientes)
 
 
@@ -2309,7 +2334,8 @@ def generar_recibo(id_pago):
     y -= 32
     c.setFillColor(negro)
     c.setFont("Helvetica", 11)
-    meses = int(float(pago['monto']) / PRECIO_MENSUAL)
+    precio_mes = obtener_precio_mensual()
+    meses = int(float(pago['monto']) / precio_mes) if precio_mes > 0 else 0
     concepto = f"Membresía ({meses} {'mes' if meses == 1 else 'meses'})"
     c.drawString(60, y + 3, concepto)
 

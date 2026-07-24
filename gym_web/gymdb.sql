@@ -62,6 +62,25 @@ CREATE TABLE `pagos` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- ============================================================
+-- TABLA: planes_membresia
+-- ============================================================
+CREATE TABLE `planes_membresia` (
+  `id_plan`        INT(11) NOT NULL AUTO_INCREMENT,
+  `nombre`         VARCHAR(100) NOT NULL,
+  `precio`         DECIMAL(10,2) NOT NULL,
+  `duracion_meses` INT(11) NOT NULL DEFAULT 1,
+  `estado`         ENUM('activo', 'inactivo') DEFAULT 'activo',
+  PRIMARY KEY (`id_plan`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- Insertar planes por defecto
+INSERT INTO `planes_membresia` (`nombre`, `precio`, `duracion_meses`, `estado`) VALUES
+('Mensualidad', 225.00, 1, 'activo'),
+('Promoción Trimestral', 600.00, 3, 'activo'),
+('Promoción Semestral', 1100.00, 6, 'activo');
+
+
+-- ============================================================
 -- TABLA: recuperar_contra
 -- ============================================================
 CREATE TABLE `recuperar_contra` (
