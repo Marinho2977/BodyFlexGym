@@ -701,6 +701,11 @@
                                 {% else %}
                                     <div class="due-sub">Hace {{ dias * -1 }} dia{{ 's' if dias != -1 else '' }}</div>
                                 {% endif %}
+                                {% if u.telefono %}
+                                    <a href="{{ link_whatsapp_vencimiento(u.telefono, u.nombre, u.ultimo_vencimiento) }}" target="_blank" title="Enviar recordatorio de pago por WhatsApp al {{ u.telefono }}" class="badge" style="background:#25D366; color:#000; text-decoration:none; margin-top:4px; display:inline-flex; align-items:center; gap:3px; font-weight:800;">
+                                        📲 WhatsApp
+                                    </a>
+                                {% endif %}
                             {% else %}
                                 <div class="due-main">Pendiente</div>
                                 <div class="due-sub">Primer pago por registrar</div>

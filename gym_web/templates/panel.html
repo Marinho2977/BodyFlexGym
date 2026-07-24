@@ -304,6 +304,81 @@
         </div>
     </div>
 
+    <!-- CARGOS PENDIENTES & WHATSAPP AVISO -->
+    {% if cargos_pendientes %}
+    <div class="panel-card" style="margin-bottom:22px; border-color: rgba(239, 68, 68, 0.4); background: linear-gradient(135deg, rgba(239,68,68,0.05) 0%, #1c1917 100%);">
+        <div class="panel-card-header" style="border-bottom-color: rgba(239, 68, 68, 0.2);">
+            <div class="panel-card-title" style="color: #ef4444; display: flex; align-items: center; gap: 8px;">
+                ⚠️ <span>Cargos y Cuotas Pendientes</span>
+            </div>
+            <span style="background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); padding: 4px 12px; border-radius: 20px; font-weight: 700; font-size: 12px;">
+                Total: Q{{ "{:,.2f}".format(total_cargos_monto) }}
+            </span>
+        </div>
+        <div class="panel-card-body" style="padding:0;">
+            <div class="tabla-wrap" style="border:none; border-radius:0;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Descripción / Concepto</th>
+                            <th>Fecha Emisión</th>
+                            <th>Estado</th>
+                            <th>Monto</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for cargo in cargos_pendientes %}
+                        <tr>
+                            <td><strong style="color:var(--text);">{{ cargo.descripcion }}</strong></td>
+                            <td style="color:var(--muted); font-size:12px;">{{ cargo.fecha_emision.strftime('%d/%m/%Y') if cargo.fecha_emision else '—' }}</td>
+                            <td><span style="background:rgba(239,68,68,0.15); color:#ef4444; padding:3px 8px; border-radius:6px; font-size:11px; font-weight:700;">Pendiente</span></td>
+                            <td style="font-weight:700; color:#ef4444; font-family:'Syne',sans-serif;">Q{{ "{:,.2f}".format(cargo.monto|float) }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div style="padding: 12px 20px; font-size: 12px; color: var(--muted); background: rgba(0,0,0,0.2); border-top: 1px solid rgba(255,255,255,0.05);">
+                📌 Por favor pasa a recepción o contacta con administración para cancelar tus cuotas pendientes.
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="panel-card" style="margin-bottom:22px; border-color: rgba(34, 197, 94, 0.25);">
+        <div class="panel-card-header" style="background: rgba(34, 197, 94, 0.03);">
+            <div class="panel-card-title" style="color: #22c55e; display: flex; align-items: center; gap: 8px; font-size: 14px;">
+                ✅ <span>Estado de Cuenta: Al Día</span>
+            </div>
+            <span style="color: var(--muted); font-size: 12px;">Sin cargos ni deudas pendientes</span>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- ALERTA WHATSAPP VENCIMIENTO -->
+    {% if stats.vencimiento %}
+        {% set hoy_sys = date.today() if date is defined else None %}
+        <div style="background: rgba(37, 211, 102, 0.08); border: 1px solid rgba(37, 211, 102, 0.25); border-radius: 14px; padding: 16px 20px; margin-bottom: 22px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+            <div style="display: flex; align-items: center; gap: 14px;">
+                <div style="font-size: 26px;">💬</div>
+                <div>
+                    <div style="font-weight: 700; font-size: 14px; color: #25D366; margin-bottom: 2px;">
+                        Recordatorios por WhatsApp Activos
+                    </div>
+                    <div style="font-size: 13px; color: var(--muted-light);">
+                        Tu mensualidad vence el <strong style="color: var(--text);">{{ stats.vencimiento.strftime('%d/%m/%Y') if stats.vencimiento else '—' }}</strong>. 
+                        7 días antes de tu vencimiento te llegará un mensaje automático a tu WhatsApp registrado: 
+                        <strong style="color: #25D366;">📞 {{ perfil.telefono or 'No registrado' }}</strong>.
+                    </div>
+                </div>
+            </div>
+            {% if perfil.telefono %}
+            <a href="{{ link_whatsapp_vencimiento(perfil.telefono, perfil.nombre, stats.vencimiento) }}" target="_blank" style="background: #25D366; color: #000; text-decoration: none; padding: 8px 16px; border-radius: 8px; font-weight: 700; font-size: 12px; display: inline-flex; align-items: center; gap: 6px;">
+                📲 Probar WhatsApp
+            </a>
+            {% endif %}
+        </div>
+    {% endif %}
+
     <!-- IMC -->
     {% if imc %}
     <div class="imc-card">

@@ -16,6 +16,11 @@ import math
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.colors import HexColor
+from urllib.parse import quote
+import urllib.request
+import json
+import threading
+import time
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "clave_segura_de_kevin_123")
@@ -30,6 +35,120 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
+def formatear_telefono_gt(telefono):
+    if not telefono:
+        return None
+    num = re.sub(r"\D", "", str(telefono))
+    if len(num) == 8:
+        return f"502{num}"
+    elif len(num) == 11 and num.startswith("502"):
+        return num
+    return num if num else None
+
+def link_whatsapp_vencimiento(telefono, nombre, fecha_vencimiento):
+    if not telefono or not fecha_vencimiento:
+        return "#"
+    num_gt = formatear_telefono_gt(telefono)
+    if not num_gt:
+        return "#"
+    venc_str = fecha_vencimiento.strftime('%d/%m/%Y') if hasattr(fecha_vencimiento, 'strftime') else str(fecha_vencimiento)
+    msg = f"Hola {nombre}, te recordamos que tu mensualidad en Bodyflex Gym vence el {venc_str}. ¡Renueva a tiempo para seguir entrenando! 💪"
+    return f"https://wa.me/{num_gt}?text={quote(msg)}"
+
+def enviar_whatsapp_api(telefono, mensaje):
+    api_url = os.environ.get("WHATSAPP_API_URL")
+    api_token = os.environ.get("WHATSAPP_TOKEN")
+    num_gt = formatear_telefono_gt(telefono)
+
+    if not num_gt:
+        return False, "Número de teléfono no válido"
+
+    if api_url and api_token:
+        try:
+            payload = {
+                "token": api_token,
+                "to": f"+{num_gt}",
+                "body": mensaje
+            }
+            data = json.dumps(payload).encode("utf-8")
+            req = urllib.request.Request(
+                api_url,
+                data=data,
+                headers={"Content-Type": "application/json", "User-Agent": "BodyflexGymApp/1.0"},
+                method="POST"
+            )
+            with urllib.request.urlopen(req, timeout=10) as response:
+                res_body = response.read().decode("utf-8")
+                return True, f"Enviado por API Gateway: {res_body[:100]}"
+        except Exception as e:
+            return False, f"Error al llamar API WhatsApp: {str(e)}"
+    else:
+        return True, f"Aviso listo para WhatsApp +{num_gt}"
+
+def procesar_envio_automatico_whatsapp(dias_anticipacion=7):
+    try:
+        conn = conectar_db()
+        cursor = conn.cursor(dictionary=True)
+        hoy = date.today()
+        
+        cursor.execute("""
+            SELECT u.cui, u.nombre, u.apellido, u.telefono, MAX(p.fecha_vencimiento) AS ultimo_vencimiento
+            FROM usuarios u
+            LEFT JOIN pagos p ON u.cui = p.cui_usuario
+            WHERE u.estado = 'activo' AND u.telefono IS NOT NULL AND u.telefono != ''
+            GROUP BY u.cui, u.nombre, u.apellido, u.telefono
+        """)
+        usuarios_all = cursor.fetchall()
+        
+        envios_exitosos = 0
+        detalles_envio = []
+
+        for u in usuarios_all:
+            if u["ultimo_vencimiento"]:
+                dias_restantes = (u["ultimo_vencimiento"] - hoy).days
+                if 0 <= dias_restantes <= dias_anticipacion:
+                    venc_str = u["ultimo_vencimiento"].strftime('%d/%m/%Y')
+                    mensaje = f"Hola {u['nombre']}, te recordamos que tu mensualidad en Bodyflex Gym vence el {venc_str} (en {dias_restantes} días). ¡Renueva a tiempo para seguir entrenando sin interrupciones! 💪"
+                    
+                    ok, res = enviar_whatsapp_api(u["telefono"], mensaje)
+                    if ok:
+                        envios_exitosos += 1
+                        detalles_envio.append(f"{u['nombre']} {u['apellido']} ({u['telefono']})")
+                        registrar_log("whatsapp_auto", f"Aviso automático 7 días enviado para {u['nombre']} {u['apellido']} (vence {venc_str})", u["cui"], f"{u['nombre']} {u['apellido']}")
+
+        conn.close()
+        return envios_exitosos, detalles_envio
+    except Exception as e:
+        print(f"[ERROR WHATSAPP AUTO] {e}")
+        return 0, []
+
+def iniciar_planificador_whatsapp():
+    def ejecutor_loop():
+        time.sleep(15)
+        while True:
+            try:
+                procesar_envio_automatico_whatsapp(dias_anticipacion=7)
+            except Exception as e:
+                print(f"[ERROR LOOP WHATSAPP] {e}")
+            time.sleep(12 * 3600)
+
+    thread = threading.Thread(target=ejecutor_loop, daemon=True)
+    thread.start()
+
+iniciar_planificador_whatsapp()
+
+@app.route("/admin/whatsapp/enviar_automatico", methods=["POST", "GET"])
+@app.route("/cron/recordatorios_whatsapp", methods=["POST", "GET"])
+def ejecutar_whatsapp_automatico():
+    if request.method == "POST" and session.get("rol") not in ("admin", "empleado"):
+        return redirect("/login")
+    
+    cant, detalles = procesar_envio_automatico_whatsapp(dias_anticipacion=7)
+    if request.method == "POST":
+        flash(f"⚡ Avisos automáticos de WhatsApp ejecutados (7 días antes). Se notificaron/procesaron {cant} socio(s).", "success")
+        return redirect(request.referrer or "/admin")
+    else:
+        return {"status": "ok", "procesados": cant, "socios": detalles}
 
 # ─────────────────────────────────────────────
 # CSRF PROTECTION
@@ -41,6 +160,8 @@ def generar_csrf_token():
     return session["_csrf_token"]
 
 app.jinja_env.globals["csrf_token"] = generar_csrf_token
+app.jinja_env.globals["link_whatsapp_vencimiento"] = link_whatsapp_vencimiento
+app.jinja_env.globals["formatear_telefono_gt"] = formatear_telefono_gt
 
 @app.before_request
 def verificar_csrf():
@@ -1961,8 +2082,9 @@ def panel():
                     check_month = 12; check_year -= 1
                 else:
                     check_month -= 1
-            else:
-                break
+    dict_cargos = cargos_pendientes_por_usuario(cursor, [session["usuario_id"]])
+    cargos_usuario = dict_cargos.get(session["usuario_id"], [])
+    total_cargos_monto = sum(float(c["monto"]) for c in cargos_usuario)
 
     conn.close()
     return render_template("panel.html", perfil=perfil,
@@ -1970,7 +2092,9 @@ def panel():
                            imc_color=imc_color, imc_consejo=imc_consejo,
                            stats=stats, meses_miembro=meses_miembro,
                            historial_pagos=historial_pagos,
-                           streak=streak)
+                           streak=streak,
+                           cargos_pendientes=cargos_usuario,
+                           total_cargos_monto=total_cargos_monto)
 
 
 @app.route("/completar_perfil")

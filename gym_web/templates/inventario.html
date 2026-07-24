@@ -612,18 +612,8 @@
                 <!-- STATS MAQUINARIA -->
                 <div class="stats-grid">
                     <div class="stat-card">
-                        <div class="stat-label">Total Equipos Registrados</div>
-                        <div class="stat-value">{{ stats_equipos.total_equipos or 0 }}</div>
-                    </div>
-                    <div class="stat-card">
                         <div class="stat-label">Unidades Físicas Totales</div>
                         <div class="stat-value" style="color: #34d399;">{{ stats_equipos.unidades_equipos or 0 }}</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-label">Equipos en Mantenimiento / F. Servicio</div>
-                        <div class="stat-value" style="color: {{ 'var(--danger)' if stats_equipos.equipos_mantenimiento > 0 else 'var(--success)' }};">
-                            {{ stats_equipos.equipos_mantenimiento or 0 }}
-                        </div>
                     </div>
                 </div>
 

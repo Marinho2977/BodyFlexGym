@@ -1189,6 +1189,12 @@
                                 class="filter-tab {% if request.args.get('filtro')=='vencidos' %}active{% endif %}">✗
                                 Vencidos</a>
                         </div>
+                        <form method="POST" action="/admin/whatsapp/enviar_automatico" style="display:inline; margin-left: auto;">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="btn btn-sm" style="background:#25D366; color:#000; font-weight:800; border:none; cursor:pointer;" title="Enviar avisos automáticos por WhatsApp a socios cuyo pago vence en los próximos 7 días">
+                                ⚡ Avisos Automáticos WhatsApp (7 días)
+                            </button>
+                        </form>
                     </div>
 
                     <!-- Tabla socios -->
@@ -1247,6 +1253,13 @@
                                         {% endif %}
                                         {% else %}
                                         <span class="badge badge-sinpago">Sin pagos</span>
+                                        {% endif %}
+
+                                        {% if u.telefono and u.ultimo_vencimiento %}
+                                        <br>
+                                        <a href="{{ link_whatsapp_vencimiento(u.telefono, u.nombre, u.ultimo_vencimiento) }}" target="_blank" title="Enviar recordatorio de pago por WhatsApp al {{ u.telefono }}" class="badge" style="background:#25D366; color:#000; text-decoration:none; margin-top:4px; display:inline-flex; align-items:center; gap:3px; font-weight:800;">
+                                            📲 WhatsApp
+                                        </a>
                                         {% endif %}
                                         
                                         {% if cargos_pendientes.get(u.cui) %}
