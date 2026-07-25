@@ -56,6 +56,8 @@ CREATE TABLE `pagos` (
   `fecha_vencimiento` DATE NOT NULL,
   `monto`             DECIMAL(10,2) NOT NULL,
   `mes_pagado`        VARCHAR(60) DEFAULT NULL,
+  `metodo_pago`       ENUM('efectivo', 'tarjeta', 'transferencia') DEFAULT 'efectivo',
+  `referencia`        VARCHAR(100) DEFAULT NULL,
   PRIMARY KEY (`id_pago`),
   KEY `cui_usuario` (`cui_usuario`),
   CONSTRAINT `pagos_ibfk_1` FOREIGN KEY (`cui_usuario`) REFERENCES `usuarios` (`cui`)

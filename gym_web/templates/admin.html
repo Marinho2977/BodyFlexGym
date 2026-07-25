@@ -1435,6 +1435,18 @@
                 <form id="formPago" method="POST">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <div style="margin-bottom:16px;">
+                        <label class="modal-field-label">Método de Pago</label>
+                        <select name="metodo_pago" class="modal-select" onchange="document.getElementById('divReferenciaAdmin').style.display = this.value === 'efectivo' ? 'none' : 'block'">
+                            <option value="efectivo">Efectivo</option>
+                            <option value="tarjeta">Tarjeta</option>
+                            <option value="transferencia">Transferencia</option>
+                        </select>
+                    </div>
+                    <div id="divReferenciaAdmin" style="margin-bottom:16px; display:none;">
+                        <label class="modal-field-label">Referencia (Tarjeta / Transferencia)</label>
+                        <input type="text" name="referencia" style="width:100%; padding:8px; border:1px solid var(--line); border-radius:6px; background:var(--surface-1); color:var(--text-1);" placeholder="Número de autorización o boleta">
+                    </div>
+                    <div style="margin-bottom:16px;">
                         <label class="modal-field-label">Año</label>
                         <select id="anioModal" class="modal-select" onchange="actualizarMesesBloqueados()">
                             <option value="2024">2024</option>

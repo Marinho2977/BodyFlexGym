@@ -1046,6 +1046,8 @@ def registrar_pago(cui):
 
     meses_lista = request.form.get("meses_lista", "")
     anio_sel    = request.form.get("anio_sel", str(date.today().year))
+    metodo_pago = request.form.get("metodo_pago", "efectivo")
+    referencia  = request.form.get("referencia", "").strip() or None
     redirect_destino = "/empleado" if session.get("rol") == "empleado" else "/admin"
     conn   = conectar_db()
     cursor = conn.cursor(dictionary=True)
@@ -1109,8 +1111,8 @@ def registrar_pago(cui):
     monto_total = calcular_monto_pago(meses)
 
     cursor = conn.cursor()
-    cursor.execute("INSERT INTO pagos (cui_usuario, fecha_pago, fecha_vencimiento, monto, descripcion) VALUES (%s,%s,%s,%s,%s)",
-                   (cui, hoy, nueva_fecha, monto_total, descripcion))
+    cursor.execute("INSERT INTO pagos (cui_usuario, fecha_pago, fecha_vencimiento, monto, descripcion, metodo_pago, referencia) VALUES (%s,%s,%s,%s,%s,%s,%s)",
+                   (cui, hoy, nueva_fecha, monto_total, descripcion, metodo_pago, referencia))
     conn.commit(); conn.close()
 
     nombre_socio = f"{socio['nombre']} {socio['apellido']}" if socio else "—"
@@ -2245,6 +2247,7 @@ def generar_recibo(id_pago):
     cursor = conn.cursor(dictionary=True)
     cursor.execute("""
         SELECT p.id_pago, p.monto, p.fecha_pago, p.fecha_vencimiento,
+               p.metodo_pago, p.referencia,
                u.cui, u.tipo_doc, u.nombre, u.apellido, u.email
         FROM pagos p
         JOIN usuarios u ON u.cui = p.cui_usuario
@@ -2359,6 +2362,16 @@ def generar_recibo(id_pago):
     c.drawString(60, y + 3, "TOTAL")
     c.setFont("Helvetica-Bold", 16)
     c.drawRightString(width - 60, y + 3, f"Q{pago['monto']:.2f}")
+
+    y -= 25
+    c.setFillColor(gris)
+    c.setFont("Helvetica", 9)
+    metodo = str(pago.get('metodo_pago', 'efectivo')).capitalize()
+    referencia = pago.get('referencia')
+    if referencia:
+        c.drawString(60, y, f"Método: {metodo} (Ref: {referencia})")
+    else:
+        c.drawString(60, y, f"Método: {metodo}")
 
     y -= 70
     c.setStrokeColor(verde)
