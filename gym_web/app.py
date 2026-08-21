@@ -1,4 +1,5 @@
 from flask import Flask, render_template, request, redirect, session, flash, make_response, jsonify
+from markupsafe import Markup
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 import mysql.connector
@@ -1163,13 +1164,15 @@ def registrar_pago(cui):
     cursor = conn.cursor()
     cursor.execute("INSERT INTO pagos (cui_usuario, fecha_pago, fecha_vencimiento, monto, descripcion, metodo_pago, referencia) VALUES (%s,%s,%s,%s,%s,%s,%s)",
                    (cui, hoy, nueva_fecha, monto_total, descripcion, metodo_pago, referencia))
+    nuevo_id_pago = cursor.lastrowid
     conn.commit(); conn.close()
 
     nombre_socio = f"{socio['nombre']} {socio['apellido']}" if socio else "—"
     registrar_log("pago", f"Registró pago de {meses} mes(es) — Q{int(monto_total):,}",
                   afectado_id=cui, afectado_nombre=nombre_socio)
 
-    flash(f"Pago de {meses} mes(es) registrado — Q{int(monto_total):,}", "success")
+    msg_exito = Markup(f"Pago de {meses} mes(es) registrado — Q{int(monto_total):,} <a href='/recibo/pago/{nuevo_id_pago}' target='_blank' style='color:#0f0f0f; background:#22c55e; padding:4px 10px; border-radius:6px; font-weight:700; text-decoration:none; margin-left:8px; display:inline-block;'> Descargar PDF</a>")
+    flash(msg_exito, "success")
 
 
     return redirect(redirect_destino)
@@ -1259,7 +1262,7 @@ def pagar_cargo(id_cargo):
     nombre_socio = f"{cargo['nombre']} {cargo['apellido']}"
     registrar_log("pago", f"Pagó cargo manual '{cargo['descripcion']}' (Q{cargo['monto']})", afectado_id=cargo['cui_usuario'], afectado_nombre=nombre_socio)
     
-    msg_exito = f"El cargo '{cargo['descripcion']}' ha sido pagado exitosamente. <a href='/recibo/{nuevo_id_pago}' target='_blank' style='color:#22c55e; font-weight:700; text-decoration:underline; margin-left:8px;'> Descargar Recibo PDF</a>"
+    msg_exito = Markup(f"El cargo '{cargo['descripcion']}' ha sido pagado exitosamente. <a href='/recibo/pago/{nuevo_id_pago}' target='_blank' style='color:#0f0f0f; background:#22c55e; padding:4px 10px; border-radius:6px; font-weight:700; text-decoration:none; margin-left:8px; display:inline-block;'> Descargar PDF</a>")
     flash(msg_exito, "success")
     return redirect(origen)# 
 # AUDITORÍA
@@ -3102,19 +3105,35 @@ def inventario_vender():
         INSERT INTO cargos (cui_usuario, descripcion, monto, fecha_emision, estado, id_producto)
         VALUES (%s, %s, %s, %s, %s, %s)
     """, (cui_usuario_target, descripcion_cargo, monto_total, fecha_hoy, estado_cargo, id_producto))
+    
+    nuevo_id_cargo = cursor.lastrowid
+    
+    nuevo_id_pago = None
+    if estado_cargo == "pagado":
+        cursor.execute("SELECT MAX(fecha_vencimiento) as max_venc FROM pagos WHERE cui_usuario=%s", (cui_usuario_target,))
+        res_venc = cursor.fetchone()
+        vencimiento_actual = res_venc['max_venc'] if res_venc and res_venc['max_venc'] else fecha_hoy
+        
+        cursor.execute("""
+            INSERT INTO pagos (cui_usuario, fecha_pago, fecha_vencimiento, monto, descripcion, id_cargo) 
+            VALUES (%s, %s, %s, %s, %s, %s)
+        """, (cui_usuario_target, fecha_hoy, vencimiento_actual, monto_total, f"Venta Directa: {descripcion_cargo}", nuevo_id_cargo))
+        nuevo_id_pago = cursor.lastrowid
 
     conn.commit()
     conn.close()
 
     log_msg = f"Venta de {cantidad_venta}x '{prod['nombre']}' a {usuario_dest['nombre']} {usuario_dest['apellido']} (CUI: {cui_usuario_target}) por Q{monto_total:.2f}. Estado: {estado_cargo}"
-    registrar_log("INVENTARIO_VENTA", log_msg, afectado_id=cui_usuario_target, afectado_nombre=f"{usuario_dest['nombre']} {usuario_dest['apellido']}")
+    registrar_log("venta", log_msg, afectado_id=cui_usuario_target, afectado_nombre=f"{usuario_dest['nombre']} {usuario_dest['apellido']}")
 
     msg_exito = f"¡Venta realizada exitosamente! Se descontaron {cantidad_venta} unidades de '{prod['nombre']}' del inventario."
     if estado_cargo == "pendiente":
         msg_exito += " El cargo quedó registrado como PENDIENTE de pago."
+    elif nuevo_id_pago:
+        msg_exito = Markup(msg_exito + f" <a href='/recibo/pago/{nuevo_id_pago}' target='_blank' style='color:#0f0f0f; background:#22c55e; padding:4px 10px; border-radius:6px; font-weight:700; text-decoration:none; margin-left:8px; display:inline-block;'> Descargar PDF</a>")
 
     flash(msg_exito, "success")
-    return redirect(request.referrer or "/inventario")
+    return redirect(request.referrer or "/tienda")
 
 
 @app.route("/tienda")
@@ -3161,6 +3180,81 @@ def tienda():
         busqueda=busqueda,
         socios=usuarios
     )
+
+
+
+@app.route("/recibo/pago/<int:id_pago>")
+def generar_pdf_pago_unico(id_pago):
+    if "usuario_id" not in session:
+        return redirect("/login")
+        
+    conn = conectar_db()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("""
+        SELECT p.id_pago, p.fecha_pago, p.monto, p.descripcion, u.nombre, u.apellido, u.cui
+        FROM pagos p
+        JOIN usuarios u ON p.cui_usuario = u.cui
+        WHERE p.id_pago = %s
+    """, (id_pago,))
+    pago = cursor.fetchone()
+    conn.close()
+    
+    if not pago:
+        flash("Pago no encontrado", "error")
+        return redirect(request.referrer or "/panel")
+        
+    # Verificar permisos (solo el usuario o admin/empleado pueden descargar)
+    if session.get("rol") not in ("admin", "empleado") and session.get("usuario_id") != pago["cui"]:
+        return redirect("/panel")
+        
+    buf = BytesIO()
+    from reportlab.lib.pagesizes import letter
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib import colors
+
+    doc = SimpleDocTemplate(buf, pagesize=(400, 450), leftMargin=40, rightMargin=40, topMargin=40, bottomMargin=40)
+    story = []
+    styles = getSampleStyleSheet()
+
+    title_style = ParagraphStyle('DocTitle', parent=styles['Normal'], fontName='Helvetica-Bold', fontSize=14, alignment=1, spaceAfter=10, textColor=colors.HexColor('#FF6B00'))
+    body_style = ParagraphStyle('DocBody', parent=styles['Normal'], fontName='Helvetica', fontSize=10, leading=14, spaceAfter=6, textColor=colors.HexColor('#333333'))
+
+    story.append(Paragraph("BODYFLEX GYM", title_style))
+    story.append(Paragraph("<b>COMPROBANTE DE PAGO</b>", ParagraphStyle('Sub', parent=title_style, fontSize=11, spaceAfter=15, textColor=colors.HexColor('#1A1A1A'))))
+
+    fecha_formateada = pago['fecha_pago'].strftime('%d/%m/%Y')
+    
+    detalles_texto = f"""
+    <b>Ticket #</b> {pago['id_pago']}<br/>
+    <b>Fecha:</b> {fecha_formateada}<br/>
+    <b>Socio:</b> {pago['nombre']} {pago['apellido']}<br/>
+    <b>CUI:</b> {pago['cui']}<br/>
+    <br/>
+    <b>Detalle de Pago:</b><br/>
+    {pago['descripcion']}<br/>
+    <br/>
+    <b>Total Pagado:</b> Q{pago['monto']}
+    """
+
+    t_data = [[Paragraph(detalles_texto, body_style)]]
+    t = Table(t_data, colWidths=[320])
+    t.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,-1), colors.HexColor('#F9F9F9')),
+        ('BORDER', (0,0), (-1,-1), 1, colors.HexColor('#E5E5E5')),
+        ('PADDING', (0,0), (-1,-1), 12),
+    ]))
+    story.append(t)
+    story.append(Spacer(1, 20))
+    story.append(Paragraph("¡Gracias por tu pago!", ParagraphStyle('Footer', parent=title_style, fontSize=10, alignment=1, textColor=colors.HexColor('#666666'))))
+
+    doc.build(story)
+    buf.seek(0)
+
+    response = make_response(buf.read())
+    response.headers['Content-Type'] = 'application/pdf'
+    response.headers['Content-Disposition'] = f'attachment; filename=recibo_pago_{id_pago}.pdf'
+    return response
 
 
 if __name__ == "__main__":
