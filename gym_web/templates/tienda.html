@@ -1,559 +1,479 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
- <meta charset="UTF-8">
- <meta name="viewport" content="width=device-width, initial-scale=1.0">
- <title>Tienda Virtual — Bodyflex Gym</title>
- <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
- <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
- <style>
- :root {
- --bg-main: #0c0d0e;
- --bg-card: #141619;
- --bg-input: #1c1f24;
- --border-color: rgba(255, 255, 255, 0.08);
- --primary: #FF6B00;
- --primary-hover: #ff8526;
- --text-main: #f3f4f6;
- --text-muted: #9ca3af;
- --success: #10b981;
- --danger: #ef4444;
- }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tienda Virtual — Bodyflex Gym</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <style>
+    :root {
+      --bg-main: #0c0d0e;
+      --bg-card: #141619;
+      --bg-input: #1c1f24;
+      --border-color: rgba(255, 255, 255, 0.08);
+      --primary: #FF6B00;
+      --primary-hover: #ff8526;
+      --text-main: #f3f4f6;
+      --text-muted: #9ca3af;
+      --success: #10b981;
+      --danger: #ef4444;
+    }
 
- body {
- background-color: var(--bg-main);
- color: var(--text-main);
- font-family: 'DM Sans', sans-serif;
- margin: 0;
- padding: 0;
- }
+    body {
+      background-color: var(--bg-main);
+      color: var(--text-main);
+      font-family: 'DM Sans', sans-serif;
+      margin: 0; padding: 0;
+    }
 
- .navbar {
- background: #111315;
- border-bottom: 1px solid var(--border-color);
- padding: 16px 32px;
- display: flex;
- justify-content: space-between;
- align-items: center;
- position: sticky;
- top: 0;
- z-index: 100;
- }
+    .navbar {
+      background: #111315;
+      border-bottom: 1px solid var(--border-color);
+      padding: 16px 32px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
 
- .brand-logo {
- font-family: 'Syne', sans-serif;
- font-weight: 800;
- font-size: 22px;
- color: #fff;
- text-decoration: none;
- }
+    .brand-logo {
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: 22px;
+      color: #fff;
+      text-decoration: none;
+    }
+    .brand-logo span { color: var(--primary); }
 
- .brand-logo span {
- color: var(--primary);
- }
+    .nav-actions { display: flex; align-items: center; gap: 16px; }
 
- .nav-actions {
- display: flex;
- align-items: center;
- gap: 16px;
- }
+    .nav-btn {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+      padding: 8px 16px;
+      border-radius: 8px;
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+    .nav-btn:hover { background: rgba(255, 107, 0, 0.15); border-color: var(--primary); color: #fff; }
 
- .nav-btn {
- background: rgba(255, 255, 255, 0.06);
- color: var(--text-main);
- border: 1px solid var(--border-color);
- padding: 8px 16px;
- border-radius: 8px;
- text-decoration: none;
- font-size: 14px;
- font-weight: 500;
- transition: all 0.2s;
- }
+    .container { max-width: 1200px; margin: 0 auto; padding: 32px 20px; }
 
- .nav-btn:hover {
- background: rgba(255, 107, 0, 0.15);
- border-color: var(--primary);
- color: #fff;
- }
+    .hero-banner {
+      background: linear-gradient(135deg, rgba(255, 107, 0, 0.15) 0%, rgba(20, 22, 25, 0.9) 100%);
+      border: 1px solid rgba(255, 107, 0, 0.25);
+      border-radius: 20px;
+      padding: 36px;
+      margin-bottom: 32px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 20px;
+    }
 
- .container {
- max-width: 1200px;
- margin: 0 auto;
- padding: 32px 20px;
- }
+    .hero-text h1 {
+      font-family: 'Syne', sans-serif;
+      font-size: 32px;
+      font-weight: 800;
+      margin: 0 0 8px 0;
+    }
+    .hero-text p { color: var(--text-muted); margin: 0; font-size: 15px; max-width: 500px; }
 
- .hero-banner {
- background: linear-gradient(135deg, rgba(255, 107, 0, 0.15) 0%, rgba(20, 22, 25, 0.9) 100%);
- border: 1px solid rgba(255, 107, 0, 0.25);
- border-radius: 20px;
- padding: 36px;
- margin-bottom: 32px;
- display: flex;
- justify-content: space-between;
- align-items: center;
- flex-wrap: wrap;
- gap: 20px;
- }
+    .filter-bar {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      padding: 16px;
+      margin-bottom: 32px;
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
 
- .hero-text h1 {
- font-family: 'Syne', sans-serif;
- font-size: 32px;
- font-weight: 800;
- margin: 0 0 8px 0;
- }
+    .input-field {
+      background: var(--bg-input);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 10px 14px;
+      color: #fff;
+      font-size: 14px;
+      outline: none;
+    }
+    .input-field:focus { border-color: var(--primary); }
 
- .hero-text p {
- color: var(--text-muted);
- margin: 0;
- font-size: 15px;
- max-width: 500px;
- }
+    .btn-primary {
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 10px 20px;
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+      text-decoration: none;
+    }
+    .btn-primary:hover { background: var(--primary-hover); }
 
- .filter-bar {
- background: var(--bg-card);
- border: 1px solid var(--border-color);
- border-radius: 14px;
- padding: 16px;
- margin-bottom: 32px;
- display: flex;
- gap: 12px;
- flex-wrap: wrap;
- }
+    .products-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 24px;
+    }
 
- .input-field {
- background: var(--bg-input);
- border: 1px solid var(--border-color);
- border-radius: 8px;
- padding: 10px 14px;
- color: #fff;
- font-size: 14px;
- outline: none;
- }
+    .product-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+    }
+    .product-card:hover {
+      transform: translateY(-4px);
+      border-color: rgba(255, 107, 0, 0.4);
+      box-shadow: 0 12px 30px rgba(0,0,0,0.4);
+    }
 
- .input-field:focus {
- border-color: var(--primary);
- }
+    .card-img-wrapper {
+      width: 100%; height: 200px;
+      background: var(--bg-input);
+      position: relative; overflow: hidden;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .card-img { width: 100%; height: 100%; object-fit: cover; }
+    .card-placeholder { font-size: 48px; color: rgba(255,255,255,0.2); }
 
- .btn-primary {
- background: var(--primary);
- color: #fff;
- border: none;
- border-radius: 8px;
- padding: 10px 20px;
- font-weight: 600;
- font-size: 14px;
- cursor: pointer;
- text-decoration: none;
- }
+    .stock-badge {
+      position: absolute; top: 12px; right: 12px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 11px; font-weight: 700;
+      text-transform: uppercase;
+      backdrop-filter: blur(8px);
+    }
+    .badge-in-stock { background: rgba(16, 185, 129, 0.85); color: #fff; }
+    .badge-out-of-stock { background: rgba(239, 68, 68, 0.85); color: #fff; }
 
- .btn-primary:hover {
- background: var(--primary-hover);
- }
+    .card-body { padding: 20px; display: flex; flex-direction: column; flex: 1; }
 
- .products-grid {
- display: grid;
- grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
- gap: 24px;
- }
+    .card-category {
+      font-size: 11px; color: var(--primary);
+      text-transform: uppercase; letter-spacing: 0.5px;
+      font-weight: 700; margin-bottom: 6px;
+    }
 
- .product-card {
- background: var(--bg-card);
- border: 1px solid var(--border-color);
- border-radius: 16px;
- overflow: hidden;
- display: flex;
- flex-direction: column;
- transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
- }
+    .card-title {
+      font-family: 'Syne', sans-serif;
+      font-size: 18px; font-weight: 700;
+      margin: 0 0 8px 0; color: #fff;
+    }
 
- .product-card:hover {
- transform: translateY(-4px);
- border-color: rgba(255, 107, 0, 0.4);
- box-shadow: 0 12px 30px rgba(0,0,0,0.4);
- }
+    .card-desc { font-size: 13px; color: var(--text-muted); line-height: 1.4; margin-bottom: 16px; flex: 1; }
 
- .card-img-wrapper {
- width: 100%;
- height: 200px;
- background: var(--bg-input);
- position: relative;
- overflow: hidden;
- display: flex;
- align-items: center;
- justify-content: center;
- }
+    .card-footer {
+      display: flex; justify-content: space-between; align-items: center;
+      padding-top: 14px; border-top: 1px solid var(--border-color);
+    }
 
- .card-img {
- width: 100%;
- height: 100%;
- object-fit: cover;
- }
+    .card-price { font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 800; color: #fff; }
 
- .card-placeholder {
- font-size: 48px;
- color: rgba(255, 255, 255, 0.2);
- }
+    .btn-buy {
+      background: var(--primary); color: #fff; border: none;
+      border-radius: 8px; padding: 8px 16px;
+      font-weight: 600; font-size: 13px; cursor: pointer;
+      transition: background 0.2s;
+    }
+    .btn-buy:hover { background: var(--primary-hover); }
+    .btn-disabled { background: rgba(255,255,255,0.08); color: var(--text-muted); cursor: not-allowed; }
 
- .stock-badge {
- position: absolute;
- top: 12px;
- right: 12px;
- padding: 4px 10px;
- border-radius: 20px;
- font-size: 11px;
- font-weight: 700;
- text-transform: uppercase;
- backdrop-filter: blur(8px);
- }
+    /* Modal */
+    .modal-overlay {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(4px);
+      display: none; align-items: center; justify-content: center;
+      z-index: 1000; padding: 20px;
+    }
+    .modal-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      width: 100%; max-width: 480px;
+      padding: 24px;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
 
- .badge-in-stock { background: rgba(16, 185, 129, 0.85); color: #fff; }
- .badge-out-of-stock { background: rgba(239, 68, 68, 0.85); color: #fff; }
-
- .card-body {
- padding: 20px;
- display: flex;
- flex-direction: column;
- flex: 1;
- }
-
- .card-category {
- font-size: 11px;
- color: var(--primary);
- text-transform: uppercase;
- letter-spacing: 0.5px;
- font-weight: 700;
- margin-bottom: 6px;
- }
-
- .card-title {
- font-family: 'Syne', sans-serif;
- font-size: 18px;
- font-weight: 700;
- margin: 0 0 8px 0;
- color: #fff;
- }
-
- .card-desc {
- font-size: 13px;
- color: var(--text-muted);
- line-height: 1.4;
- margin-bottom: 16px;
- flex: 1;
- }
-
- .card-footer {
- display: flex;
- justify-content: space-between;
- align-items: center;
- padding-top: 14px;
- border-top: 1px solid var(--border-color);
- }
-
- .card-price {
- font-family: 'Syne', sans-serif;
- font-size: 20px;
- font-weight: 800;
- color: #fff;
- }
-
- .btn-buy {
- background: var(--primary);
- color: #fff;
- border: none;
- border-radius: 8px;
- padding: 8px 16px;
- font-weight: 600;
- font-size: 13px;
- cursor: pointer;
- transition: background 0.2s;
- }
-
- .btn-buy:hover {
- background: var(--primary-hover);
- }
-
- .btn-disabled {
- background: rgba(255, 255, 255, 0.08);
- color: var(--text-muted);
- cursor: not-allowed;
- }
-
- /* Modal Purchase */
- .modal-overlay {
- position: fixed;
- top: 0; left: 0; right: 0; bottom: 0;
- background: rgba(0, 0, 0, 0.75);
- backdrop-filter: blur(4px);
- display: none;
- align-items: center;
- justify-content: center;
- z-index: 1000;
- padding: 20px;
- }
-
- .modal-card {
- background: var(--bg-card);
- border: 1px solid var(--border-color);
- border-radius: 16px;
- width: 100%;
- max-width: 440px;
- padding: 24px;
- }
-
- .alert-banner {
- padding: 12px 16px;
- border-radius: 8px;
- margin-bottom: 20px;
- font-size: 14px;
- }
- .alert-success { background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.3); color: #34d399; }
- .alert-error { background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); color: #f87171; }
- </style>
+    .alert-banner { padding: 12px 16px; border-radius: 8px; margin-bottom: 20px; font-size: 14px; }
+    .alert-success { background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.3); color: #34d399; }
+    .alert-error   { background: rgba(239, 68, 68, 0.15);  border: 1px solid rgba(239, 68, 68, 0.3);  color: #f87171; }
+  </style>
 </head>
 <body>
- <!-- Top Navigation Bar -->
- <nav class="navbar">
- <a href="/" class="brand-logo">BODYFLEX<span>GYM</span></a>
- <div class="nav-actions">
- {% if session.get('rol') in ['admin', 'empleado'] %}
- <a href="/inventario" class="nav-btn"> Control Inventario</a>
- {% else %}
- <a href="/panel" class="nav-btn"> Mi Cuenta</a>
- {% endif %}
- <a href="/logout" class="nav-btn" style="color: var(--danger);">Cerrar Sesión</a>
- </div>
- </nav>
+  <!-- Top Navigation Bar -->
+  <nav class="navbar">
+    <a href="/" class="brand-logo">BODYFLEX<span>GYM</span></a>
+    <div class="nav-actions">
+      {% if session.get('rol') in ['admin', 'empleado'] %}
+        <a href="/inventario" class="nav-btn">Control Inventario</a>
+      {% else %}
+        <a href="/panel" class="nav-btn">Mi Cuenta</a>
+      {% endif %}
+      <a href="/logout" class="nav-btn" style="color: var(--danger);">Cerrar Sesion</a>
+    </div>
+  </nav>
 
- <div class="container">
- <!-- Flash messages -->
- {% with messages = get_flashed_messages(with_categories=true) %}
- {% if messages %}
- {% for category, message in messages %}
- <div class="alert-banner alert-{{ category if category != 'error' else 'error' }}">
- {{ message|safe }}
- </div>
- {% endfor %}
- {% endif %}
- {% endwith %}
+  <div class="container">
+    <!-- Flash messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert-banner alert-{{ category if category != 'error' else 'error' }}">
+            {{ message|safe }}
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
 
- <!-- Hero Section -->
- <div class="hero-banner">
- <div class="hero-text">
- <h1>Tienda Oficial & Suplementos</h1>
- <p>Equípate con las mejores proteínas, hidratación y accesorios deportivos directamente en recepción o a tu cuenta socio.</p>
- </div>
- {% if session.get('rol') in ['admin', 'empleado'] %}
- <a href="/inventario" class="btn-primary"> Gestionar Productos</a>
- {% endif %}
- </div>
+    <!-- Hero Section -->
+    <div class="hero-banner">
+      <div class="hero-text">
+        <h1>Tienda Oficial &amp; Suplementos</h1>
+        <p>Equípate con las mejores proteínas, hidratación y accesorios deportivos directamente en recepción o a tu cuenta socio.</p>
+      </div>
+      {% if session.get('rol') in ['admin', 'empleado'] %}
+        <a href="/inventario" class="btn-primary">Gestionar Productos</a>
+      {% endif %}
+    </div>
 
- <!-- Filter & Search Bar -->
- <form method="GET" action="/tienda" class="filter-bar">
- <input type="text" name="q" value="{{ busqueda }}" placeholder="Buscar por producto..." class="input-field" style="flex: 1; min-width: 200px;">
- <select name="categoria" class="input-field" style="min-width: 180px;">
- <option value="">Todas las categorías</option>
- {% for cat in categorias %}
- <option value="{{ cat }}" {% if categoria_actual == cat %}selected{% endif %}>{{ cat }}</option>
- {% endfor %}
- </select>
- <button type="submit" class="btn-primary">Buscar</button>
- {% if busqueda or categoria_actual %}
- <a href="/tienda" class="nav-btn" style="display: inline-flex; align-items: center;"> Limpiar</a>
- {% endif %}
- </form>
+    <!-- Filter & Search Bar -->
+    <form method="GET" action="/tienda" class="filter-bar">
+      <input type="text" name="q" value="{{ busqueda }}" placeholder="Buscar por producto..." class="input-field" style="flex: 1; min-width: 200px;">
+      <select name="categoria" class="input-field" style="min-width: 180px;">
+        <option value="">Todas las categorias</option>
+        {% for cat in categorias %}
+          <option value="{{ cat }}" {% if categoria_actual == cat %}selected{% endif %}>{{ cat }}</option>
+        {% endfor %}
+      </select>
+      <button type="submit" class="btn-primary">Buscar</button>
+      {% if busqueda or categoria_actual %}
+        <a href="/tienda" class="nav-btn" style="display: inline-flex; align-items: center;">Limpiar</a>
+      {% endif %}
+    </form>
 
- <!-- Product Cards Grid -->
- <div class="products-grid">
- {% if productos %}
- {% for p in productos %}
- <div class="product-card">
- <div class="card-img-wrapper">
- {% if p.foto_url %}
- <img src="{{ p.foto_url }}" alt="{{ p.nombre }}" class="card-img">
- {% else %}
- <div class="card-placeholder"></div>
- {% endif %}
- 
- {% if p.cantidad > 0 %}
- <span class="stock-badge badge-in-stock">Stock: {{ p.cantidad }}</span>
- {% else %}
- <span class="stock-badge badge-out-of-stock">Agotado</span>
- {% endif %}
- </div>
- <div class="card-body">
- <div class="card-category">{{ p.categoria or 'General' }}</div>
- <h3 class="card-title">{{ p.nombre }}</h3>
- <p class="card-desc">{{ p.descripcion or 'Producto de alta calidad para tu entrenamiento diario.' }}</p>
- <div class="card-footer">
- <div class="card-price">Q{{ "%.2f"|format(p.precio_venta) }}</div>
- {% if p.cantidad > 0 %}
- <button class="btn-buy" onclick='openBuyModal({{ p.id_producto }}, "{{ p.nombre }}", {{ p.precio_venta }}, {{ p.cantidad }})'>Comprar</button>
- {% else %}
- <button class="btn-buy btn-disabled" disabled>Sin Stock</button>
- {% endif %}
- </div>
- </div>
- </div>
- {% endfor %}
- {% else %}
- <div style="grid-column: 1 / -1; text-align: center; padding: 60px 20px; color: var(--text-muted); background: var(--bg-card); border-radius: 16px;">
- <h3>No se encontraron productos disponibles</h3>
- <p>Prueba con otros términos de búsqueda o categoría.</p>
- </div>
- {% endif %}
- </div>
- </div>
-  <!-- Modal Comprar Producto -->
+    <!-- Product Cards Grid -->
+    <div class="products-grid">
+      {% if productos %}
+        {% for p in productos %}
+          <div class="product-card">
+            <div class="card-img-wrapper">
+              {% if p.foto_url %}
+                <img src="{{ p.foto_url }}" alt="{{ p.nombre }}" class="card-img">
+              {% else %}
+                <div class="card-placeholder"></div>
+              {% endif %}
+              {% if p.cantidad > 0 %}
+                <span class="stock-badge badge-in-stock">Stock: {{ p.cantidad }}</span>
+              {% else %}
+                <span class="stock-badge badge-out-of-stock">Agotado</span>
+              {% endif %}
+            </div>
+            <div class="card-body">
+              <div class="card-category">{{ p.categoria or 'General' }}</div>
+              <h3 class="card-title">{{ p.nombre }}</h3>
+              <p class="card-desc">{{ p.descripcion or 'Producto de alta calidad para tu entrenamiento diario.' }}</p>
+              <div class="card-footer">
+                <div class="card-price">Q{{ "%.2f"|format(p.precio_venta) }}</div>
+                {% if p.cantidad > 0 %}
+                  <button class="btn-buy" onclick='openBuyModal({{ p.id_producto }}, "{{ p.nombre }}", {{ p.precio_venta }}, {{ p.cantidad }})'>Comprar</button>
+                {% else %}
+                  <button class="btn-buy btn-disabled" disabled>Sin Stock</button>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        {% endfor %}
+      {% else %}
+        <div style="grid-column: 1 / -1; text-align: center; padding: 60px 20px; color: var(--text-muted); background: var(--bg-card); border-radius: 16px;">
+          <h3>No se encontraron productos disponibles</h3>
+          <p>Prueba con otros términos de búsqueda o categoría.</p>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- ===== MODAL REGISTRAR VENTA ===== -->
   <div id="buyModal" class="modal-overlay">
-  <div class="modal-card" style="max-width: 480px;">
-  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
-  <h3 style="font-family:'Syne',sans-serif; margin:0;">Confirmar Compra</h3>
-  <button onclick="closeBuyModal()" style="background:none; border:none; color:var(--text-muted); font-size:20px; cursor:pointer;">&#x2715;</button>
-  </div>
-  <form method="POST" action="/inventario/vender" style="display:flex; flex-direction:column; gap:16px;">
-  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-  <input type="hidden" id="buy_id_producto" name="id_producto">
+    <div class="modal-card">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px;">
+        <h3 style="font-family:'Syne',sans-serif; margin:0; font-size:20px;">Registrar Venta</h3>
+        <button onclick="closeBuyModal()" style="background:none; border:none; color:var(--text-muted); font-size:22px; cursor:pointer; line-height:1;">&#x2715;</button>
+      </div>
 
-  <!-- Info producto -->
-  <div style="background:rgba(255,107,0,0.1); border:1px solid rgba(255,107,0,0.25); padding:14px; border-radius:10px;">
-  <div style="font-size:16px; font-weight:700; color:#fff;" id="buy_prod_nombre"></div>
-  <div style="font-size:14px; color:var(--primary); margin-top:4px;">Precio Unitario: <span id="buy_prod_precio"></span></div>
-  <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">Disponibles: <span id="buy_prod_stock"></span> uds</div>
-  </div>
+      <form method="POST" action="/inventario/vender" style="display:flex; flex-direction:column; gap:16px;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" id="buy_id_producto" name="id_producto">
 
-  <!-- Cantidad -->
-  <div style="display:flex; flex-direction:column; gap:6px;">
-  <label style="font-size:13px; color:var(--text-muted);">Cantidad</label>
-  <input type="number" id="buy_cantidad" name="cantidad_venta" value="1" min="1" required class="input-field" onchange="updateTotal()" oninput="updateTotal()">
-  </div>
+        <!-- Info producto -->
+        <div style="background:rgba(255,107,0,0.1); border:1px solid rgba(255,107,0,0.25); padding:14px; border-radius:10px;">
+          <div style="font-size:16px; font-weight:700; color:#fff;" id="buy_prod_nombre"></div>
+          <div style="font-size:14px; color:var(--primary); margin-top:4px;">Precio Unitario: <span id="buy_prod_precio"></span></div>
+          <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">Disponibles: <span id="buy_prod_stock"></span> uds</div>
+        </div>
 
-  <!-- Forma de pago -->
-  <div style="display:flex; flex-direction:column; gap:6px;">
-  <label style="font-size:13px; color:var(--text-muted);">Forma de Pago</label>
-  <select name="tipo_venta" id="buy_tipo_venta" class="input-field"
-    style="padding:10px; background:var(--bg-input); border:1px solid var(--border-color); color:#fff; border-radius:8px; font-size:13px;"
-    onchange="toggleSocioSelector()">
-  <option value="directa">Pago Directo (al contado)</option>
-  {% if session.get('rol') in ['admin', 'empleado'] %}
-  <option value="credito">Cargar a cuenta de socio...</option>
-  {% else %}
-  <option value="credito">Cargar a mi cuenta (Pagar después)</option>
-  {% endif %}
-  </select>
-  </div>
+        <!-- Cantidad -->
+        <div style="display:flex; flex-direction:column; gap:6px;">
+          <label style="font-size:13px; color:var(--text-muted);">Cantidad</label>
+          <input type="number" id="buy_cantidad" name="cantidad_venta" value="1" min="1" required class="input-field" onchange="updateTotal()" oninput="updateTotal()">
+        </div>
 
-  <!-- ===== BUSCADOR DE SOCIO (solo admin/empleado, aparece al elegir "credito") ===== -->
-  {% if session.get('rol') in ['admin', 'empleado'] %}
-  <div id="socio_selector" style="display:none; flex-direction:column; gap:8px; background:rgba(255,255,255,0.04); border:1px solid var(--border-color); border-radius:10px; padding:14px;">
-  <label style="font-size:13px; font-weight:600; color:#fff;">Seleccionar socio</label>
-  <input type="text" id="socio_busqueda" placeholder="Buscar por nombre o apellido..." class="input-field"
-    oninput="filtrarSocios()" autocomplete="off">
-  <select name="cui_usuario" id="socio_lista" size="6"
-    style="background:var(--bg-input); border:1px solid var(--border-color); color:#fff; border-radius:8px; padding:6px; font-size:13px; width:100%;"
-    onchange="actualizarSocioLabel()">
-  {% for s in socios %}
-  <option value="{{ s.cui }}">{{ s.nombre }} {{ s.apellido }}</option>
-  {% endfor %}
-  </select>
-  <div id="socio_seleccionado" style="font-size:12px; color:var(--primary); min-height:18px; font-weight:600;"></div>
-  </div>
-  {% else %}
-  <input type="hidden" name="cui_usuario" value="">
-  {% endif %}
+        {% if session.get('rol') in ['admin', 'empleado'] %}
+        <!-- ===== PARA ADMIN/EMPLEADO: siempre selecciona socio ===== -->
+        <div style="display:flex; flex-direction:column; gap:8px; background:rgba(255,255,255,0.03); border:1px solid var(--border-color); border-radius:10px; padding:14px;">
+          <label style="font-size:13px; font-weight:600; color:#fff;">Socio que realiza la compra</label>
+          <input type="text" id="socio_busqueda" placeholder="Buscar por nombre o apellido..."
+                 class="input-field" oninput="filtrarSocios()" autocomplete="off">
+          <select name="cui_usuario" id="socio_lista" size="5" required
+                  style="background:var(--bg-input); border:1px solid var(--border-color); color:#fff; border-radius:8px; padding:6px; font-size:13px; width:100%;"
+                  onchange="actualizarSocioLabel()">
+            {% for s in socios %}
+              <option value="{{ s.cui }}">{{ s.nombre }} {{ s.apellido }}</option>
+            {% endfor %}
+          </select>
+          <div id="socio_seleccionado" style="font-size:12px; color:var(--primary); min-height:18px; font-weight:600;"></div>
+        </div>
 
-  <!-- Total -->
-  <div style="display:flex; justify-content:space-between; align-items:center; background:var(--bg-input); padding:12px 16px; border-radius:8px;">
-  <span style="font-size:14px; color:var(--text-muted);">Total:</span>
-  <span style="font-family:'Syne',sans-serif; font-size:24px; font-weight:800; color:var(--success);" id="buy_total">Q0.00</span>
-  </div>
+        <!-- Estado del pago -->
+        <div style="display:flex; flex-direction:column; gap:6px;">
+          <label style="font-size:13px; color:var(--text-muted);">Estado del pago</label>
+          <select name="tipo_venta" id="buy_tipo_venta" class="input-field"
+                  style="padding:10px; background:var(--bg-input); border:1px solid var(--border-color); color:#fff; border-radius:8px; font-size:13px;">
+            <option value="directa">Pago al contado (pagado ahora)</option>
+            <option value="credito">Cargar a cuenta (pagar después)</option>
+          </select>
+        </div>
 
-  <!-- Botones -->
-  <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:4px;">
-  <button type="button" class="nav-btn" onclick="closeBuyModal()">Cancelar</button>
-  <button type="submit" id="btn_confirmar" class="btn-primary" style="background:var(--success);">Confirmar y Descontar Stock</button>
-  </div>
-  </form>
-  </div>
+        {% else %}
+        <!-- Para socio normal -->
+        <input type="hidden" name="cui_usuario" value="">
+        <div style="display:flex; flex-direction:column; gap:6px;">
+          <label style="font-size:13px; color:var(--text-muted);">Forma de Pago</label>
+          <select name="tipo_venta" id="buy_tipo_venta" class="input-field"
+                  style="padding:10px; background:var(--bg-input); border:1px solid var(--border-color); color:#fff; border-radius:8px; font-size:13px;">
+            <option value="directa">Pago Directo (al contado)</option>
+            <option value="credito">Cargar a mi cuenta (Pagar después)</option>
+          </select>
+        </div>
+        {% endif %}
+
+        <!-- Total -->
+        <div style="display:flex; justify-content:space-between; align-items:center; background:var(--bg-input); padding:12px 16px; border-radius:8px;">
+          <span style="font-size:14px; color:var(--text-muted);">Total:</span>
+          <span style="font-family:'Syne',sans-serif; font-size:26px; font-weight:800; color:var(--success);" id="buy_total">Q0.00</span>
+        </div>
+
+        <!-- Botones -->
+        <div style="display:flex; gap:10px; justify-content:flex-end;">
+          <button type="button" class="nav-btn" onclick="closeBuyModal()">Cancelar</button>
+          <button type="submit" class="btn-primary" style="background:var(--success);">Confirmar Venta</button>
+        </div>
+      </form>
+    </div>
   </div>
 
   <script>
-  let currentUnitPrice = 0;
+    let currentUnitPrice = 0;
 
-  const todosSocios = [
-    {% if session.get('rol') in ['admin', 'empleado'] %}
-    {% for s in socios %}{ cui: "{{ s.cui }}", nombre: "{{ s.nombre }} {{ s.apellido }}" },
-    {% endfor %}{% endif %}
-  ];
+    const todosSocios = [
+      {% if session.get('rol') in ['admin', 'empleado'] %}
+      {% for s in socios %}
+      { cui: "{{ s.cui }}", nombre: "{{ s.nombre }} {{ s.apellido }}" },
+      {% endfor %}
+      {% endif %}
+    ];
 
-  function openBuyModal(id, nombre, precio, stock) {
-    currentUnitPrice = precio;
-    document.getElementById('buy_id_producto').value = id;
-    document.getElementById('buy_prod_nombre').textContent = nombre;
-    document.getElementById('buy_prod_precio').textContent = 'Q' + Number(precio).toFixed(2);
-    document.getElementById('buy_prod_stock').textContent = stock;
-    document.getElementById('buy_cantidad').value = 1;
-    document.getElementById('buy_cantidad').max = stock;
-    const sel = document.getElementById('buy_tipo_venta');
-    if (sel) { sel.value = 'directa'; toggleSocioSelector(); }
-    const sb = document.getElementById('socio_busqueda');
-    if (sb) sb.value = '';
-    filtrarSocios();
-    updateTotal();
-    document.getElementById('buyModal').style.display = 'flex';
-  }
+    function openBuyModal(id, nombre, precio, stock) {
+      currentUnitPrice = precio;
+      document.getElementById('buy_id_producto').value = id;
+      document.getElementById('buy_prod_nombre').textContent = nombre;
+      document.getElementById('buy_prod_precio').textContent = 'Q' + Number(precio).toFixed(2);
+      document.getElementById('buy_prod_stock').textContent = stock;
+      document.getElementById('buy_cantidad').value = 1;
+      document.getElementById('buy_cantidad').max = stock;
 
-  function closeBuyModal() {
-    document.getElementById('buyModal').style.display = 'none';
-  }
+      const tv = document.getElementById('buy_tipo_venta');
+      if (tv) tv.value = 'directa';
 
-  function updateTotal() {
-    const cant = parseInt(document.getElementById('buy_cantidad').value) || 1;
-    document.getElementById('buy_total').textContent = 'Q' + (currentUnitPrice * cant).toFixed(2);
-  }
+      const sb = document.getElementById('socio_busqueda');
+      if (sb) { sb.value = ''; filtrarSocios(); }
 
-  function toggleSocioSelector() {
-    const tipo = document.getElementById('buy_tipo_venta');
-    const selector = document.getElementById('socio_selector');
-    if (!tipo || !selector) return;
-    if (tipo.value === 'credito') {
-      selector.style.display = 'flex';
-      actualizarSocioLabel();
-    } else {
-      selector.style.display = 'none';
+      updateTotal();
+      document.getElementById('buyModal').style.display = 'flex';
     }
-  }
 
-  function filtrarSocios() {
-    const q = (document.getElementById('socio_busqueda').value || '').toLowerCase();
-    const lista = document.getElementById('socio_lista');
-    if (!lista) return;
-    lista.innerHTML = '';
-    const res = q ? todosSocios.filter(s => s.nombre.toLowerCase().includes(q)) : todosSocios;
-    res.forEach(s => {
-      const opt = document.createElement('option');
-      opt.value = s.cui;
-      opt.textContent = s.nombre;
-      lista.appendChild(opt);
+    function closeBuyModal() {
+      document.getElementById('buyModal').style.display = 'none';
+    }
+
+    function updateTotal() {
+      const cant = parseInt(document.getElementById('buy_cantidad').value) || 1;
+      document.getElementById('buy_total').textContent = 'Q' + (currentUnitPrice * cant).toFixed(2);
+    }
+
+    function filtrarSocios() {
+      const q = (document.getElementById('socio_busqueda').value || '').toLowerCase();
+      const lista = document.getElementById('socio_lista');
+      if (!lista) return;
+      lista.innerHTML = '';
+      const res = q ? todosSocios.filter(s => s.nombre.toLowerCase().includes(q)) : todosSocios;
+      res.forEach(s => {
+        const opt = document.createElement('option');
+        opt.value = s.cui;
+        opt.textContent = s.nombre;
+        lista.appendChild(opt);
+      });
+      if (lista.options.length > 0) {
+        lista.selectedIndex = 0;
+        actualizarSocioLabel();
+      } else {
+        const lbl = document.getElementById('socio_seleccionado');
+        if (lbl) lbl.textContent = 'Ningun socio encontrado';
+      }
+    }
+
+    function actualizarSocioLabel() {
+      const lista = document.getElementById('socio_lista');
+      const label = document.getElementById('socio_seleccionado');
+      if (!lista || !label) return;
+      if (lista.selectedOptions.length > 0 && lista.selectedOptions[0].value) {
+        label.textContent = 'Seleccionado: ' + lista.selectedOptions[0].textContent;
+      } else {
+        label.textContent = '';
+      }
+    }
+
+    // Inicializar label al cargar
+    document.addEventListener('DOMContentLoaded', function() {
+      const lista = document.getElementById('socio_lista');
+      if (lista && lista.options.length > 0) {
+        lista.selectedIndex = 0;
+        actualizarSocioLabel();
+      }
     });
-    if (lista.options.length > 0) { lista.selectedIndex = 0; actualizarSocioLabel(); }
-    else { document.getElementById('socio_seleccionado').textContent = 'Ningun socio encontrado'; }
-  }
 
-  function actualizarSocioLabel() {
-    const lista = document.getElementById('socio_lista');
-    const label = document.getElementById('socio_seleccionado');
-    if (lista && lista.selectedOptions.length > 0 && lista.selectedOptions[0].value) {
-      label.textContent = 'Socio: ' + lista.selectedOptions[0].textContent;
-    } else {
-      label.textContent = '';
+    window.onclick = function(event) {
+      if (event.target.classList.contains('modal-overlay')) {
+        event.target.style.display = 'none';
+      }
     }
-  }
-
-  window.onclick = function(event) {
-    if (event.target.classList.contains('modal-overlay')) {
-      event.target.style.display = 'none';
-    }
-  }
   </script>
 </body>
 </html>
