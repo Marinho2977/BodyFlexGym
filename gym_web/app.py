@@ -3,6 +3,14 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 import mysql.connector
 from datetime import date, timedelta, datetime
+
+def gt_now():
+    from datetime import datetime, timedelta
+    return datetime.utcnow() - timedelta(hours=6)
+
+def gt_today():
+    return gt_now().date()
+
 import os
 import secrets
 import smtplib
@@ -52,7 +60,7 @@ def link_whatsapp_vencimiento(telefono, nombre, fecha_vencimiento):
     if not num_gt:
         return "#"
     venc_str = fecha_vencimiento.strftime('%d/%m/%Y') if hasattr(fecha_vencimiento, 'strftime') else str(fecha_vencimiento)
-    msg = f"Hola {nombre}, te recordamos que tu mensualidad en Bodyflex Gym vence el {venc_str}. ??Renueva a tiempo para seguir entrenando! ????"
+    msg = f"Hola {nombre}, te recordamos que tu mensualidad en Bodyflex Gym vence el {venc_str}. ¡Renueva a tiempo para seguir entrenando! "
     return f"https://wa.me/{num_gt}?text={quote(msg)}"
 
 def enviar_whatsapp_api(telefono, mensaje):
@@ -61,7 +69,7 @@ def enviar_whatsapp_api(telefono, mensaje):
     num_gt = formatear_telefono_gt(telefono)
 
     if not num_gt:
-        return False, "N??mero de tel??fono no v??lido"
+        return False, "Número de teléfono no válido"
 
     if api_url and api_token:
         try:
@@ -88,7 +96,7 @@ def procesar_envio_automatico_whatsapp(dias_anticipacion=7):
     try:
         conn = conectar_db()
         cursor = conn.cursor(dictionary=True)
-        hoy = date.today()
+        hoy = gt_today()
         
         cursor.execute("""
             SELECT u.cui, u.nombre, u.apellido, u.telefono, MAX(p.fecha_vencimiento) AS ultimo_vencimiento
@@ -107,7 +115,7 @@ def procesar_envio_automatico_whatsapp(dias_anticipacion=7):
                 dias_restantes = (u["ultimo_vencimiento"] - hoy).days
                 if 0 <= dias_restantes <= dias_anticipacion:
                     venc_str = u["ultimo_vencimiento"].strftime('%d/%m/%Y')
-                    mensaje = f"Hola {u['nombre']}, te recordamos que tu mensualidad en Bodyflex Gym vence el {venc_str} (en {dias_restantes} d??as). ??Renueva a tiempo para seguir entrenando sin interrupciones! ????"
+                    mensaje = f"Hola {u['nombre']}, te recordamos que tu mensualidad en Bodyflex Gym vence el {venc_str} (en {dias_restantes} días). ¡Renueva a tiempo para seguir entrenando sin interrupciones! "
                     
                     ok, res = enviar_whatsapp_api(u["telefono"], mensaje)
                     if ok:
@@ -121,11 +129,11 @@ def procesar_envio_automatico_whatsapp(dias_anticipacion=7):
         return 0, []
 
 def procesar_envio_manual_whatsapp():
-    """Env??a recordatorio a TODOS los socios activos con tel??fono y pagos registrados, sin importar cu??ntos d??as faltan."""
+    """Envía recordatorio a TODOS los socios activos con teléfono y pagos registrados, sin importar cuántos días faltan."""
     try:
         conn = conectar_db()
         cursor = conn.cursor(dictionary=True)
-        hoy = date.today()
+        hoy = gt_today()
         
         cursor.execute("""
             SELECT u.cui, u.nombre, u.apellido, u.telefono, MAX(p.fecha_vencimiento) AS ultimo_vencimiento
@@ -144,16 +152,16 @@ def procesar_envio_manual_whatsapp():
                 dias_restantes = (u["ultimo_vencimiento"] - hoy).days
                 venc_str = u["ultimo_vencimiento"].strftime('%d/%m/%Y')
                 if dias_restantes < 0:
-                    mensaje = f"Hola {u['nombre']}, tu mensualidad en Bodyflex Gym venci?? el {venc_str} (hace {abs(dias_restantes)} d??as). ??Ac??rcate a renovar para seguir entrenando! ????"
+                    mensaje = f"Hola {u['nombre']}, tu mensualidad en Bodyflex Gym venció el {venc_str} (hace {abs(dias_restantes)} días). ¡Acércate a renovar para seguir entrenando! "
                 elif dias_restantes == 0:
-                    mensaje = f"Hola {u['nombre']}, tu mensualidad en Bodyflex Gym vence HOY {venc_str}. ??Renueva hoy para no perder tu acceso! ????"
+                    mensaje = f"Hola {u['nombre']}, tu mensualidad en Bodyflex Gym vence HOY {venc_str}. ¡Renueva hoy para no perder tu acceso! "
                 else:
-                    mensaje = f"Hola {u['nombre']}, te recordamos que tu mensualidad en Bodyflex Gym vence el {venc_str} (en {dias_restantes} d??as). ??Renueva a tiempo para seguir entrenando sin interrupciones! ????"
+                    mensaje = f"Hola {u['nombre']}, te recordamos que tu mensualidad en Bodyflex Gym vence el {venc_str} (en {dias_restantes} días). ¡Renueva a tiempo para seguir entrenando sin interrupciones! "
                 
                 ok, res = enviar_whatsapp_api(u["telefono"], mensaje)
                 if ok:
                     envios_exitosos += 1
-                    detalles_envio.append(f"{u['nombre']} {u['apellido']} ({u['telefono']}) ??? {'vencido' if dias_restantes < 0 else f'{dias_restantes}d'}")
+                    detalles_envio.append(f"{u['nombre']} {u['apellido']} ({u['telefono']}) — {'vencido' if dias_restantes < 0 else f'{dias_restantes}d'}")
 
         conn.close()
         return envios_exitosos, detalles_envio
@@ -183,7 +191,7 @@ def ejecutar_whatsapp_manual():
     
     cant, detalles = procesar_envio_manual_whatsapp()
     if request.method == "POST":
-        flash(f"??? Avisos de WhatsApp enviados a TODOS los socios con tel??fono registrado. Se procesaron {cant} socio(s).", "success")
+        flash(f" Avisos de WhatsApp enviados a TODOS los socios con teléfono registrado. Se procesaron {cant} socio(s).", "success")
         return redirect(request.referrer or "/admin")
     else:
         return {"status": "ok", "procesados": cant, "socios": detalles}
@@ -212,20 +220,20 @@ def ejecutar_whatsapp_individual(cui):
         conn.close()
 
         if not u or not u.get("telefono"):
-            return jsonify({"ok": False, "error": "Socio sin tel??fono registrado"}), 400
+            return jsonify({"ok": False, "error": "Socio sin teléfono registrado"}), 400
         
-        hoy = date.today()
+        hoy = gt_today()
         if u["ultimo_vencimiento"]:
             dias_restantes = (u["ultimo_vencimiento"] - hoy).days
             venc_str = u["ultimo_vencimiento"].strftime('%d/%m/%Y')
             if dias_restantes < 0:
-                mensaje = f"Hola {u['nombre']}, tu mensualidad en Bodyflex Gym venci?? el {venc_str} (hace {abs(dias_restantes)} d??as). ??Ac??rcate a renovar para seguir entrenando! ????"
+                mensaje = f"Hola {u['nombre']}, tu mensualidad en Bodyflex Gym venció el {venc_str} (hace {abs(dias_restantes)} días). ¡Acércate a renovar para seguir entrenando! "
             elif dias_restantes == 0:
-                mensaje = f"Hola {u['nombre']}, tu mensualidad en Bodyflex Gym vence HOY {venc_str}. ??Renueva hoy para no perder tu acceso! ????"
+                mensaje = f"Hola {u['nombre']}, tu mensualidad en Bodyflex Gym vence HOY {venc_str}. ¡Renueva hoy para no perder tu acceso! "
             else:
-                mensaje = f"Hola {u['nombre']}, te recordamos que tu mensualidad en Bodyflex Gym vence el {venc_str} (en {dias_restantes} d??as). ??Renueva a tiempo para seguir entrenando sin interrupciones! ????"
+                mensaje = f"Hola {u['nombre']}, te recordamos que tu mensualidad en Bodyflex Gym vence el {venc_str} (en {dias_restantes} días). ¡Renueva a tiempo para seguir entrenando sin interrupciones! "
         else:
-            mensaje = f"Hola {u['nombre']}, te saludamos de Bodyflex Gym. ??Esperamos verte pronto en tus entrenamientos! ????"
+            mensaje = f"Hola {u['nombre']}, te saludamos de Bodyflex Gym. ¡Esperamos verte pronto en tus entrenamientos! "
         
         ok, res = enviar_whatsapp_api(u["telefono"], mensaje)
         if ok:
@@ -235,9 +243,9 @@ def ejecutar_whatsapp_individual(cui):
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
 
-# ???????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+# 
 # CSRF PROTECTION
-# ???????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+# 
 
 def generar_csrf_token():
     if "_csrf_token" not in session:
@@ -254,7 +262,7 @@ def verificar_csrf():
         token_sesion = session.get("_csrf_token")
         token_form   = request.form.get("csrf_token")
         if not token_sesion or token_sesion != token_form:
-            flash("Sesi??n inv??lida. Intenta de nuevo.", "error")
+            flash("Sesión inválida. Intenta de nuevo.", "error")
             return redirect(request.referrer or "/login")
 
 @app.after_request
@@ -264,7 +272,7 @@ def sin_cache(response):
     response.headers["Expires"] = "0"
     return response
 
-# --- CONFIGURACI??N DE BASE DE DATOS ---
+# --- CONFIGURACIÓN DE BASE DE DATOS ---
 def conectar_db():
     return mysql.connector.connect(
         host=os.environ.get('MYSQLHOST'),
@@ -318,18 +326,18 @@ def calcular_fecha_vencimiento_dia_3(anio, mes):
     return date(siguiente_anio, siguiente_mes, 3)
 
 
-# --- CONFIGURACI??N DE CORREO ---
+# --- CONFIGURACIÓN DE CORREO ---
 GMAIL_USER     = os.environ.get("GMAIL_USER")
 GMAIL_PASSWORD = os.environ.get("GMAIL_PASSWORD")
 
-# ???????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+# 
 # HELPERS
-# ???????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+# 
 
 def registrar_log(tipo, detalle, afectado_id=None, afectado_nombre=None):
     actor_cui    = session.get("usuario_id")
     actor_nombre = session.get("nombre", "Sistema")
-    actor_rol    = session.get("rol", "???")
+    actor_rol    = session.get("rol", "—")
     if actor_rol not in ("admin", "empleado") and actor_nombre != "Sistema":
         return
     try:
@@ -350,23 +358,23 @@ def registrar_log(tipo, detalle, afectado_id=None, afectado_nombre=None):
 
 def validar_contrasena(password):
     """
-    Valida que la contrase??a cumpla con los requisitos m??nimos de seguridad:
+    Valida que la contraseña cumpla con los requisitos mínimos de seguridad:
     - Al menos 8 caracteres
-    - Al menos una may??scula
-    - Al menos una min??scula
-    - Al menos un n??mero
-    - Al menos un car??cter especial (ej: @, #, $, !, etc.)
+    - Al menos una mayúscula
+    - Al menos una minúscula
+    - Al menos un número
+    - Al menos un carácter especial (ej: @, #, $, !, etc.)
     """
     if len(password) < 8:
-        return False, "La contrase??a debe tener al menos 8 caracteres"
+        return False, "La contraseña debe tener al menos 8 caracteres"
     if not re.search(r"[A-Z]", password):
-        return False, "La contrase??a debe tener al menos una may??scula"
+        return False, "La contraseña debe tener al menos una mayúscula"
     if not re.search(r"[a-z]", password):
-        return False, "La contrase??a debe tener al menos una min??scula"
+        return False, "La contraseña debe tener al menos una minúscula"
     if not re.search(r"[0-9]", password):
-        return False, "La contrase??a debe tener al menos un n??mero"
+        return False, "La contraseña debe tener al menos un número"
     if not re.search(r"[^A-Za-z0-9]", password):
-        return False, "La contrase??a debe tener al menos un car??cter especial (ej: @, #, $, !)"
+        return False, "La contraseña debe tener al menos un carácter especial (ej: @, #, $, !)"
     return True, None
 
 
@@ -399,11 +407,11 @@ def periodos_desde_mes_pagado(descripcion):
                 periodos.add(_sumar_meses(anio_inicio, mes_inicio, offset))
         return periodos
 
-    anios = re.findall(r"\b(\d{4})\b", texto)
-    if not anios:
+    años = re.findall(r"\b(\d{4})\b", texto)
+    if not años:
         return set()
 
-    anio = int(anios[-1])
+    anio = int(años[-1])
     meses = re.findall(rf"\b({meses_regex})\b", texto, flags=re.IGNORECASE)
     return {(anio, MESES_POR_NOMBRE[mes.lower()]) for mes in meses}
 
@@ -455,7 +463,7 @@ def enviar_correo_reset(destino, token, nombre):
 
     base_url = os.environ.get("BASE_URL", "http://localhost:5000")
     link     = f"{base_url}/reset_password/{token}"
-    asunto   = "Recuperaci??n de contrase??a ??? Bodyflex Gym"
+    asunto   = "Recuperación de contraseña — Bodyflex Gym"
 
     html = f"""
     <!DOCTYPE html>
@@ -474,13 +482,13 @@ def enviar_correo_reset(destino, token, nombre):
             </tr>
             <tr>
               <td style="padding:36px;">
-                <div style="font-size:36px;margin-bottom:16px;">????</div>
+                <div style="font-size:36px;margin-bottom:16px;"></div>
                 <h1 style="color:#f5f5f5;font-size:22px;font-weight:700;margin:0 0 12px;">
-                  Recupera tu contrase??a
+                  Recupera tu contraseña
                 </h1>
                 <p style="color:#9ca3af;font-size:14px;line-height:1.6;margin:0 0 28px;">
                   Hola <strong style="color:#f5f5f5;">{nombre}</strong>, recibimos una solicitud para
-                  restablecer la contrase??a de tu cuenta en Bodyflex Gym.
+                  restablecer la contraseña de tu cuenta en Bodyflex Gym.
                 </p>
                 <table cellpadding="0" cellspacing="0" style="margin-bottom:28px;">
                   <tr>
@@ -488,19 +496,19 @@ def enviar_correo_reset(destino, token, nombre):
                       <a href="{link}"
                          style="display:inline-block;padding:14px 32px;color:#fff;text-decoration:none;
                                 font-weight:700;font-size:15px;">
-                        Restablecer contrase??a ???
+                        Restablecer contraseña →
                       </a>
                     </td>
                   </tr>
                 </table>
                 <div style="background:#222;border:1px solid #2e2e2e;border-radius:10px;padding:16px;margin-bottom:24px;">
                   <p style="color:#9ca3af;font-size:13px;margin:0;">
-                    ??? Este enlace expira en <strong style="color:#FF6B00;">1 hora</strong>.
+                    ⏰ Este enlace expira en <strong style="color:#FF6B00;">1 hora</strong>.
                     Si no solicitaste este cambio, ignora este correo.
                   </p>
                 </div>
                 <p style="color:#555;font-size:11px;margin:0;word-break:break-all;">
-                  Si el bot??n no funciona copia este enlace:<br>
+                  Si el botón no funciona copia este enlace:<br>
                   <span style="color:#FF6B00;">{link}</span>
                 </p>
               </td>
@@ -508,7 +516,7 @@ def enviar_correo_reset(destino, token, nombre):
             <tr>
               <td style="background:#141414;padding:20px 36px;border-top:1px solid #2e2e2e;">
                 <p style="color:#555;font-size:11px;margin:0;text-align:center;">
-                  Bodyflex Gym ??? Este correo fue generado autom??ticamente.
+                  Bodyflex Gym — Este correo fue generado automáticamente.
                 </p>
               </td>
             </tr>
@@ -518,7 +526,7 @@ def enviar_correo_reset(destino, token, nombre):
     </body></html>
     """
 
-    texto = f"Hola {nombre},\n\nRestablecer contrase??a:\n{link}\n\nExpira en 1 hora.\n\n??? Bodyflex Gym"
+    texto = f"Hola {nombre},\n\nRestablecer contraseña:\n{link}\n\nExpira en 1 hora.\n\n— Bodyflex Gym"
 
     msg = MIMEMultipart("alternative")
     msg["Subject"] = asunto
@@ -533,9 +541,9 @@ def enviar_correo_reset(destino, token, nombre):
         server.sendmail(gmail_user, destino, msg.as_string())
 
 
-# ???????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+# 
 # REGISTRO
-# ???????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+# 
 
 @app.route("/registrar", methods=["POST"])
 def registrar():
@@ -547,24 +555,24 @@ def registrar():
     tipo_doc   = request.form.get("tipo_doc",   "CUI").strip()
     telefono   = request.form.get("telefono",   "").strip()
 
-    # El correo es OPCIONAL ??? si viene vac??o se guarda como NULL
+    # El correo es OPCIONAL — si viene vacío se guarda como NULL
     email = email_raw if email_raw else None
 
     if not nombre or not apellido or not password or not numero_doc or not telefono:
-        flash("Nombre, apellido, documento, tel??fono y contrase??a son obligatorios", "error")
+        flash("Nombre, apellido, documento, teléfono y contraseña son obligatorios", "error")
         return redirect("/registro")
 
     # Validar email solo si lo proporcionaron
     if email and "@" not in email:
-        flash("Correo inv??lido", "error")
+        flash("Correo inválido", "error")
         return redirect("/registro")
 
     if not numero_doc.isdigit() or len(numero_doc) != 13:
-        flash("El CUI/DPI debe tener exactamente 13 d??gitos", "error")
+        flash("El CUI/DPI debe tener exactamente 13 dígitos", "error")
         return redirect("/registro")
 
     if not telefono.isdigit() or len(telefono) != 8:
-        flash("El n??mero de tel??fono debe tener exactamente 8 d??gitos", "error")
+        flash("El número de teléfono debe tener exactamente 8 dígitos", "error")
         return redirect("/registro")
 
     if tipo_doc not in ("CUI", "DPI"):
@@ -578,19 +586,19 @@ def registrar():
     conn   = conectar_db()
     cursor = conn.cursor()
 
-    # Verificar email duplicado solo si se proporcion??
+    # Verificar email duplicado solo si se proporcionó
     if email:
         cursor.execute("SELECT cui FROM usuarios WHERE email=%s", (email,))
         if cursor.fetchone():
             conn.close()
-            flash("Ese correo ya est?? registrado", "error")
+            flash("Ese correo ya está registrado", "error")
             return redirect("/registro")
 
     # Verificar CUI duplicado
     cursor.execute("SELECT cui FROM usuarios WHERE cui=%s", (int(numero_doc),))
     if cursor.fetchone():
         conn.close()
-        flash("Ese CUI/DPI ya est?? registrado", "error")
+        flash("Ese CUI/DPI ya está registrado", "error")
         return redirect("/registro")
 
     password_hash = generate_password_hash(password)
@@ -607,13 +615,13 @@ def registrar():
     conn.commit()
     conn.close()
 
-    flash("Cuenta creada exitosamente. ??Inicia sesi??n!", "success")
+    flash("Cuenta creada exitosamente. ¡Inicia sesión!", "success")
     return redirect("/login")
 
 
-# ???????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
-# INICIO DE SESI??N ??? acepta correo O CUI (13 d??gitos)
-# ???????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+# 
+# INICIO DE SESIÓN — acepta correo O CUI (13 dígitos)
+# 
 
 @app.route("/iniciar", methods=["POST"])
 def iniciar():
@@ -627,7 +635,7 @@ def iniciar():
     conn   = conectar_db()
     cursor = conn.cursor(dictionary=True)
 
-    # Detectar si ingresaron CUI (13 d??gitos num??ricos) o correo
+    # Detectar si ingresaron CUI (13 dígitos numéricos) o correo
     if identificador.isdigit() and len(identificador) == 13:
         cursor.execute("""
             SELECT u.cui, u.nombre, u.apellido, u.email, u.password, u.estado, r.descripcion AS rol, p.edad
@@ -649,17 +657,17 @@ def iniciar():
 
     if not usuario:
         conn.close()
-        flash("Identificador o contrase??a incorrectos", "error")
+        flash("Identificador o contraseña incorrectos", "error")
         return redirect("/login")
 
     if usuario["estado"].lower() != "activo":
         conn.close()
-        flash("Tu cuenta est?? inactiva. Contacta al gimnasio.", "error")
+        flash("Tu cuenta está inactiva. Contacta al gimnasio.", "error")
         return redirect("/login")
 
     if not check_password_hash(usuario["password"], password):
         conn.close()
-        flash("Identificador o contrase??a incorrectos", "error")
+        flash("Identificador o contraseña incorrectos", "error")
         return redirect("/login")
 
     conn.close()
@@ -667,7 +675,7 @@ def iniciar():
     session["nombre"]     = usuario["nombre"]
     session["rol"]        = usuario["rol"]
 
-    # registrar_log("login", "Inici?? sesi??n")
+    # registrar_log("login", "Inició sesión")
 
     if usuario["rol"] == "admin":
         return redirect("/admin")
@@ -678,9 +686,9 @@ def iniciar():
     return redirect("/panel")
 
 
-# ???????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+# 
 # PANEL ADMIN
-# ???????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+# 
 
 @app.route("/admin")
 def admin_panel():
@@ -726,14 +734,14 @@ def admin_panel():
 
     conn.close()
 
-    fecha_hoy = date.today()
+    fecha_hoy = gt_today()
 
     if filtro == "vencidos":
         usuarios_all = [u for u in usuarios_all if u["ultimo_vencimiento"] and u["ultimo_vencimiento"] < fecha_hoy]
     if filtro == "activos":
         usuarios_all = [u for u in usuarios_all if u["ultimo_vencimiento"] and u["ultimo_vencimiento"] >= fecha_hoy]
 
-    # ?????? Paginaci??n ??????
+    #  Paginación 
     total_socios = len(usuarios_all)
     total_paginas = max(1, math.ceil(total_socios / por_pagina))
     pagina = max(1, min(pagina, total_paginas))
@@ -771,7 +779,7 @@ def hacer_admin(cui):
     u = cursor.fetchone()
     cursor.execute("UPDATE usuarios SET id_rol='01' WHERE cui=%s", (cui,))
     conn.commit(); conn.close()
-    registrar_log("rol", "Promovi?? a Admin", afectado_id=cui,
+    registrar_log("rol", "Promovió a Admin", afectado_id=cui,
                   afectado_nombre=f"{u[0]} {u[1]}" if u else None)
     flash("Usuario promovido a administrador", "success")
     return redirect("/admin")
@@ -789,7 +797,7 @@ def quitar_admin(cui):
     u = cursor.fetchone()
     cursor.execute("UPDATE usuarios SET id_rol='03' WHERE cui=%s", (cui,))
     conn.commit(); conn.close()
-    registrar_log("rol", "Quit?? rol Admin ??? Usuario", afectado_id=cui,
+    registrar_log("rol", "Quitó rol Admin → Usuario", afectado_id=cui,
                   afectado_nombre=f"{u[0]} {u[1]}" if u else None)
     flash("Rol admin removido", "success")
     return redirect("/admin")
@@ -804,7 +812,7 @@ def hacer_empleado(cui):
     u = cursor.fetchone()
     cursor.execute("UPDATE usuarios SET id_rol='02' WHERE cui=%s", (cui,))
     conn.commit(); conn.close()
-    registrar_log("rol", "Asign?? como Empleado", afectado_id=cui,
+    registrar_log("rol", "Asignó como Empleado", afectado_id=cui,
                   afectado_nombre=f"{u[0]} {u[1]}" if u else None)
     flash("Usuario asignado como empleado", "success")
     return redirect("/admin")
@@ -819,7 +827,7 @@ def quitar_empleado(cui):
     u = cursor.fetchone()
     cursor.execute("UPDATE usuarios SET id_rol='03' WHERE cui=%s", (cui,))
     conn.commit(); conn.close()
-    registrar_log("rol", "Quit?? rol Empleado ??? Usuario", afectado_id=cui,
+    registrar_log("rol", "Quitó rol Empleado → Usuario", afectado_id=cui,
                   afectado_nombre=f"{u[0]} {u[1]}" if u else None)
     flash("Rol empleado removido", "success")
     return redirect("/admin")
@@ -925,12 +933,12 @@ def exportar_pagos_excel(cui):
         rows.append([
             p["id_pago"],
             p["fecha_pago"],
-            p["descripcion"] or "???",
+            p["descripcion"] or "—",
             float(p["monto"]),
             p["fecha_vencimiento"]
         ])
 
-    excel_bytes = generar_reporte_excel(headers, rows, f"Historial Pagos ??? {nombre_socio}")
+    excel_bytes = generar_reporte_excel(headers, rows, f"Historial Pagos — {nombre_socio}")
     response = make_response(excel_bytes)
     response.headers['Content-Type'] = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     response.headers['Content-Disposition'] = f'attachment; filename=pagos_{cui}.xlsx'
@@ -985,7 +993,7 @@ def exportar_pagos_pdf(cui):
         rows.append([
             idx + 1,
             p["fecha_pago"],
-            p["descripcion"] or "???",
+            p["descripcion"] or "—",
             p["fecha_vencimiento"],
             float(p["monto"])
         ])
@@ -1011,7 +1019,7 @@ def desactivar_usuario(cui):
     u = cursor.fetchone()
     cursor.execute("UPDATE usuarios SET estado='inactivo' WHERE cui=%s", (cui,))
     conn.commit(); conn.close()
-    registrar_log("desactivar", "Desactiv?? la cuenta", afectado_id=cui,
+    registrar_log("desactivar", "Desactivó la cuenta", afectado_id=cui,
                   afectado_nombre=f"{u[0]} {u[1]}" if u else None)
     flash("Usuario desactivado", "success")
     return redirect("/admin")
@@ -1026,7 +1034,7 @@ def reactivar_usuario(cui):
     u = cursor.fetchone()
     cursor.execute("UPDATE usuarios SET estado='activo' WHERE cui=%s", (cui,))
     conn.commit(); conn.close()
-    registrar_log("activacion", "Reactiv?? la cuenta", afectado_id=cui,
+    registrar_log("activacion", "Reactivó la cuenta", afectado_id=cui,
                   afectado_nombre=f"{u[0]} {u[1]}" if u else None)
     flash("Usuario reactivado", "success")
     return redirect("/admin")
@@ -1068,7 +1076,7 @@ def eliminar_usuario(cui):
             
         cursor.execute("DELETE FROM usuarios WHERE cui=%s", (cui,))
         
-        registrar_log("eliminacion", f"Elimin?? cuenta de {rol}", afectado_id=cui, afectado_nombre=nombre_completo)
+        registrar_log("eliminacion", f"Eliminó cuenta de {rol}", afectado_id=cui, afectado_nombre=nombre_completo)
         
         conn.commit()
         flash(f"{'Empleado' if rol == 'empleado' else 'Socio'} eliminado exitosamente", "success")
@@ -1087,7 +1095,7 @@ def registrar_pago(cui):
         return redirect("/login")
 
     meses_lista = request.form.get("meses_lista", "")
-    anio_sel    = request.form.get("anio_sel", str(date.today().year))
+    anio_sel    = request.form.get("anio_sel", str(gt_today().year))
     metodo_pago = request.form.get("metodo_pago", "efectivo")
     referencia  = request.form.get("referencia", "").strip() or None
     redirect_destino = "/empleado" if session.get("rol") == "empleado" else "/admin"
@@ -1100,14 +1108,14 @@ def registrar_pago(cui):
     cursor.execute("SELECT nombre, apellido FROM usuarios WHERE cui=%s", (cui,))
     socio = cursor.fetchone()
 
-    hoy        = date.today()
+    hoy        = gt_today()
     fecha_base = resultado["ultimo"] if resultado["ultimo"] and resultado["ultimo"] >= hoy else hoy
 
     try:
         anio_i = int(anio_sel)
     except ValueError:
         conn.close()
-        flash("Selecciona un anio valido para registrar el pago.", "error")
+        flash("Selecciona un año válido para registrar el pago.", "error")
         return redirect(redirect_destino)
 
     if meses_lista:
@@ -1135,7 +1143,7 @@ def registrar_pago(cui):
         else:
             mes_fin  = ((mes_i - 1 + meses - 1) % 12) + 1
             anio_fin = anio_i + ((mes_i - 1 + meses - 1) // 12)
-            descripcion = f"{MESES_NOMBRES[mes_i-1]} {anio_i} ??? {MESES_NOMBRES[mes_fin-1]} {anio_fin}"
+            descripcion = f"{MESES_NOMBRES[mes_i-1]} {anio_i} — {MESES_NOMBRES[mes_fin-1]} {anio_fin}"
         ultimo_anio, ultimo_mes = max(periodos_solicitados)
 
     cursor.execute("SELECT descripcion FROM pagos WHERE cui_usuario=%s", (cui,))
@@ -1157,19 +1165,19 @@ def registrar_pago(cui):
                    (cui, hoy, nueva_fecha, monto_total, descripcion, metodo_pago, referencia))
     conn.commit(); conn.close()
 
-    nombre_socio = f"{socio['nombre']} {socio['apellido']}" if socio else "???"
-    registrar_log("pago", f"Registr?? pago de {meses} mes(es) ??? Q{int(monto_total):,}",
+    nombre_socio = f"{socio['nombre']} {socio['apellido']}" if socio else "—"
+    registrar_log("pago", f"Registró pago de {meses} mes(es) — Q{int(monto_total):,}",
                   afectado_id=cui, afectado_nombre=nombre_socio)
 
-    flash(f"Pago de {meses} mes(es) registrado ??? Q{int(monto_total):,}", "success")
+    flash(f"Pago de {meses} mes(es) registrado — Q{int(monto_total):,}", "success")
 
 
     return redirect(redirect_destino)
 
 
-# ???????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+# 
 # CARGOS MANUALES
-# ???????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+# 
 
 @app.route("/crear_cargo/<int:cui>", methods=["POST"])
 def crear_cargo(cui):
@@ -1182,7 +1190,7 @@ def crear_cargo(cui):
     id_producto = request.form.get("id_producto") or None
     
     if not descripcion or not monto:
-        flash("Descripci??n y monto son obligatorios para el cargo", "error")
+        flash("Descripción y monto son obligatorios para el cargo", "error")
         return redirect(origen)
         
     conn = conectar_db()
@@ -1190,7 +1198,7 @@ def crear_cargo(cui):
     cursor.execute("SELECT nombre, apellido FROM usuarios WHERE cui=%s", (cui,))
     socio = cursor.fetchone()
     
-    hoy = date.today()
+    hoy = gt_today()
     cursor.execute("""
         INSERT INTO cargos (cui_usuario, descripcion, monto, fecha_emision, estado, id_producto) 
         VALUES (%s, %s, %s, %s, 'pendiente', %s)
@@ -1203,8 +1211,8 @@ def crear_cargo(cui):
     conn.commit()
     conn.close()
     
-    nombre_socio = f"{socio['nombre']} {socio['apellido']}" if socio else "???"
-    registrar_log("cargo", f"Cre?? cargo manual: '{descripcion}' (Q{monto})", afectado_id=cui, afectado_nombre=nombre_socio)
+    nombre_socio = f"{socio['nombre']} {socio['apellido']}" if socio else "—"
+    registrar_log("cargo", f"Creó cargo manual: '{descripcion}' (Q{monto})", afectado_id=cui, afectado_nombre=nombre_socio)
     
     flash(f"Cargo '{descripcion}' creado exitosamente", "success")
     return redirect(origen)
@@ -1224,12 +1232,12 @@ def pagar_cargo(id_cargo):
     
     if not cargo or cargo['estado'] == 'pagado':
         conn.close()
-        flash("Cargo inv??lido o ya pagado", "error")
+        flash("Cargo inválido o ya pagado", "error")
         return redirect(origen)
         
-    hoy = date.today()
+    hoy = gt_today()
     
-    # Obtener el ??ltimo fecha_vencimiento para no alterarlo
+    # Obtener el último fecha_vencimiento para no alterarlo
     cursor.execute("SELECT MAX(fecha_vencimiento) as max_venc FROM pagos WHERE cui_usuario=%s", (cargo['cui_usuario'],))
     res_venc = cursor.fetchone()
     vencimiento_actual = res_venc['max_venc'] if res_venc and res_venc['max_venc'] else hoy
@@ -1238,7 +1246,7 @@ def pagar_cargo(id_cargo):
     cursor.execute("UPDATE cargos SET estado='pagado' WHERE id_cargo=%s", (id_cargo,))
     
     # 2. Insertar pago con el id_cargo
-    # Ponemos la misma fecha de vencimiento actual para no avanzar su membres??a
+    # Ponemos la misma fecha de vencimiento actual para no avanzar su membresía
     cursor.execute("""
         INSERT INTO pagos (cui_usuario, fecha_pago, fecha_vencimiento, monto, descripcion, id_cargo) 
         VALUES (%s, %s, %s, %s, %s, %s)
@@ -1249,13 +1257,13 @@ def pagar_cargo(id_cargo):
     conn.close()
     
     nombre_socio = f"{cargo['nombre']} {cargo['apellido']}"
-    registrar_log("pago", f"Pag?? cargo manual '{cargo['descripcion']}' (Q{cargo['monto']})", afectado_id=cargo['cui_usuario'], afectado_nombre=nombre_socio)
+    registrar_log("pago", f"Pagó cargo manual '{cargo['descripcion']}' (Q{cargo['monto']})", afectado_id=cargo['cui_usuario'], afectado_nombre=nombre_socio)
     
-    msg_exito = f"El cargo '{cargo['descripcion']}' ha sido pagado exitosamente. <a href='/recibo/{nuevo_id_pago}' target='_blank' style='color:#22c55e; font-weight:700; text-decoration:underline; margin-left:8px;'>???? Descargar Recibo PDF</a>"
+    msg_exito = f"El cargo '{cargo['descripcion']}' ha sido pagado exitosamente. <a href='/recibo/{nuevo_id_pago}' target='_blank' style='color:#22c55e; font-weight:700; text-decoration:underline; margin-left:8px;'> Descargar Recibo PDF</a>"
     flash(msg_exito, "success")
-    return redirect(origen)# ???????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
-# AUDITOR??A
-# ???????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+    return redirect(origen)# 
+# AUDITORÍA
+# 
 
 @app.route("/admin/auditoria")
 def auditoria():
@@ -1310,7 +1318,7 @@ def auditoria():
     )
     auditoria_registros = cursor.fetchall()
 
-    hoy_str = date.today().strftime("%Y-%m-%d")
+    hoy_str = gt_today().strftime("%Y-%m-%d")
     cursor.execute("SELECT COUNT(*) AS c FROM auditoria WHERE tipo='pago' AND DATE(fecha)=%s", (hoy_str,))
     pagos_hoy = cursor.fetchone()["c"]
 
@@ -1491,7 +1499,7 @@ def generar_reporte_pdf(headers, rows, title, subtitle):
             elif isinstance(cell_val, (int, float)):
                 txt = f"Q{int(cell_val):,}"
             else:
-                txt = str(cell_val or '???')
+                txt = str(cell_val or '—')
             row_data.append(Paragraph(txt, cell_style))
         data.append(row_data)
 
@@ -1561,7 +1569,7 @@ def exportar_auditoria_excel():
     logs = cursor.fetchall()
     conn.close()
 
-    headers = ["Fecha y Hora", "Tipo de Acci??n", "Realizado por", "Rol Actor", "Detalle", "Socio Afectado"]
+    headers = ["Fecha y Hora", "Tipo de Acción", "Realizado por", "Rol Actor", "Detalle", "Socio Afectado"]
     rows = []
     for log in logs:
         rows.append([
@@ -1570,10 +1578,10 @@ def exportar_auditoria_excel():
             log["actor_nombre"],
             log["actor_rol"],
             log["detalle"],
-            log["afectado_nombre"] or "???"
+            log["afectado_nombre"] or "—"
         ])
 
-    excel_bytes = generar_reporte_excel(headers, rows, "Reporte de Auditoria ??? Bodyflex Gym")
+    excel_bytes = generar_reporte_excel(headers, rows, "Reporte de Auditoria — Bodyflex Gym")
     response = make_response(excel_bytes)
     response.headers['Content-Type'] = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     response.headers['Content-Disposition'] = 'attachment; filename=reporte_auditoria.xlsx'
@@ -1619,7 +1627,7 @@ def exportar_auditoria_pdf():
     logs = cursor.fetchall()
     conn.close()
 
-    headers = ["Fecha", "Acci??n", "Realizado por", "Detalle", "Afectado"]
+    headers = ["Fecha", "Acción", "Realizado por", "Detalle", "Afectado"]
     rows = []
     for log in logs:
         rows.append([
@@ -1627,14 +1635,14 @@ def exportar_auditoria_pdf():
             log["tipo"].capitalize(),
             f"{log['actor_nombre']} ({log['actor_rol']})",
             log["detalle"],
-            log["afectado_nombre"] or "???"
+            log["afectado_nombre"] or "—"
         ])
 
     filtro_txt = f"Filtros: Busqueda: '{buscar or 'Todas'}' | Tipo: '{tipo_filtro or 'Todos'}'"
     if fecha_inicio or fecha_fin:
         filtro_txt += f" | Rango: {fecha_inicio or '...'} a {fecha_fin or '...'}"
 
-    pdf_bytes = generar_reporte_pdf(headers, rows, "Reporte de Auditor??a", filtro_txt)
+    pdf_bytes = generar_reporte_pdf(headers, rows, "Reporte de Auditoría", filtro_txt)
     response = make_response(pdf_bytes)
     response.headers['Content-Type'] = 'application/pdf'
     response.headers['Content-Disposition'] = 'attachment; filename=reporte_auditoria.pdf'
@@ -1653,7 +1661,7 @@ def limpiar_auditoria():
     conn.commit()
     conn.close()
 
-    flash("Se eliminaron todos los registros de inicios de sesi??n y logs de usuarios regulares exitosamente.", "success")
+    flash("Se eliminaron todos los registros de inicios de sesión y logs de usuarios regulares exitosamente.", "success")
     return redirect("/admin/auditoria")
 
 
@@ -1665,7 +1673,7 @@ def admin_reportes():
     conn   = conectar_db()
     cursor = conn.cursor(dictionary=True)
 
-    # ?????? M??tricas de ingresos mensuales (??ltimos 12 meses) ??????
+    #  Métricas de ingresos mensuales (últimos 12 meses) 
     cursor.execute("""
         SELECT YEAR(fecha_pago) AS anio, MONTH(fecha_pago) AS mes,
                SUM(monto) AS total
@@ -1690,7 +1698,7 @@ def admin_reportes():
     ingresos_labels = [f"{MESES_NOMBRES[r['mes']-1][:3]} {r['anio']}" for r in ingresos_raw]
     ingresos_data   = [float(r['total']) for r in ingresos_raw]
 
-    fecha_hoy = date.today()
+    fecha_hoy = gt_today()
 
     return render_template("reportes.html", 
                            total_ingresos_global=total_ingresos_global,
@@ -1699,9 +1707,9 @@ def admin_reportes():
                            ingresos_data=ingresos_data,
                            fecha_hoy=fecha_hoy)
 
-# ???????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
-# M??DULO DE INVENTARIO
-# ???????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+# 
+# MÓDULO DE INVENTARIO
+# 
 
 import os
 from werkzeug.utils import secure_filename
@@ -1763,7 +1771,7 @@ def agregar_producto():
     conn.commit()
     conn.close()
     
-    registrar_log("inventario", f"Agreg?? producto: {nombre}")
+    registrar_log("inventario", f"Agregó producto: {nombre}")
     flash("Producto agregado exitosamente", "success")
     return redirect("/admin/inventario")
 
@@ -1802,7 +1810,7 @@ def editar_producto(id_producto):
     conn.commit()
     conn.close()
     
-    registrar_log("inventario", f"Edit?? producto: {nombre}")
+    registrar_log("inventario", f"Editó producto: {nombre}")
     flash("Producto editado exitosamente", "success")
     return redirect("/admin/inventario")
 
@@ -1814,7 +1822,7 @@ def ajustar_stock(id_producto):
     ajuste = request.form.get("ajuste")
     
     if not ajuste:
-        flash("Ajuste inv??lido", "error")
+        flash("Ajuste inválido", "error")
         return redirect("/admin/inventario")
         
     conn = conectar_db()
@@ -1823,7 +1831,7 @@ def ajustar_stock(id_producto):
     conn.commit()
     conn.close()
     
-    registrar_log("inventario", f"Ajust?? stock del producto ID {id_producto} en {ajuste}")
+    registrar_log("inventario", f"Ajustó stock del producto ID {id_producto} en {ajuste}")
     flash("Stock actualizado", "success")
     return redirect("/admin/inventario")
 
@@ -1838,7 +1846,7 @@ def eliminar_producto(id_producto):
     conn.commit()
     conn.close()
     
-    registrar_log("inventario", f"Elimin?? producto ID {id_producto}")
+    registrar_log("inventario", f"Eliminó producto ID {id_producto}")
     flash("Producto eliminado", "success")
     return redirect("/admin/inventario")
 @app.route("/admin/auditoria/borrar_log/<int:id_log>", methods=["POST"])
@@ -1852,7 +1860,7 @@ def borrar_log_individual(id_log):
     conn.commit()
     conn.close()
 
-    flash("Registro de auditor??a eliminado exitosamente.", "success")
+    flash("Registro de auditoría eliminado exitosamente.", "success")
     return redirect(request.referrer or "/admin/auditoria")
 
 
@@ -1867,18 +1875,18 @@ def borrar_logs_usuario(cui):
     conn.commit()
     conn.close()
 
-    flash("Se eliminaron todos los registros de auditor??a asociados a este usuario.", "success")
+    flash("Se eliminaron todos los registros de auditoría asociados a este usuario.", "success")
     return redirect(request.referrer or "/admin/auditoria")
 
 
 
-# ???????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
-# ADMIN ??? Restablecer contrase??a de un socio
-# ???????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+# 
+# ADMIN — Restablecer contraseña de un socio
+# 
 
 @app.route("/admin/reset_pass/<int:cui>", methods=["POST"])
 def admin_reset_pass(cui):
-    """El admin genera una nueva contrase??a temporal para un socio sin correo."""
+    """El admin genera una nueva contraseña temporal para un socio sin correo."""
     if "usuario_id" not in session or session.get("rol") != "admin":
         return redirect("/login")
 
@@ -1902,15 +1910,15 @@ def admin_reset_pass(cui):
     cursor.execute("UPDATE usuarios SET password=%s WHERE cui=%s", (nuevo_hash, cui))
     conn.commit(); conn.close()
 
-    registrar_log("perfil", f"Admin restableci?? contrase??a temporalmente",
+    registrar_log("perfil", f"Admin restableció contraseña temporalmente",
                   afectado_id=cui, afectado_nombre=f"{u['nombre']} {u['apellido']}")
-    flash(f"Contrase??a restablecida para {u['nombre']} {u['apellido']}", "success")
+    flash(f"Contraseña restablecida para {u['nombre']} {u['apellido']}", "success")
     return redirect("/admin")
 
 
-# ???????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
-# CAMBIAR CONTRASE??A
-# ???????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+# 
+# CAMBIAR CONTRASEÑA
+# 
 
 @app.route("/cambiar_password", methods=["GET", "POST"])
 def cambiar_password():
@@ -1929,7 +1937,7 @@ def cambiar_password():
         return redirect("/cambiar_password")
 
     if nueva != confirmar:
-        flash("Las contrase??as nuevas no coinciden", "error")
+        flash("Las contraseñas nuevas no coinciden", "error")
         return redirect("/cambiar_password")
 
     es_valida, msg_error = validar_contrasena(nueva)
@@ -1938,7 +1946,7 @@ def cambiar_password():
         return redirect("/cambiar_password")
 
     if nueva == actual:
-        flash("La nueva contrase??a debe ser diferente a la actual", "error")
+        flash("La nueva contraseña debe ser diferente a la actual", "error")
         return redirect("/cambiar_password")
 
     conn   = conectar_db()
@@ -1948,7 +1956,7 @@ def cambiar_password():
 
     if not usuario or not check_password_hash(usuario["password"], actual):
         conn.close()
-        flash("La contrase??a actual es incorrecta", "error")
+        flash("La contraseña actual es incorrecta", "error")
         return redirect("/cambiar_password")
 
     nuevo_hash = generate_password_hash(nueva)
@@ -1958,8 +1966,8 @@ def cambiar_password():
     conn.commit()
     conn.close()
 
-    registrar_log("perfil", "Cambi?? su contrase??a")
-    flash("Contrase??a actualizada correctamente ???", "success")
+    registrar_log("perfil", "Cambió su contraseña")
+    flash("Contraseña actualizada correctamente ", "success")
 
     rol = session.get("rol")
     if rol == "admin":     return redirect("/admin")
@@ -1967,9 +1975,9 @@ def cambiar_password():
     return redirect("/panel")
 
 
-# ???????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
-# RECUPERAR CONTRASE??A (olvidada)
-# ???????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+# 
+# RECUPERAR CONTRASEÑA (olvidada)
+# 
 
 @app.route("/recuperar_contra", methods=["GET", "POST"])
 def recuperar_contra_form():
@@ -1979,7 +1987,7 @@ def recuperar_contra_form():
     correo = request.form.get("correo", "").strip().lower()
 
     if not correo or "@" not in correo:
-        flash("Ingresa un correo v??lido", "error")
+        flash("Ingresa un correo válido", "error")
         return redirect("/recuperar_contra")
 
     conn   = conectar_db()
@@ -1989,7 +1997,7 @@ def recuperar_contra_form():
 
     if usuario:
         token  = secrets.token_urlsafe(48)
-        expira = datetime.now() + timedelta(hours=1)
+        expira = gt_now() + timedelta(hours=1)
 
         cursor = conn.cursor()
         cursor.execute("UPDATE recuperar_contra SET usado=1 WHERE cui_usuario=%s AND usado=0", (usuario["cui"],))
@@ -2009,7 +2017,7 @@ def recuperar_contra_form():
     else:
         conn.close()
 
-    flash("Si ese correo est?? registrado, recibir??s un enlace en los pr??ximos minutos.", "success")
+    flash("Si ese correo está registrado, recibirás un enlace en los próximos minutos.", "success")
     return redirect("/recuperar_contra")
 
 
@@ -2026,7 +2034,7 @@ def reset_password_form(token):
         conn.close()
 
         if not reset:
-            flash("El enlace es inv??lido o ya expir??. Solicita uno nuevo.", "error")
+            flash("El enlace es inválido o ya expiró. Solicita uno nuevo.", "error")
             return redirect("/recuperar_contra")
 
         return render_template("reset_password.html", token=token)
@@ -2039,7 +2047,7 @@ def reset_password_form(token):
         return redirect(f"/reset_password/{token}")
 
     if nueva != confirmar:
-        flash("Las contrase??as no coinciden", "error")
+        flash("Las contraseñas no coinciden", "error")
         return redirect(f"/reset_password/{token}")
 
     es_valida, msg_error = validar_contrasena(nueva)
@@ -2057,7 +2065,7 @@ def reset_password_form(token):
 
     if not reset:
         conn.close()
-        flash("El enlace expir??. Solicita uno nuevo.", "error")
+        flash("El enlace expiró. Solicita uno nuevo.", "error")
         return redirect("/recuperar_contra")
 
     nuevo_hash = generate_password_hash(nueva)
@@ -2068,13 +2076,13 @@ def reset_password_form(token):
     conn.commit()
     conn.close()
 
-    flash("??Contrase??a restablecida! Ya puedes iniciar sesi??n.", "success")
+    flash("¡Contraseña restablecida! Ya puedes iniciar sesión.", "success")
     return redirect("/login")
 
 
-# ???????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+# 
 # PANEL EMPLEADO
-# ???????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+# 
 
 @app.route("/empleado")
 def empleado_panel():
@@ -2107,14 +2115,14 @@ def empleado_panel():
     cargos_pendientes = cargos_pendientes_por_usuario(cursor, cui_list)
     conn.close()
 
-    return render_template("empleado.html", usuarios=usuarios, fecha_hoy=date.today(),
+    return render_template("empleado.html", usuarios=usuarios, fecha_hoy=gt_today(),
                            precio_mensual=obtener_precio_mensual(), buscar=buscar,
                            periodos_pagados=periodos_pagados, cargos_pendientes=cargos_pendientes)
 
 
-# ???????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+# 
 # PANEL USUARIO
-# ???????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+# 
 
 @app.route("/panel")
 def panel():
@@ -2143,19 +2151,19 @@ def panel():
         if imc < 18.5:
             imc_categoria = "Bajo peso"
             imc_color = "blue"
-            imc_consejo = "Tu peso est?? por debajo del rango saludable. Considera aumentar tu ingesta cal??rica con alimentos nutritivos."
+            imc_consejo = "Tu peso está por debajo del rango saludable. Considera aumentar tu ingesta calórica con alimentos nutritivos."
         elif imc < 25:
             imc_categoria = "Peso normal"
             imc_color = "green"
-            imc_consejo = "??Excelente! Tu peso est?? en el rango saludable. Mant??n tus h??bitos de ejercicio y alimentaci??n."
+            imc_consejo = "¡Excelente! Tu peso está en el rango saludable. Mantén tus hábitos de ejercicio y alimentación."
         elif imc < 30:
             imc_categoria = "Sobrepeso"
             imc_color = "yellow"
-            imc_consejo = "Est??s ligeramente por encima del rango saludable. El ejercicio regular y una dieta balanceada te ayudar??n."
+            imc_consejo = "Estás ligeramente por encima del rango saludable. El ejercicio regular y una dieta balanceada te ayudarán."
         else:
             imc_categoria = "Obesidad"
             imc_color = "red"
-            imc_consejo = "Te recomendamos consultar con un especialista para un plan personalizado de ejercicio y nutrici??n."
+            imc_consejo = "Te recomendamos consultar con un especialista para un plan personalizado de ejercicio y nutrición."
 
     cursor.execute("""
         SELECT COUNT(*) AS total_pagos,
@@ -2167,7 +2175,7 @@ def panel():
 
     meses_miembro = 0
     if perfil and perfil["fecha_registro"]:
-        hoy = date.today()
+        hoy = gt_today()
         reg = perfil["fecha_registro"]
         if hasattr(reg, 'date'):
             reg = reg.date()
@@ -2180,7 +2188,7 @@ def panel():
     """, (session["usuario_id"],))
     historial_pagos = cursor.fetchall()
 
-    hoy_date = date.today()
+    hoy_date = gt_today()
     cursor.execute("""
         SELECT YEAR(fecha_pago) as anio, MONTH(fecha_pago) as mes
         FROM pagos WHERE cui_usuario=%s
@@ -2232,7 +2240,7 @@ def guardar_perfil():
     cursor.execute("UPDATE perfiles SET edad=%s, peso=%s, altura=%s, objetivo=%s WHERE cui_usuario=%s",
                    (edad, peso, altura, objetivo, session["usuario_id"]))
     conn.commit(); conn.close()
-    registrar_log("perfil", f"Complet?? perfil ??? Objetivo: {objetivo}")
+    registrar_log("perfil", f"Completó perfil — Objetivo: {objetivo}")
     return redirect("/panel")
 
 
@@ -2242,12 +2250,12 @@ def actualizar_info():
         return redirect("/login")
     nombre   = request.form.get("nombre")
     apellido = request.form.get("apellido")
-    email    = request.form.get("email") or None   # Vac??o ??? NULL
+    email    = request.form.get("email") or None   # Vacío → NULL
     peso     = request.form.get("peso")
     telefono = request.form.get("telefono", "").strip()
 
     if not telefono or not telefono.isdigit() or len(telefono) != 8:
-        flash("El n??mero de tel??fono debe tener exactamente 8 d??gitos", "error")
+        flash("El número de teléfono debe tener exactamente 8 dígitos", "error")
         return redirect("/panel")
 
     conn = conectar_db(); cursor = conn.cursor()
@@ -2258,8 +2266,8 @@ def actualizar_info():
         cursor.execute("UPDATE perfiles SET peso=%s WHERE cui_usuario=%s", (peso, session["usuario_id"]))
     conn.commit(); conn.close()
     if nombre: session["nombre"] = nombre
-    registrar_log("perfil", "Actualiz?? su informaci??n personal")
-    flash("Informaci??n actualizada", "success")
+    registrar_log("perfil", "Actualizó su información personal")
+    flash("Información actualizada", "success")
     return redirect("/panel")
 
 
@@ -2273,14 +2281,14 @@ def actualizar_objetivo():
         cursor.execute("UPDATE perfiles SET objetivo=%s WHERE cui_usuario=%s",
                        (objetivo, session["usuario_id"]))
         conn.commit(); conn.close()
-        registrar_log("perfil", f"Cambi?? su objetivo a: {objetivo}")
+        registrar_log("perfil", f"Cambió su objetivo a: {objetivo}")
         flash("Objetivo actualizado correctamente", "success")
     return redirect("/panel")
 
 
-# ???????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+# 
 # RECIBO PDF
-# ???????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+# 
 
 @app.route("/recibo/<int:id_pago>")
 def generar_recibo(id_pago):
@@ -2335,7 +2343,7 @@ def generar_recibo(id_pago):
 
     c.setFillColor(HexColor("#aaaaaa"))
     c.setFont("Helvetica", 10)
-    c.drawString(115, height - 80, "Recibo de pago de membres??a")
+    c.drawString(115, height - 80, "Recibo de pago de membresía")
 
     c.setFillColor(naranja)
     c.setFont("Helvetica-Bold", 12)
@@ -2386,7 +2394,7 @@ def generar_recibo(id_pago):
     else:
         precio_mes = obtener_precio_mensual()
         meses = int(float(pago['monto']) / precio_mes) if precio_mes > 0 else 0
-        concepto = f"Membres??a ({meses} {'mes' if meses == 1 else 'meses'})"
+        concepto = f"Membresía ({meses} {'mes' if meses == 1 else 'meses'})"
     c.drawString(60, y + 3, concepto)
 
     c.setFont("Helvetica", 10)
@@ -2416,9 +2424,9 @@ def generar_recibo(id_pago):
     metodo = str(pago.get('metodo_pago', 'efectivo')).capitalize()
     referencia = pago.get('referencia')
     if referencia:
-        c.drawString(60, y, f"M??todo: {metodo} (Ref: {referencia})")
+        c.drawString(60, y, f"Método: {metodo} (Ref: {referencia})")
     else:
-        c.drawString(60, y, f"M??todo: {metodo}")
+        c.drawString(60, y, f"Método: {metodo}")
 
     y -= 70
     c.setStrokeColor(verde)
@@ -2435,8 +2443,8 @@ def generar_recibo(id_pago):
     c.line(0, 60, width, 60)
     c.setFillColor(gris)
     c.setFont("Helvetica", 8)
-    c.drawCentredString(width / 2, 35, "Bodyflex Gym ??? Sistema de Gesti??n de Membres??as")
-    c.drawCentredString(width / 2, 22, f"Recibo generado autom??ticamente ?? {date.today().strftime('%d/%m/%Y')}")
+    c.drawCentredString(width / 2, 35, "Bodyflex Gym — Sistema de Gestión de Membresías")
+    c.drawCentredString(width / 2, 22, f"Recibo generado automáticamente · {gt_today().strftime('%d/%m/%Y')}")
 
     c.showPage()
     c.save()
@@ -2448,9 +2456,9 @@ def generar_recibo(id_pago):
     return response
 
 
-# ???????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+# 
 # RUTA DE PRUEBA DE CORREO
-# ???????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+# 
 
 @app.route("/test_email")
 def test_email():
@@ -2461,36 +2469,36 @@ def test_email():
         gmail_pwd  = GMAIL_PASSWORD.replace(" ", "") if GMAIL_PASSWORD else None
 
         if not gmail_user or not gmail_pwd:
-            raise ValueError("GMAIL_USER o GMAIL_PASSWORD no est??n configuradas en Railway.")
+            raise ValueError("GMAIL_USER o GMAIL_PASSWORD no están configuradas en Railway.")
 
         contexto_ssl = ssl.create_default_context()
         with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=contexto_ssl) as server:
             server.login(gmail_user, gmail_pwd)
-            msg = MIMEText("??? Correo de prueba desde Bodyflex Gym ??? configuraci??n correcta.")
-            msg["Subject"] = "Prueba de correo ??? Bodyflex Gym"
+            msg = MIMEText(" Correo de prueba desde Bodyflex Gym — configuración correcta.")
+            msg["Subject"] = "Prueba de correo — Bodyflex Gym"
             msg["From"]    = gmail_user
             msg["To"]      = gmail_user
             server.sendmail(gmail_user, gmail_user, msg.as_string())
 
         return f"""
         <div style='font-family:sans-serif;padding:40px;background:#0f0f0f;color:#f5f5f5;min-height:100vh;'>
-            <h2 style='color:#22c55e;'>??? Correo enviado correctamente</h2>
+            <h2 style='color:#22c55e;'> Correo enviado correctamente</h2>
             <p>Revisa tu bandeja de entrada en <strong>{gmail_user}</strong></p>
-            <a href='/admin' style='color:#FF6B00;'>??? Volver al panel</a>
+            <a href='/admin' style='color:#FF6B00;'>← Volver al panel</a>
         </div>"""
     except Exception as e:
         pwd_len = len(GMAIL_PASSWORD.replace(" ","")) if GMAIL_PASSWORD else 0
         return f"""
         <div style='font-family:sans-serif;padding:40px;background:#0f0f0f;color:#f5f5f5;min-height:100vh;'>
-            <h2 style='color:#ef4444;'>??? Error al enviar</h2>
+            <h2 style='color:#ef4444;'> Error al enviar</h2>
             <p style='background:#1a1a1a;padding:16px;border-radius:8px;color:#ef4444;font-family:monospace;'>{str(e)}</p>
-            <a href='/admin' style='color:#FF6B00;'>??? Volver al panel</a>
+            <a href='/admin' style='color:#FF6B00;'>← Volver al panel</a>
         </div>"""
 
 
-# ???????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+# 
 # RUTAS SIMPLES
-# ???????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+# 
 
 @app.route("/login")
 def login():
@@ -2502,7 +2510,7 @@ def registro():
 
 @app.route("/logout")
 def logout():
-    # registrar_log("login", "Cerr?? sesi??n")
+    # registrar_log("login", "Cerró sesión")
     session.clear()
     return redirect("/login")
 
@@ -2587,16 +2595,16 @@ def generar_contrato_pdf(cui):
         textColor=colors.HexColor('#333333')
     )
     
-    story.append(Paragraph("CONTRATO DE MEMBRES??A Y REGLAMENTO DE CONVIVENCIA", title_style))
+    story.append(Paragraph("CONTRATO DE MEMBRESÍA Y REGLAMENTO DE CONVIVENCIA", title_style))
     story.append(Paragraph("<b>BODYFLEX GYM</b>", ParagraphStyle('Sub', parent=title_style, fontSize=12, spaceAfter=20)))
     
-    reg_fecha = usuario["fecha_registro"].strftime("%d/%m/%Y") if usuario["fecha_registro"] else "???"
+    reg_fecha = usuario["fecha_registro"].strftime("%d/%m/%Y") if usuario["fecha_registro"] else "—"
     detalles_texto = f"""
     <b>DATOS DEL SOCIO:</b><br/>
     <b>Nombre Completo:</b> {usuario['nombre']} {usuario['apellido']}<br/>
-    <b>Identificaci??n ({usuario['tipo_doc']}):</b> {usuario['cui']}<br/>
-    <b>Tel??fono:</b> {usuario['telefono'] or '???'}<br/>
-    <b>Correo Electr??nico:</b> {usuario['email'] or '???'}<br/>
+    <b>Identificación ({usuario['tipo_doc']}):</b> {usuario['cui']}<br/>
+    <b>Teléfono:</b> {usuario['telefono'] or '—'}<br/>
+    <b>Correo Electrónico:</b> {usuario['email'] or '—'}<br/>
     <b>Fecha de Registro:</b> {reg_fecha}
     """
     
@@ -2613,32 +2621,32 @@ def generar_contrato_pdf(cui):
     story.append(Paragraph("DECLARACIONES Y CONDICIONES DEL SERVICIO", section_style))
     story.append(Paragraph(
         "Por medio del presente documento, el Socio arriba mencionado acepta y se adhiere formalmente al reglamento de "
-        "convivencia y condiciones de membres??a de <b>Bodyflex Gym</b>, de conformidad con las siguientes cl??usulas:",
+        "convivencia y condiciones de membresía de <b>Bodyflex Gym</b>, de conformidad con las siguientes cláusulas:",
         body_style
     ))
     
-    story.append(Paragraph("<b>CL??USULA PRIMERA: DEL PAGO DE LA MEMBRES??A Y D??A DE COBRO</b>", body_style))
+    story.append(Paragraph("<b>CLÁUSULA PRIMERA: DEL PAGO DE LA MEMBRESÍA Y DÍA DE COBRO</b>", body_style))
     story.append(Paragraph(
-        "El socio se compromete expresamente a cancelar el monto correspondiente de su membres??a mensualmente. "
-        "A partir de la presente fecha, se establece el <b>d??a 3 de cada mes</b> como el d??a l??mite de pago estandarizado "
-        "para todos los miembros activos. Los pagos se realizar??n de manera anticipada por medio de efectivo, tarjeta de "
-        "cr??dito o d??bito en recepci??n, o bien, a trav??s del sistema de cargo autom??tico a tarjeta (d??bito recurrente) cuando "
-        "esta modalidad sea habilitada por la administraci??n del gimnasio.",
+        "El socio se compromete expresamente a cancelar el monto correspondiente de su membresía mensualmente. "
+        "A partir de la presente fecha, se establece el <b>día 3 de cada mes</b> como el día límite de pago estandarizado "
+        "para todos los miembros activos. Los pagos se realizarán de manera anticipada por medio de efectivo, tarjeta de "
+        "crédito o débito en recepción, o bien, a través del sistema de cargo automático a tarjeta (débito recurrente) cuando "
+        "esta modalidad sea habilitada por la administración del gimnasio.",
         body_style
     ))
     
-    story.append(Paragraph("<b>CL??USULA SEGUNDA: REGLAMENTO INTERNO DE CONVIVENCIA Y SEGURIDAD</b>", body_style))
+    story.append(Paragraph("<b>CLÁUSULA SEGUNDA: REGLAMENTO INTERNO DE CONVIVENCIA Y SEGURIDAD</b>", body_style))
     story.append(Paragraph(
         "Para garantizar un ambiente seguro y agradable, el Socio se compromete a respetar estrictamente las normas del establecimiento:",
         body_style
     ))
     
     rules = [
-        "<b>1. Prohibici??n de Fumar:</b> Queda terminantemente prohibido fumar o consumir cualquier tipo de vaporizador o cigarrillo electr??nico dentro de todas las ??reas f??sicas de las instalaciones.",
-        "<b>2. Cuidado del Equipo:</b> El Socio deber?? utilizar las m??quinas, mancuernas y accesorios de manera adecuada y segura, evitando azotar o dejar caer el peso bruscamente. Todo desperfecto provocado por negligencia ser?? responsabilidad del Socio.",
+        "<b>1. Prohibición de Fumar:</b> Queda terminantemente prohibido fumar o consumir cualquier tipo de vaporizador o cigarrillo electrónico dentro de todas las áreas físicas de las instalaciones.",
+        "<b>2. Cuidado del Equipo:</b> El Socio deberá utilizar las máquinas, mancuernas y accesorios de manera adecuada y segura, evitando azotar o dejar caer el peso bruscamente. Todo desperfecto provocado por negligencia será responsabilidad del Socio.",
         "<b>3. Orden en Sala:</b> Es obligatorio retornar las mancuernas, barras y discos a sus respectivos racks inmediatamente al finalizar cada ejercicio.",
-        "<b>4. Higiene Personal:</b> Por respeto y salud, cada Socio debe traer una toalla personal para limpiar el sudor residual en las ??reas de contacto de los equipos tras su uso.",
-        "<b>5. Responsabilidad:</b> Bodyflex Gym no se hace responsable por la p??rdida, robo u olvido de objetos de valor o art??culos personales dejados dentro de las instalaciones."
+        "<b>4. Higiene Personal:</b> Por respeto y salud, cada Socio debe traer una toalla personal para limpiar el sudor residual en las áreas de contacto de los equipos tras su uso.",
+        "<b>5. Responsabilidad:</b> Bodyflex Gym no se hace responsable por la pérdida, robo u olvido de objetos de valor o artículos personales dejados dentro de las instalaciones."
     ]
     
     for r in rules:
@@ -2646,8 +2654,8 @@ def generar_contrato_pdf(cui):
         
     story.append(Spacer(1, 10))
     story.append(Paragraph(
-        "El incumplimiento de cualquiera de las reglas descritas anteriormente dar?? derecho a la administraci??n de "
-        "cancelar temporal o definitivamente la membres??a del Socio sin derecho a reembolso.",
+        "El incumplimiento de cualquiera de las reglas descritas anteriormente dará derecho a la administración de "
+        "cancelar temporal o definitivamente la membresía del Socio sin derecho a reembolso.",
         body_style
     ))
     
@@ -2656,7 +2664,7 @@ def generar_contrato_pdf(cui):
     sig_data = [
         [
             Paragraph("_______________________________<br/><b>Firma del Socio</b><br/>CUI: " + str(usuario['cui']), body_style),
-            Paragraph("_______________________________<br/><b>Por la Administraci??n</b><br/>Bodyflex Gym", body_style)
+            Paragraph("_______________________________<br/><b>Por la Administración</b><br/>Bodyflex Gym", body_style)
         ]
     ]
     sig_table = Table(sig_data, colWidths=[(letter[0] - 108)/2, (letter[0] - 108)/2])
@@ -2677,11 +2685,11 @@ def generar_contrato_pdf(cui):
 
 
 
-# ???????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
-# M??DULO DE INVENTARIO Y TIENDA
-# ???????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+# 
+# MÓDULO DE INVENTARIO Y TIENDA
+# 
 
-ZONAS_EQUIPOS = ["Cardio", "Musculaci??n", "Pesas Libres", "Funcional", "Estiramiento", "General / Vestuarios"]
+ZONAS_EQUIPOS = ["Cardio", "Musculación", "Pesas Libres", "Funcional", "Estiramiento", "General / Vestuarios"]
 ESTADOS_EQUIPOS = ["Excelente", "Bueno", "En Mantenimiento", "Fuera de Servicio"]
 
 @app.route("/inventario")
@@ -2715,7 +2723,7 @@ def inventario():
     cursor.execute(sql_prod, tuple(params_prod))
     productos = cursor.fetchall()
 
-    # Estad??sticas de productos
+    # Estadísticas de productos
     cursor.execute("SELECT COUNT(*) AS total_prods, COALESCE(SUM(cantidad),0) AS total_stock, COALESCE(SUM(cantidad * precio_venta),0) AS valor_total, COALESCE(SUM(CASE WHEN cantidad < 5 THEN 1 ELSE 0 END),0) AS stock_bajo FROM productos")
     stats_prods = cursor.fetchone() or {}
 
@@ -2737,7 +2745,7 @@ def inventario():
     cursor.execute(sql_maq, tuple(params_maq))
     equipos = cursor.fetchall()
 
-    # Estad??sticas de maquinaria
+    # Estadísticas de maquinaria
     cursor.execute("SELECT COUNT(*) AS total_equipos, COALESCE(SUM(cantidad),0) AS unidades_equipos, COALESCE(SUM(CASE WHEN estado IN ('En Mantenimiento', 'Fuera de Servicio') THEN cantidad ELSE 0 END),0) AS equipos_mantenimiento FROM maquinaria")
     stats_equipos = cursor.fetchone() or {}
 
@@ -2768,7 +2776,7 @@ def inventario():
 @app.route("/inventario/producto/agregar", methods=["POST"])
 def inventario_agregar():
     if "usuario_id" not in session or session.get("rol") not in ("admin", "empleado"):
-        flash("No tienes permiso para realizar esta acci??n", "error")
+        flash("No tienes permiso para realizar esta acción", "error")
         return redirect("/login")
 
     nombre = request.form.get("nombre", "").strip()
@@ -2789,7 +2797,7 @@ def inventario_agregar():
         if cantidad < 0 or precio_venta < 0 or (precio_costo is not None and precio_costo < 0):
             raise ValueError()
     except ValueError:
-        flash("Los valores num??ricos (cantidad, precio) no son v??lidos", "error")
+        flash("Los valores numéricos (cantidad, precio) no son válidos", "error")
         return redirect("/inventario?tab=productos")
 
     foto_url = None
@@ -2819,7 +2827,7 @@ def inventario_agregar():
 @app.route("/inventario/producto/editar/<int:id_producto>", methods=["POST"])
 def inventario_editar(id_producto):
     if "usuario_id" not in session or session.get("rol") not in ("admin", "empleado"):
-        flash("No tienes permiso para realizar esta acci??n", "error")
+        flash("No tienes permiso para realizar esta acción", "error")
         return redirect("/login")
 
     nombre = request.form.get("nombre", "").strip()
@@ -2840,7 +2848,7 @@ def inventario_editar(id_producto):
         if cantidad < 0 or precio_venta < 0:
             raise ValueError()
     except ValueError:
-        flash("Valores num??ricos inv??lidos", "error")
+        flash("Valores numéricos inválidos", "error")
         return redirect("/inventario?tab=productos")
 
     conn = conectar_db()
@@ -2871,7 +2879,7 @@ def inventario_editar(id_producto):
     conn.close()
 
     registrar_log("INVENTARIO_EDITAR", f"Producto ID {id_producto} ('{nombre}') actualizado.")
-    flash(f"Producto '{nombre}' actualizado con ??xito.", "success")
+    flash(f"Producto '{nombre}' actualizado con éxito.", "success")
     return redirect("/inventario?tab=productos")
 
 
@@ -2879,7 +2887,7 @@ def inventario_editar(id_producto):
 @app.route("/inventario/producto/eliminar/<int:id_producto>", methods=["POST"])
 def inventario_eliminar(id_producto):
     if "usuario_id" not in session or session.get("rol") not in ("admin", "empleado"):
-        flash("No tienes permiso para realizar esta acci??n", "error")
+        flash("No tienes permiso para realizar esta acción", "error")
         return redirect("/login")
 
     conn = conectar_db()
@@ -2897,12 +2905,12 @@ def inventario_eliminar(id_producto):
     return redirect("/inventario?tab=productos")
 
 
-# ?????? Rutas para Maquinaria y Equipos ??????
+#  Rutas para Maquinaria y Equipos 
 
 @app.route("/inventario/equipo/agregar", methods=["POST"])
 def equipo_agregar():
     if "usuario_id" not in session or session.get("rol") not in ("admin", "empleado"):
-        flash("No tienes permiso para realizar esta acci??n", "error")
+        flash("No tienes permiso para realizar esta acción", "error")
         return redirect("/login")
 
     nombre = request.form.get("nombre", "").strip()
@@ -2920,7 +2928,7 @@ def equipo_agregar():
         if cantidad < 0:
             raise ValueError()
     except ValueError:
-        flash("La cantidad de equipos debe ser un n??mero v??lido", "error")
+        flash("La cantidad de equipos debe ser un número válido", "error")
         return redirect("/inventario?tab=equipos")
 
     foto_url = None
@@ -2949,7 +2957,7 @@ def equipo_agregar():
 @app.route("/inventario/equipo/editar/<int:id_equipo>", methods=["POST"])
 def equipo_editar(id_equipo):
     if "usuario_id" not in session or session.get("rol") not in ("admin", "empleado"):
-        flash("No tienes permiso para realizar esta acci??n", "error")
+        flash("No tienes permiso para realizar esta acción", "error")
         return redirect("/login")
 
     nombre = request.form.get("nombre", "").strip()
@@ -2967,7 +2975,7 @@ def equipo_editar(id_equipo):
         if cantidad < 0:
             raise ValueError()
     except ValueError:
-        flash("Cantidad inv??lida", "error")
+        flash("Cantidad inválida", "error")
         return redirect("/inventario?tab=equipos")
 
     conn = conectar_db()
@@ -2998,14 +3006,14 @@ def equipo_editar(id_equipo):
     conn.close()
 
     registrar_log("EQUIPO_EDITAR", f"Equipo ID {id_equipo} ('{nombre}') actualizado.")
-    flash(f"Equipo '{nombre}' actualizado con ??xito.", "success")
+    flash(f"Equipo '{nombre}' actualizado con éxito.", "success")
     return redirect("/inventario?tab=equipos")
 
 
 @app.route("/inventario/equipo/eliminar/<int:id_equipo>", methods=["POST"])
 def equipo_eliminar(id_equipo):
     if "usuario_id" not in session or session.get("rol") not in ("admin", "empleado"):
-        flash("No tienes permiso para realizar esta acci??n", "error")
+        flash("No tienes permiso para realizar esta acción", "error")
         return redirect("/login")
 
     conn = conectar_db()
@@ -3026,7 +3034,7 @@ def equipo_eliminar(id_equipo):
 @app.route("/inventario/vender", methods=["POST"])
 def inventario_vender():
     if "usuario_id" not in session:
-        flash("Debes iniciar sesi??n", "error")
+        flash("Debes iniciar sesión", "error")
         return redirect("/login")
 
     rol_actual = session.get("rol")
@@ -3047,7 +3055,7 @@ def inventario_vender():
         if cantidad_venta <= 0:
             raise ValueError()
     except (TypeError, ValueError):
-        flash("Datos de compra no v??lidos", "error")
+        flash("Datos de compra no válidos", "error")
         return redirect(request.referrer or "/tienda")
 
     conn = conectar_db()
@@ -3073,7 +3081,7 @@ def inventario_vender():
         flash(f"Stock insuficiente para '{prod['nombre']}'. Disponible: {prod['cantidad']} unidades.", "error")
         return redirect(request.referrer or "/tienda")
 
-    # Restar stock at??micamente
+    # Restar stock atómicamente
     cursor.execute("""
         UPDATE productos
         SET cantidad = cantidad - %s
@@ -3082,13 +3090,13 @@ def inventario_vender():
 
     if cursor.rowcount == 0:
         conn.close()
-        flash("No se pudo completar la transacci??n debido a un cambio en el inventario. Int??ntalo de nuevo.", "error")
+        flash("No se pudo completar la transacción debido a un cambio en el inventario. Inténtalo de nuevo.", "error")
         return redirect(request.referrer or "/tienda")
 
     monto_total = float(prod["precio_venta"]) * cantidad_venta
     estado_cargo = "pagado" if tipo_venta == "directa" else "pendiente"
     descripcion_cargo = f"Compra: {cantidad_venta}x {prod['nombre']}"
-    fecha_hoy = date.today()
+    fecha_hoy = gt_today()
 
     cursor.execute("""
         INSERT INTO cargos (cui_usuario, descripcion, monto, fecha_emision, estado, id_producto)
@@ -3099,11 +3107,11 @@ def inventario_vender():
     conn.close()
 
     log_msg = f"Venta de {cantidad_venta}x '{prod['nombre']}' a {usuario_dest['nombre']} {usuario_dest['apellido']} (CUI: {cui_usuario_target}) por Q{monto_total:.2f}. Estado: {estado_cargo}"
-    registrar_log("venta", log_msg, afectado_id=cui_usuario_target, afectado_nombre=f"{usuario_dest['nombre']} {usuario_dest['apellido']}")
+    registrar_log("INVENTARIO_VENTA", log_msg, afectado_id=cui_usuario_target, afectado_nombre=f"{usuario_dest['nombre']} {usuario_dest['apellido']}")
 
-    msg_exito = f"??Venta realizada exitosamente! Se descontaron {cantidad_venta} unidades de '{prod['nombre']}' del inventario."
+    msg_exito = f"¡Venta realizada exitosamente! Se descontaron {cantidad_venta} unidades de '{prod['nombre']}' del inventario."
     if estado_cargo == "pendiente":
-        msg_exito += " El cargo qued?? registrado como PENDIENTE de pago."
+        msg_exito += " El cargo quedó registrado como PENDIENTE de pago."
 
     flash(msg_exito, "success")
     return redirect(request.referrer or "/inventario")
@@ -3138,15 +3146,10 @@ def tienda():
     cursor.execute("SELECT DISTINCT categoria FROM productos WHERE categoria IS NOT NULL AND categoria != '' ORDER BY categoria ASC")
     categorias = [r["categoria"] for r in cursor.fetchall()]
 
-    socios = []
-    if session.get("rol") in ("admin", "empleado"):
-        cursor.execute("""
-            SELECT cui, nombre, apellido
-            FROM usuarios
-            WHERE estado = 'activo' AND id_rol = '03'
-            ORDER BY nombre, apellido
-        """)
-        socios = cursor.fetchall()
+    usuarios = []
+    if session.get("rol") in ["admin", "empleado"]:
+        cursor.execute("SELECT cui, nombre, apellido FROM usuarios ORDER BY nombre ASC")
+        usuarios = cursor.fetchall()
 
     conn.close()
 
@@ -3156,9 +3159,8 @@ def tienda():
         categorias=categorias,
         categoria_actual=categoria_filtro,
         busqueda=busqueda,
-        socios=socios
+        socios=usuarios
     )
-
 
 
 if __name__ == "__main__":

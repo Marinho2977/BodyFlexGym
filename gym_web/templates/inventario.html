@@ -575,9 +575,6 @@
  </td>
  <td>
  <div class="actions-cell">
- {% if p.cantidad > 0 %}
- <button class="btn-action btn-sell" onclick='openSellModal({{ p.id_producto }}, "{{ p.nombre }}", {{ p.cantidad }}, {{ p.precio_venta }})'> Vender</button>
- {% endif %}
  <button class="btn-action" onclick='openEditProductModal({{ p | tojson }})'> Editar</button>
  <form method="POST" action="/inventario/producto/eliminar/{{ p.id_producto }}" onsubmit="return confirm('¿Seguro que deseas eliminar este producto?')" style="display:inline;">
  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -918,55 +915,7 @@
  </div>
 
  <!-- MODAL VENDER PRODUCTO -->
- <div id="sellModal" class="modal-overlay">
- <div class="modal-card">
- <div class="modal-header">
- <h3>Vender / Asignar Producto</h3>
- <button class="btn-close" onclick="closeSellModal()"></button>
- </div>
- <form method="POST" action="/inventario/vender" class="form-grid">
- <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
- <input type="hidden" id="sell_id_producto" name="id_producto">
 
- <div style="background: rgba(255,107,0,0.1); border: 1px solid rgba(255,107,0,0.3); padding: 12px; border-radius: 8px; font-size: 14px;">
- Producto: <strong id="sell_prod_nombre" style="color:#fff;"></strong><br>
- Precio Unitario: <span style="color:var(--primary);" id="sell_prod_precio"></span> | Stock Actual: <span id="sell_prod_stock" style="font-weight:700;"></span>
- </div>
-
- <div class="form-group">
- <label>Socio que compra / recibe *</label>
- <select name="cui_usuario" required class="input-field">
- {% for u in usuarios %}
- <option value="{{ u.cui }}">{{ u.nombre }} {{ u.apellido }} (CUI: {{ u.cui }})</option>
- {% endfor %}
- </select>
- </div>
-
- <div class="form-row">
- <div class="form-group">
- <label>Cantidad a Vender *</label>
- <input type="number" id="sell_cantidad" name="cantidad_venta" value="1" min="1" required class="input-field">
- </div>
- <div class="form-group">
- <label>Modalidad de Pago *</label>
- <select name="tipo_venta" class="input-field">
- <option value="directa">Pago Inmediato (Pagado)</option>
- <option value="cargo">Agregar Cargo a la Cuenta (Pendiente)</option>
- </select>
- </div>
- </div>
-
- <div style="font-size: 12px; color: var(--text-muted);">
- Al confirmar la venta, las unidades se <strong>restarán automáticamente</strong> del inventario.
- </div>
-
- <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 10px;">
- <button type="button" class="btn-secondary" onclick="closeSellModal()">Cancelar</button>
- <button type="submit" class="btn-primary" style="background: var(--success);">Confirmar Venta</button>
- </div>
- </form>
- </div>
- </div>
 
  <script>
  function openAddProductModal() {
@@ -1008,18 +957,6 @@
  }
  function closeEditEquipoModal() {
  document.getElementById('editEquipoModal').style.display = 'none';
- }
-
- function openSellModal(id, nombre, stock, precio) {
- document.getElementById('sell_id_producto').value = id;
- document.getElementById('sell_prod_nombre').textContent = nombre;
- document.getElementById('sell_prod_stock').textContent = stock + ' uds';
- document.getElementById('sell_prod_precio').textContent = 'Q' + Number(precio).toFixed(2);
- document.getElementById('sell_cantidad').max = stock;
- document.getElementById('sellModal').style.display = 'flex';
- }
- function closeSellModal() {
- document.getElementById('sellModal').style.display = 'none';
  }
 
  window.onclick = function(event) {

@@ -668,7 +668,7 @@
  </td>
  <td>
  {% if u.edad %}
- <div class="data-main">{{ u.edad }} anios{% if u.peso %} | {{ u.peso }} lb{% endif %}{% if u.altura %} | {{ u.altura }} m{% endif %}</div>
+ <div class="data-main">{{ u.edad }} años{% if u.peso %} | {{ u.peso }} lb{% endif %}{% if u.altura %} | {{ u.altura }} m{% endif %}</div>
  <div class="data-sub">{{ u.objetivo or 'Sin objetivo' }}</div>
  {% else %}
  <div class="data-main">Sin perfil</div>
@@ -769,7 +769,7 @@
  </div>
 
  <div class="field">
- <label class="field-label">Anio</label>
+ <label class="field-label">Año</label>
  <select id="anioModal" class="field-select" onchange="actualizarMesesBloqueados()">
  <option value="2024">2024</option>
  <option value="2025">2025</option>
