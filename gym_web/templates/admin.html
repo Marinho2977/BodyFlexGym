@@ -1191,8 +1191,8 @@
                         </div>
                         <form method="POST" action="/admin/whatsapp/enviar_automatico" style="display:inline; margin-left: auto;">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                            <button type="submit" class="btn btn-sm" style="background:#25D366; color:#000; font-weight:800; border:none; cursor:pointer;" title="Enviar avisos por WhatsApp a todos los socios activos con número telefónico registrado">
-                                ⚡ Enviar Avisos por WhatsApp (A Todos)
+                            <button type="submit" class="btn btn-ghost btn-sm" style="color:var(--muted); border:1px solid var(--border); font-size:12px;" title="Enviar avisos por WhatsApp a todos los socios activos con número telefónico">
+                                💬 Enviar avisos WhatsApp
                             </button>
                         </form>
                     </div>
@@ -1221,7 +1221,12 @@
                                                 <div class="socio-nombre">{{ u.nombre }} {{ u.apellido }}</div>
                                                 <div class="socio-email">{{ u.email }}</div>
                                                 {% if u.telefono %}
-                                                <div class="socio-email" style="color:var(--muted); font-size:11px; margin-top:2px;">📞 {{ u.telefono }}</div>
+                                                <div class="socio-email" style="color:var(--muted); font-size:11px; margin-top:2px; display:inline-flex; align-items:center; gap:4px;">
+                                                    📞 {{ u.telefono }}
+                                                    {% if u.ultimo_vencimiento %}
+                                                    <a href="{{ link_whatsapp_vencimiento(u.telefono, u.nombre, u.ultimo_vencimiento) }}" target="_blank" style="color:#25D366; text-decoration:none;" title="Abrir WhatsApp Web">💬</a>
+                                                    {% endif %}
+                                                </div>
                                                 {% endif %}
                                                 <div class="socio-badge">
                                                     {% if u.estado.lower() == "activo" %}
@@ -1255,12 +1260,7 @@
                                         <span class="badge badge-sinpago">Sin pagos</span>
                                         {% endif %}
 
-                                        {% if u.telefono and u.ultimo_vencimiento %}
-                                        <br>
-                                        <a href="{{ link_whatsapp_vencimiento(u.telefono, u.nombre, u.ultimo_vencimiento) }}" target="_blank" title="Enviar recordatorio de pago por WhatsApp al {{ u.telefono }}" class="badge" style="background:#25D366; color:#000; text-decoration:none; margin-top:4px; display:inline-flex; align-items:center; gap:3px; font-weight:800;">
-                                            📲 WhatsApp
-                                        </a>
-                                        {% endif %}
+
                                         
                                         {% if cargos_pendientes.get(u.cui) %}
                                         <br>
@@ -1286,6 +1286,11 @@
                                                 onclick="toggleDd('dd-{{ u.cui }}', this)">⋮</button>
                                             <div class="dropdown-menu">
                                                 <button type="button" class="dropdown-item" onclick="abrirCargo('{{ u.cui }}', '{{ u.nombre }} {{ u.apellido }}')"><span class="di-icon">📋</span>Crear Cargo</button>
+                                                {% if u.telefono and u.ultimo_vencimiento %}
+                                                <a href="{{ link_whatsapp_vencimiento(u.telefono, u.nombre, u.ultimo_vencimiento) }}" target="_blank" class="dropdown-item" style="color:#25D366; text-decoration:none;">
+                                                    <span class="di-icon">💬</span>Abrir WhatsApp
+                                                </a>
+                                                {% endif %}
                                                 <div class="dropdown-sep"></div>
                                                 {% if u.estado.lower() == "activo" %}
                                                 <form action="/admin/desactivar/{{ u.cui }}" method="POST"
@@ -1766,6 +1771,8 @@
             }
             document.getElementById('modalResetPass').addEventListener('click', e => { if (e.target === e.currentTarget) cerrarResetPass(); });
             document.getElementById('modalPago').addEventListener('click', e => { if (e.target === e.currentTarget) cerrarPago(); });
+
+
 
 
         </script>

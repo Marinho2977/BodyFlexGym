@@ -656,7 +656,12 @@
                                     <div class="socio-nombre">{{ u.nombre }} {{ u.apellido }}</div>
                                     <div class="socio-num">{{ u.tipo_doc }}: {{ u.cui }}</div>
                                     {% if u.telefono %}
-                                        <div class="socio-num" style="color:var(--muted); font-size:11px; margin-top:2px;">📞 {{ u.telefono }}</div>
+                                        <div class="socio-num" style="color:var(--muted); font-size:11px; margin-top:2px; display:inline-flex; align-items:center; gap:4px;">
+                                            📞 {{ u.telefono }}
+                                            {% if u.ultimo_vencimiento %}
+                                            <a href="{{ link_whatsapp_vencimiento(u.telefono, u.nombre, u.ultimo_vencimiento) }}" target="_blank" style="color:#25D366; text-decoration:none;" title="Abrir WhatsApp Web">💬</a>
+                                            {% endif %}
+                                        </div>
                                     {% endif %}
                                 </div>
                             </div>
@@ -701,11 +706,7 @@
                                 {% else %}
                                     <div class="due-sub">Hace {{ dias * -1 }} dia{{ 's' if dias != -1 else '' }}</div>
                                 {% endif %}
-                                {% if u.telefono %}
-                                    <a href="{{ link_whatsapp_vencimiento(u.telefono, u.nombre, u.ultimo_vencimiento) }}" target="_blank" title="Enviar recordatorio de pago por WhatsApp al {{ u.telefono }}" class="badge" style="background:#25D366; color:#000; text-decoration:none; margin-top:4px; display:inline-flex; align-items:center; gap:3px; font-weight:800;">
-                                        📲 WhatsApp
-                                    </a>
-                                {% endif %}
+
                             {% else %}
                                 <div class="due-main">Pendiente</div>
                                 <div class="due-sub">Primer pago por registrar</div>
@@ -982,6 +983,8 @@ document.addEventListener('keydown', e => {
 document.getElementById('modalPago').addEventListener('click', e => {
     if (e.target === e.currentTarget) cerrarPago();
 });
+
+
 </script>
 </body>
 </html>

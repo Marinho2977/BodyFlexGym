@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, session, flash, make_response
+from flask import Flask, render_template, request, redirect, session, flash, make_response, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 import mysql.connector
@@ -192,6 +192,48 @@ def ejecutar_whatsapp_manual():
 def ejecutar_whatsapp_cron():
     cant, detalles = procesar_envio_automatico_whatsapp(dias_anticipacion=7)
     return {"status": "ok", "procesados": cant, "socios": detalles}
+
+@app.route("/admin/whatsapp/enviar_individual/<cui>", methods=["POST"])
+def ejecutar_whatsapp_individual(cui):
+    if session.get("rol") not in ("admin", "empleado"):
+        return jsonify({"ok": False, "error": "No autorizado"}), 403
+    
+    try:
+        conn = conectar_db()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT u.cui, u.nombre, u.apellido, u.telefono, MAX(p.fecha_vencimiento) AS ultimo_vencimiento
+            FROM usuarios u
+            LEFT JOIN pagos p ON u.cui = p.cui_usuario
+            WHERE u.cui = %s AND u.telefono IS NOT NULL AND u.telefono != ''
+            GROUP BY u.cui, u.nombre, u.apellido, u.telefono
+        """, (cui,))
+        u = cursor.fetchone()
+        conn.close()
+
+        if not u or not u.get("telefono"):
+            return jsonify({"ok": False, "error": "Socio sin teléfono registrado"}), 400
+        
+        hoy = date.today()
+        if u["ultimo_vencimiento"]:
+            dias_restantes = (u["ultimo_vencimiento"] - hoy).days
+            venc_str = u["ultimo_vencimiento"].strftime('%d/%m/%Y')
+            if dias_restantes < 0:
+                mensaje = f"Hola {u['nombre']}, tu mensualidad en Bodyflex Gym venció el {venc_str} (hace {abs(dias_restantes)} días). ¡Acércate a renovar para seguir entrenando! 💪"
+            elif dias_restantes == 0:
+                mensaje = f"Hola {u['nombre']}, tu mensualidad en Bodyflex Gym vence HOY {venc_str}. ¡Renueva hoy para no perder tu acceso! 💪"
+            else:
+                mensaje = f"Hola {u['nombre']}, te recordamos que tu mensualidad en Bodyflex Gym vence el {venc_str} (en {dias_restantes} días). ¡Renueva a tiempo para seguir entrenando sin interrupciones! 💪"
+        else:
+            mensaje = f"Hola {u['nombre']}, te saludamos de Bodyflex Gym. ¡Esperamos verte pronto en tus entrenamientos! 💪"
+        
+        ok, res = enviar_whatsapp_api(u["telefono"], mensaje)
+        if ok:
+            return jsonify({"ok": True, "mensaje": f"Mensaje de WhatsApp enviado a {u['nombre']} exitosamente."})
+        else:
+            return jsonify({"ok": False, "error": res}), 400
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
 
 # ─────────────────────────────────────────────
 # CSRF PROTECTION
