@@ -1,888 +1,888 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Panel Empleado - Bodyflex Gym</title>
-    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@500;600;700;800&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <style>
-        :root {
-            --bg: #0d0d0d;
-            --surface: #151515;
-            --surface-2: #1d1d1d;
-            --surface-3: #242424;
-            --line: rgba(255,255,255,0.09);
-            --line-soft: rgba(255,255,255,0.06);
-            --text: #f4f4f4;
-            --text-soft: #d7d7d7;
-            --muted: #8f949c;
-            --accent: #f97316;
-            --accent-soft: rgba(249,115,22,0.14);
-            --green: #2ecc71;
-            --green-soft: rgba(46,204,113,0.13);
-            --red: #ef4444;
-            --red-soft: rgba(239,68,68,0.13);
-            --yellow-soft: rgba(247,201,72,0.13);
-        }
-
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-
-        body {
-            min-height: 100vh;
-            background: var(--bg);
-            color: var(--text);
-            font-family: 'DM Sans', sans-serif;
-        }
-
-        .topbar {
-            height: 64px;
-            padding: 0 28px;
-            background: rgba(17,17,17,0.96);
-            border-bottom: 1px solid var(--line);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            position: sticky;
-            top: 0;
-            z-index: 50;
-        }
-
-        .brand, .topbar-actions {
-            display: flex;
-            align-items: center;
-            gap: 14px;
-            min-width: 0;
-        }
-
-        .logo {
-            font-family: 'Syne', sans-serif;
-            font-weight: 800;
-            font-size: 18px;
-            color: var(--text);
-            white-space: nowrap;
-        }
-
-        .logo span { color: var(--accent); }
-
-        .role-chip {
-            background: var(--accent-soft);
-            color: #ffb179;
-            border: 1px solid rgba(249,115,22,0.28);
-            padding: 5px 10px;
-            border-radius: 999px;
-            font-size: 11px;
-            font-weight: 800;
-            text-transform: uppercase;
-            letter-spacing: .7px;
-            white-space: nowrap;
-        }
-
-        .session-name {
-            color: var(--text-soft);
-            font-size: 13px;
-            max-width: 180px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-
-        .btn-logout {
-            min-height: 34px;
-            padding: 0 13px;
-            border-radius: 8px;
-            border: 1px solid var(--line);
-            color: var(--muted);
-            background: transparent;
-            font-size: 13px;
-            font-weight: 700;
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-            transition: border-color .18s, color .18s, background .18s;
-        }
-
-        .btn-logout:hover {
-            border-color: rgba(239,68,68,0.45);
-            color: #ffb0b0;
-            background: rgba(239,68,68,0.08);
-        }
-
-        .main {
-            width: min(1180px, calc(100% - 48px));
-            margin: 0 auto;
-            padding: 30px 0 44px;
-        }
-
-        .page-head {
-            display: flex;
-            align-items: flex-end;
-            justify-content: space-between;
-            gap: 20px;
-            margin-bottom: 22px;
-        }
-
-        .eyebrow {
-            color: var(--accent);
-            font-size: 11px;
-            font-weight: 800;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 6px;
-        }
-
-        .page-title {
-            font-family: 'Syne', sans-serif;
-            font-size: 32px;
-            font-weight: 800;
-            line-height: 1.05;
-        }
-
-        .page-sub {
-            color: var(--muted);
-            font-size: 14px;
-            margin-top: 7px;
-        }
-
-        .rate-pill {
-            background: var(--surface);
-            border: 1px solid var(--line);
-            border-radius: 10px;
-            padding: 10px 14px;
-            color: var(--text-soft);
-            font-size: 13px;
-            white-space: nowrap;
-        }
-
-        .rate-pill strong {
-            color: var(--accent);
-            font-family: 'Syne', sans-serif;
-            font-size: 18px;
-            margin-left: 6px;
-        }
-
-        .flash {
-            padding: 12px 15px;
-            border-radius: 10px;
-            margin-bottom: 18px;
-            font-size: 13px;
-            font-weight: 700;
-        }
-
-        .flash-success { background: var(--green-soft); border: 1px solid rgba(46,204,113,0.28); color: #8df1b8; }
-        .flash-error { background: var(--red-soft); border: 1px solid rgba(239,68,68,0.28); color: #ffadad; }
-
-        .stats-row {
-            display: grid;
-            grid-template-columns: repeat(4, minmax(0, 1fr));
-            gap: 12px;
-            margin-bottom: 14px;
-        }
-
-        .stat-card {
-            background: var(--surface);
-            border: 1px solid var(--line);
-            border-radius: 8px;
-            padding: 15px 16px;
-            min-height: 86px;
-        }
-
-        .stat-label {
-            color: var(--muted);
-            font-size: 11px;
-            font-weight: 800;
-            text-transform: uppercase;
-            letter-spacing: .8px;
-            margin-bottom: 8px;
-        }
-
-        .stat-value {
-            font-family: 'Syne', sans-serif;
-            font-size: 27px;
-            font-weight: 800;
-            line-height: 1;
-        }
-
-        .stat-value.orange { color: var(--accent); }
-        .stat-value.green { color: var(--green); }
-        .stat-value.red { color: #ff7979; }
-
-        .stat-foot {
-            color: var(--muted);
-            font-size: 12px;
-            margin-top: 8px;
-        }
-
-        .panel {
-            background: var(--surface);
-            border: 1px solid var(--line);
-            border-radius: 8px;
-            overflow: hidden;
-        }
-
-        .panel-toolbar {
-            padding: 16px;
-            border-bottom: 1px solid var(--line);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 14px;
-        }
-
-        .panel-title {
-            font-family: 'Syne', sans-serif;
-            font-size: 18px;
-            font-weight: 800;
-        }
-
-        .panel-count {
-            color: var(--muted);
-            font-size: 12px;
-            margin-top: 2px;
-        }
-
-        .search-bar {
-            display: flex;
-            gap: 8px;
-            flex: 1;
-            max-width: 560px;
-        }
-
-        .search-bar input {
-            flex: 1;
-            min-width: 0;
-            background: var(--surface-2);
-            border: 1px solid var(--line);
-            color: var(--text);
-            padding: 10px 12px;
-            border-radius: 8px;
-            font-size: 14px;
-            font-family: 'DM Sans', sans-serif;
-            outline: none;
-            transition: border-color .18s, background .18s;
-        }
-
-        .search-bar input:focus {
-            border-color: rgba(249,115,22,0.55);
-            background: #202020;
-        }
-
-        .btn-buscar,
-        .btn-limpiar,
-        .btn-pago {
-            min-height: 38px;
-            border-radius: 8px;
-            font-family: 'DM Sans', sans-serif;
-            font-size: 13px;
-            font-weight: 800;
-            cursor: pointer;
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            white-space: nowrap;
-            transition: transform .18s, border-color .18s, background .18s, color .18s;
-        }
-
-        .btn-buscar {
-            background: var(--accent);
-            color: #121212;
-            border: 1px solid var(--accent);
-            padding: 0 16px;
-        }
-
-        .btn-buscar:hover,
-        .btn-pago:hover { transform: translateY(-1px); background: #fb8a33; }
-
-        .btn-limpiar {
-            background: transparent;
-            border: 1px solid var(--line);
-            color: var(--muted);
-            padding: 0 13px;
-        }
-
-        .btn-limpiar:hover {
-            color: var(--text-soft);
-            border-color: rgba(255,255,255,0.18);
-            background: rgba(255,255,255,0.04);
-        }
-
-        .table-scroll { overflow-x: auto; }
-
-        table {
-            width: 100%;
-            min-width: 920px;
-            border-collapse: collapse;
-        }
-
-        thead th {
-            background: #181818;
-            padding: 12px 16px;
-            text-align: left;
-            font-size: 10px;
-            letter-spacing: .9px;
-            text-transform: uppercase;
-            color: var(--muted);
-            font-weight: 800;
-            border-bottom: 1px solid var(--line);
-        }
-
-        tbody tr {
-            border-bottom: 1px solid var(--line-soft);
-            transition: background .15s;
-        }
-
-        tbody tr:last-child { border-bottom: none; }
-        tbody tr:hover { background: rgba(255,255,255,0.025); }
-
-        td {
-            padding: 14px 16px;
-            font-size: 14px;
-            vertical-align: middle;
-        }
-
-        .member-cell {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .avatar {
-            width: 38px;
-            height: 38px;
-            border-radius: 10px;
-            background: var(--surface-3);
-            border: 1px solid var(--line);
-            color: var(--accent);
-            font-family: 'Syne', sans-serif;
-            font-size: 14px;
-            font-weight: 800;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex: 0 0 auto;
-        }
-
-        .socio-nombre { font-weight: 800; color: var(--text); }
-        .socio-num, .data-sub, .due-sub {
-            color: var(--muted);
-            font-size: 12px;
-            margin-top: 3px;
-        }
-
-        .data-main, .due-main {
-            color: var(--text-soft);
-            font-size: 13px;
-            font-weight: 800;
-        }
-
-        .badge {
-            min-height: 26px;
-            padding: 0 10px;
-            border-radius: 999px;
-            font-size: 12px;
-            font-weight: 800;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            white-space: nowrap;
-        }
-
-        .badge-activo { background: var(--green-soft); color: #86efac; border: 1px solid rgba(46,204,113,0.24); }
-        .badge-inactivo { background: var(--red-soft); color: #ff9b9b; border: 1px solid rgba(239,68,68,0.24); }
-        .badge-aldia { background: var(--green-soft); color: #86efac; border: 1px solid rgba(46,204,113,0.24); }
-        .badge-vencido { background: var(--red-soft); color: #ff9b9b; border: 1px solid rgba(239,68,68,0.24); }
-        .badge-sinpago { background: rgba(143,148,156,0.12); color: #c7cbd1; border: 1px solid rgba(143,148,156,0.22); }
-
-        .btn-pago {
-            background: var(--accent);
-            border: 1px solid var(--accent);
-            color: #121212;
-            padding: 0 14px;
-        }
-
-        .locked-text {
-            color: var(--muted);
-            font-size: 13px;
-            font-weight: 700;
-        }
-
-        .empty {
-            text-align: center;
-            padding: 52px 24px;
-            color: var(--muted);
-            font-size: 14px;
-        }
-
-        .modal {
-            display: none;
-            position: fixed;
-            inset: 0;
-            background: rgba(0,0,0,.72);
-            z-index: 999;
-            align-items: center;
-            justify-content: center;
-            padding: 18px;
-        }
-
-        .modal.show { display: flex; }
-
-        .modal-box {
-            background: var(--surface);
-            border: 1px solid var(--line);
-            border-radius: 10px;
-            padding: 24px;
-            width: 440px;
-            max-width: 100%;
-            box-shadow: 0 24px 70px rgba(0,0,0,.58);
-        }
-
-        .modal-head {
-            display: flex;
-            justify-content: space-between;
-            gap: 16px;
-            margin-bottom: 18px;
-        }
-
-        .modal-kicker {
-            color: var(--accent);
-            font-size: 11px;
-            font-weight: 800;
-            text-transform: uppercase;
-            letter-spacing: .9px;
-        }
-
-        .modal-name {
-            font-family: 'Syne', sans-serif;
-            font-size: 20px;
-            font-weight: 800;
-            margin-top: 4px;
-        }
-
-        .modal-close {
-            width: 34px;
-            height: 34px;
-            border: 1px solid var(--line);
-            border-radius: 8px;
-            background: var(--surface-2);
-            color: var(--muted);
-            font-size: 18px;
-            cursor: pointer;
-        }
-
-        .field { margin-bottom: 15px; }
-        .field-label {
-            display: block;
-            color: var(--muted);
-            font-size: 11px;
-            font-weight: 800;
-            text-transform: uppercase;
-            letter-spacing: .8px;
-            margin-bottom: 7px;
-        }
-
-        .field-select {
-            width: 100%;
-            padding: 10px 12px;
-            border-radius: 8px;
-            background: var(--surface-2);
-            color: var(--text);
-            border: 1px solid var(--line);
-            font-size: 14px;
-            outline: none;
-        }
-
-        .month-grid {
-            display: grid;
-            grid-template-columns: repeat(3, minmax(0, 1fr));
-            gap: 8px;
-        }
-
-        .month-option {
-            min-height: 38px;
-            display: flex;
-            align-items: center;
-            gap: 7px;
-            background: var(--surface-2);
-            border: 1px solid var(--line);
-            border-radius: 8px;
-            padding: 8px 9px;
-            cursor: pointer;
-            font-size: 13px;
-            font-weight: 700;
-            color: var(--text-soft);
-            transition: border-color .15s, background .15s, opacity .15s;
-        }
-
-        .month-option:hover { border-color: rgba(249,115,22,0.45); }
-        .month-option input { accent-color: var(--accent); }
-
-        .payment-summary {
-            background: #191919;
-            border: 1px solid var(--line);
-            border-radius: 8px;
-            padding: 12px 13px;
-            margin-bottom: 16px;
-            min-height: 48px;
-            color: var(--muted);
-            font-size: 13px;
-        }
-
-        .modal-submit {
-            width: 100%;
-            min-height: 44px;
-            border: 0;
-            border-radius: 8px;
-            background: var(--accent);
-            color: #111;
-            font-family: 'Syne', sans-serif;
-            font-size: 15px;
-            font-weight: 800;
-            cursor: pointer;
-        }
-
-        @media (max-width: 980px) {
-            .stats-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-            .page-head, .panel-toolbar { align-items: stretch; flex-direction: column; }
-            .search-bar { max-width: none; }
-        }
-
-        @media (max-width: 620px) {
-            .topbar { padding: 0 16px; }
-            .session-name { display: none; }
-            .main { width: calc(100% - 28px); padding-top: 22px; }
-            .stats-row { grid-template-columns: 1fr; }
-            .search-bar { flex-wrap: wrap; }
-            .search-bar input { flex-basis: 100%; }
-            .month-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-        }
-    </style>
+ <meta charset="UTF-8">
+ <meta name="viewport" content="width=device-width, initial-scale=1.0">
+ <title>Panel Empleado - Bodyflex Gym</title>
+ <link href="https://fonts.googleapis.com/css2?family=Syne:wght@500;600;700;800&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+ <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+ <style>
+ :root {
+ --bg: #0d0d0d;
+ --surface: #151515;
+ --surface-2: #1d1d1d;
+ --surface-3: #242424;
+ --line: rgba(255,255,255,0.09);
+ --line-soft: rgba(255,255,255,0.06);
+ --text: #f4f4f4;
+ --text-soft: #d7d7d7;
+ --muted: #8f949c;
+ --accent: #f97316;
+ --accent-soft: rgba(249,115,22,0.14);
+ --green: #2ecc71;
+ --green-soft: rgba(46,204,113,0.13);
+ --red: #ef4444;
+ --red-soft: rgba(239,68,68,0.13);
+ --yellow-soft: rgba(247,201,72,0.13);
+ }
+
+ * { margin: 0; padding: 0; box-sizing: border-box; }
+
+ body {
+ min-height: 100vh;
+ background: var(--bg);
+ color: var(--text);
+ font-family: 'DM Sans', sans-serif;
+ }
+
+ .topbar {
+ height: 64px;
+ padding: 0 28px;
+ background: rgba(17,17,17,0.96);
+ border-bottom: 1px solid var(--line);
+ display: flex;
+ align-items: center;
+ justify-content: space-between;
+ position: sticky;
+ top: 0;
+ z-index: 50;
+ }
+
+ .brand, .topbar-actions {
+ display: flex;
+ align-items: center;
+ gap: 14px;
+ min-width: 0;
+ }
+
+ .logo {
+ font-family: 'Syne', sans-serif;
+ font-weight: 800;
+ font-size: 18px;
+ color: var(--text);
+ white-space: nowrap;
+ }
+
+ .logo span { color: var(--accent); }
+
+ .role-chip {
+ background: var(--accent-soft);
+ color: #ffb179;
+ border: 1px solid rgba(249,115,22,0.28);
+ padding: 5px 10px;
+ border-radius: 999px;
+ font-size: 11px;
+ font-weight: 800;
+ text-transform: uppercase;
+ letter-spacing: .7px;
+ white-space: nowrap;
+ }
+
+ .session-name {
+ color: var(--text-soft);
+ font-size: 13px;
+ max-width: 180px;
+ overflow: hidden;
+ text-overflow: ellipsis;
+ white-space: nowrap;
+ }
+
+ .btn-logout {
+ min-height: 34px;
+ padding: 0 13px;
+ border-radius: 8px;
+ border: 1px solid var(--line);
+ color: var(--muted);
+ background: transparent;
+ font-size: 13px;
+ font-weight: 700;
+ text-decoration: none;
+ display: inline-flex;
+ align-items: center;
+ transition: border-color .18s, color .18s, background .18s;
+ }
+
+ .btn-logout:hover {
+ border-color: rgba(239,68,68,0.45);
+ color: #ffb0b0;
+ background: rgba(239,68,68,0.08);
+ }
+
+ .main {
+ width: min(1180px, calc(100% - 48px));
+ margin: 0 auto;
+ padding: 30px 0 44px;
+ }
+
+ .page-head {
+ display: flex;
+ align-items: flex-end;
+ justify-content: space-between;
+ gap: 20px;
+ margin-bottom: 22px;
+ }
+
+ .eyebrow {
+ color: var(--accent);
+ font-size: 11px;
+ font-weight: 800;
+ text-transform: uppercase;
+ letter-spacing: 1px;
+ margin-bottom: 6px;
+ }
+
+ .page-title {
+ font-family: 'Syne', sans-serif;
+ font-size: 32px;
+ font-weight: 800;
+ line-height: 1.05;
+ }
+
+ .page-sub {
+ color: var(--muted);
+ font-size: 14px;
+ margin-top: 7px;
+ }
+
+ .rate-pill {
+ background: var(--surface);
+ border: 1px solid var(--line);
+ border-radius: 10px;
+ padding: 10px 14px;
+ color: var(--text-soft);
+ font-size: 13px;
+ white-space: nowrap;
+ }
+
+ .rate-pill strong {
+ color: var(--accent);
+ font-family: 'Syne', sans-serif;
+ font-size: 18px;
+ margin-left: 6px;
+ }
+
+ .flash {
+ padding: 12px 15px;
+ border-radius: 10px;
+ margin-bottom: 18px;
+ font-size: 13px;
+ font-weight: 700;
+ }
+
+ .flash-success { background: var(--green-soft); border: 1px solid rgba(46,204,113,0.28); color: #8df1b8; }
+ .flash-error { background: var(--red-soft); border: 1px solid rgba(239,68,68,0.28); color: #ffadad; }
+
+ .stats-row {
+ display: grid;
+ grid-template-columns: repeat(4, minmax(0, 1fr));
+ gap: 12px;
+ margin-bottom: 14px;
+ }
+
+ .stat-card {
+ background: var(--surface);
+ border: 1px solid var(--line);
+ border-radius: 8px;
+ padding: 15px 16px;
+ min-height: 86px;
+ }
+
+ .stat-label {
+ color: var(--muted);
+ font-size: 11px;
+ font-weight: 800;
+ text-transform: uppercase;
+ letter-spacing: .8px;
+ margin-bottom: 8px;
+ }
+
+ .stat-value {
+ font-family: 'Syne', sans-serif;
+ font-size: 27px;
+ font-weight: 800;
+ line-height: 1;
+ }
+
+ .stat-value.orange { color: var(--accent); }
+ .stat-value.green { color: var(--green); }
+ .stat-value.red { color: #ff7979; }
+
+ .stat-foot {
+ color: var(--muted);
+ font-size: 12px;
+ margin-top: 8px;
+ }
+
+ .panel {
+ background: var(--surface);
+ border: 1px solid var(--line);
+ border-radius: 8px;
+ overflow: hidden;
+ }
+
+ .panel-toolbar {
+ padding: 16px;
+ border-bottom: 1px solid var(--line);
+ display: flex;
+ align-items: center;
+ justify-content: space-between;
+ gap: 14px;
+ }
+
+ .panel-title {
+ font-family: 'Syne', sans-serif;
+ font-size: 18px;
+ font-weight: 800;
+ }
+
+ .panel-count {
+ color: var(--muted);
+ font-size: 12px;
+ margin-top: 2px;
+ }
+
+ .search-bar {
+ display: flex;
+ gap: 8px;
+ flex: 1;
+ max-width: 560px;
+ }
+
+ .search-bar input {
+ flex: 1;
+ min-width: 0;
+ background: var(--surface-2);
+ border: 1px solid var(--line);
+ color: var(--text);
+ padding: 10px 12px;
+ border-radius: 8px;
+ font-size: 14px;
+ font-family: 'DM Sans', sans-serif;
+ outline: none;
+ transition: border-color .18s, background .18s;
+ }
+
+ .search-bar input:focus {
+ border-color: rgba(249,115,22,0.55);
+ background: #202020;
+ }
+
+ .btn-buscar,
+ .btn-limpiar,
+ .btn-pago {
+ min-height: 38px;
+ border-radius: 8px;
+ font-family: 'DM Sans', sans-serif;
+ font-size: 13px;
+ font-weight: 800;
+ cursor: pointer;
+ text-decoration: none;
+ display: inline-flex;
+ align-items: center;
+ justify-content: center;
+ white-space: nowrap;
+ transition: transform .18s, border-color .18s, background .18s, color .18s;
+ }
+
+ .btn-buscar {
+ background: var(--accent);
+ color: #121212;
+ border: 1px solid var(--accent);
+ padding: 0 16px;
+ }
+
+ .btn-buscar:hover,
+ .btn-pago:hover { transform: translateY(-1px); background: #fb8a33; }
+
+ .btn-limpiar {
+ background: transparent;
+ border: 1px solid var(--line);
+ color: var(--muted);
+ padding: 0 13px;
+ }
+
+ .btn-limpiar:hover {
+ color: var(--text-soft);
+ border-color: rgba(255,255,255,0.18);
+ background: rgba(255,255,255,0.04);
+ }
+
+ .table-scroll { overflow-x: auto; }
+
+ table {
+ width: 100%;
+ min-width: 920px;
+ border-collapse: collapse;
+ }
+
+ thead th {
+ background: #181818;
+ padding: 12px 16px;
+ text-align: left;
+ font-size: 10px;
+ letter-spacing: .9px;
+ text-transform: uppercase;
+ color: var(--muted);
+ font-weight: 800;
+ border-bottom: 1px solid var(--line);
+ }
+
+ tbody tr {
+ border-bottom: 1px solid var(--line-soft);
+ transition: background .15s;
+ }
+
+ tbody tr:last-child { border-bottom: none; }
+ tbody tr:hover { background: rgba(255,255,255,0.025); }
+
+ td {
+ padding: 14px 16px;
+ font-size: 14px;
+ vertical-align: middle;
+ }
+
+ .member-cell {
+ display: flex;
+ align-items: center;
+ gap: 12px;
+ }
+
+ .avatar {
+ width: 38px;
+ height: 38px;
+ border-radius: 10px;
+ background: var(--surface-3);
+ border: 1px solid var(--line);
+ color: var(--accent);
+ font-family: 'Syne', sans-serif;
+ font-size: 14px;
+ font-weight: 800;
+ display: flex;
+ align-items: center;
+ justify-content: center;
+ flex: 0 0 auto;
+ }
+
+ .socio-nombre { font-weight: 800; color: var(--text); }
+ .socio-num, .data-sub, .due-sub {
+ color: var(--muted);
+ font-size: 12px;
+ margin-top: 3px;
+ }
+
+ .data-main, .due-main {
+ color: var(--text-soft);
+ font-size: 13px;
+ font-weight: 800;
+ }
+
+ .badge {
+ min-height: 26px;
+ padding: 0 10px;
+ border-radius: 999px;
+ font-size: 12px;
+ font-weight: 800;
+ display: inline-flex;
+ align-items: center;
+ justify-content: center;
+ white-space: nowrap;
+ }
+
+ .badge-activo { background: var(--green-soft); color: #86efac; border: 1px solid rgba(46,204,113,0.24); }
+ .badge-inactivo { background: var(--red-soft); color: #ff9b9b; border: 1px solid rgba(239,68,68,0.24); }
+ .badge-aldia { background: var(--green-soft); color: #86efac; border: 1px solid rgba(46,204,113,0.24); }
+ .badge-vencido { background: var(--red-soft); color: #ff9b9b; border: 1px solid rgba(239,68,68,0.24); }
+ .badge-sinpago { background: rgba(143,148,156,0.12); color: #c7cbd1; border: 1px solid rgba(143,148,156,0.22); }
+
+ .btn-pago {
+ background: var(--accent);
+ border: 1px solid var(--accent);
+ color: #121212;
+ padding: 0 14px;
+ }
+
+ .locked-text {
+ color: var(--muted);
+ font-size: 13px;
+ font-weight: 700;
+ }
+
+ .empty {
+ text-align: center;
+ padding: 52px 24px;
+ color: var(--muted);
+ font-size: 14px;
+ }
+
+ .modal {
+ display: none;
+ position: fixed;
+ inset: 0;
+ background: rgba(0,0,0,.72);
+ z-index: 999;
+ align-items: center;
+ justify-content: center;
+ padding: 18px;
+ }
+
+ .modal.show { display: flex; }
+
+ .modal-box {
+ background: var(--surface);
+ border: 1px solid var(--line);
+ border-radius: 10px;
+ padding: 24px;
+ width: 440px;
+ max-width: 100%;
+ box-shadow: 0 24px 70px rgba(0,0,0,.58);
+ }
+
+ .modal-head {
+ display: flex;
+ justify-content: space-between;
+ gap: 16px;
+ margin-bottom: 18px;
+ }
+
+ .modal-kicker {
+ color: var(--accent);
+ font-size: 11px;
+ font-weight: 800;
+ text-transform: uppercase;
+ letter-spacing: .9px;
+ }
+
+ .modal-name {
+ font-family: 'Syne', sans-serif;
+ font-size: 20px;
+ font-weight: 800;
+ margin-top: 4px;
+ }
+
+ .modal-close {
+ width: 34px;
+ height: 34px;
+ border: 1px solid var(--line);
+ border-radius: 8px;
+ background: var(--surface-2);
+ color: var(--muted);
+ font-size: 18px;
+ cursor: pointer;
+ }
+
+ .field { margin-bottom: 15px; }
+ .field-label {
+ display: block;
+ color: var(--muted);
+ font-size: 11px;
+ font-weight: 800;
+ text-transform: uppercase;
+ letter-spacing: .8px;
+ margin-bottom: 7px;
+ }
+
+ .field-select {
+ width: 100%;
+ padding: 10px 12px;
+ border-radius: 8px;
+ background: var(--surface-2);
+ color: var(--text);
+ border: 1px solid var(--line);
+ font-size: 14px;
+ outline: none;
+ }
+
+ .month-grid {
+ display: grid;
+ grid-template-columns: repeat(3, minmax(0, 1fr));
+ gap: 8px;
+ }
+
+ .month-option {
+ min-height: 38px;
+ display: flex;
+ align-items: center;
+ gap: 7px;
+ background: var(--surface-2);
+ border: 1px solid var(--line);
+ border-radius: 8px;
+ padding: 8px 9px;
+ cursor: pointer;
+ font-size: 13px;
+ font-weight: 700;
+ color: var(--text-soft);
+ transition: border-color .15s, background .15s, opacity .15s;
+ }
+
+ .month-option:hover { border-color: rgba(249,115,22,0.45); }
+ .month-option input { accent-color: var(--accent); }
+
+ .payment-summary {
+ background: #191919;
+ border: 1px solid var(--line);
+ border-radius: 8px;
+ padding: 12px 13px;
+ margin-bottom: 16px;
+ min-height: 48px;
+ color: var(--muted);
+ font-size: 13px;
+ }
+
+ .modal-submit {
+ width: 100%;
+ min-height: 44px;
+ border: 0;
+ border-radius: 8px;
+ background: var(--accent);
+ color: #111;
+ font-family: 'Syne', sans-serif;
+ font-size: 15px;
+ font-weight: 800;
+ cursor: pointer;
+ }
+
+ @media (max-width: 980px) {
+ .stats-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+ .page-head, .panel-toolbar { align-items: stretch; flex-direction: column; }
+ .search-bar { max-width: none; }
+ }
+
+ @media (max-width: 620px) {
+ .topbar { padding: 0 16px; }
+ .session-name { display: none; }
+ .main { width: calc(100% - 28px); padding-top: 22px; }
+ .stats-row { grid-template-columns: 1fr; }
+ .search-bar { flex-wrap: wrap; }
+ .search-bar input { flex-basis: 100%; }
+ .month-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+ }
+ </style>
 </head>
 <body>
 <header class="topbar">
-    <div class="brand">
-        <div class="logo">BODYFLEX<span>GYM</span></div>
-        <div class="role-chip">Empleado</div>
-    </div>
-    <div class="topbar-actions">
-        <span class="session-name">{{ session.nombre }}</span>
-        <a href="/inventario" class="btn-limpiar" style="text-decoration:none;">📦 Inventario</a>
-        <a href="/tienda" class="btn-limpiar" style="text-decoration:none;">🛒 Tienda</a>
-        <a href="/logout" class="btn-logout">Salir</a>
-    </div>
+ <div class="brand">
+ <div class="logo">BODYFLEX<span>GYM</span></div>
+ <div class="role-chip">Empleado</div>
+ </div>
+ <div class="topbar-actions">
+ <span class="session-name">{{ session.nombre }}</span>
+ <a href="/inventario" class="btn-limpiar" style="text-decoration:none;"> Inventario</a>
+ <a href="/tienda" class="btn-limpiar" style="text-decoration:none;"> Tienda</a>
+ <a href="/logout" class="btn-logout">Salir</a>
+ </div>
 </header>
 
 <main class="main">
-    <div class="page-head">
-        <div>
-            <div class="eyebrow">Caja y membresias</div>
-            <h1 class="page-title">Cobros de membresia</h1>
-            <div class="page-sub">Busca un socio, revisa su estado y registra mensualidades</div>
-        </div>
-        <div class="rate-pill">Mensualidad <strong>Q{{ "%.0f"|format(precio_mensual) }}</strong></div>
-    </div>
+ <div class="page-head">
+ <div>
+ <div class="eyebrow">Caja y membresias</div>
+ <h1 class="page-title">Cobros de membresia</h1>
+ <div class="page-sub">Busca un socio, revisa su estado y registra mensualidades</div>
+ </div>
+ <div class="rate-pill">Mensualidad <strong>Q{{ "%.0f"|format(precio_mensual) }}</strong></div>
+ </div>
 
-    {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-            {% for category, message in messages %}
-                <div class="flash flash-{{ category }}">{{ message|safe }}</div>
-            {% endfor %}
-        {% endif %}
-    {% endwith %}
+ {% with messages = get_flashed_messages(with_categories=true) %}
+ {% if messages %}
+ {% for category, message in messages %}
+ <div class="flash flash-{{ category }}">{{ message|safe }}</div>
+ {% endfor %}
+ {% endif %}
+ {% endwith %}
 
-    {% set total = usuarios | length %}
-    {% set con_pago = usuarios | selectattr("ultimo_vencimiento") | list %}
-    {% set al_dia_count = con_pago | selectattr("ultimo_vencimiento", "ge", fecha_hoy) | list | length %}
-    {% set vencidos_count = con_pago | selectattr("ultimo_vencimiento", "lt", fecha_hoy) | list | length %}
-    {% set sin_pago_count = total - (con_pago | length) %}
+ {% set total = usuarios | length %}
+ {% set con_pago = usuarios | selectattr("ultimo_vencimiento") | list %}
+ {% set al_dia_count = con_pago | selectattr("ultimo_vencimiento", "ge", fecha_hoy) | list | length %}
+ {% set vencidos_count = con_pago | selectattr("ultimo_vencimiento", "lt", fecha_hoy) | list | length %}
+ {% set sin_pago_count = total - (con_pago | length) %}
 
-    <section class="stats-row">
-        <div class="stat-card">
-            <div class="stat-label">Socios</div>
-            <div class="stat-value orange">{{ total }}</div>
-            <div class="stat-foot">en esta vista</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-label">Al dia</div>
-            <div class="stat-value green">{{ al_dia_count }}</div>
-            <div class="stat-foot">membresia vigente</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-label">Vencidos</div>
-            <div class="stat-value red">{{ vencidos_count }}</div>
-            <div class="stat-foot">requieren seguimiento</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-label">Sin historial</div>
-            <div class="stat-value">{{ sin_pago_count }}</div>
-            <div class="stat-foot">sin pagos registrados</div>
-        </div>
-    </section>
+ <section class="stats-row">
+ <div class="stat-card">
+ <div class="stat-label">Socios</div>
+ <div class="stat-value orange">{{ total }}</div>
+ <div class="stat-foot">en esta vista</div>
+ </div>
+ <div class="stat-card">
+ <div class="stat-label">Al dia</div>
+ <div class="stat-value green">{{ al_dia_count }}</div>
+ <div class="stat-foot">membresia vigente</div>
+ </div>
+ <div class="stat-card">
+ <div class="stat-label">Vencidos</div>
+ <div class="stat-value red">{{ vencidos_count }}</div>
+ <div class="stat-foot">requieren seguimiento</div>
+ </div>
+ <div class="stat-card">
+ <div class="stat-label">Sin historial</div>
+ <div class="stat-value">{{ sin_pago_count }}</div>
+ <div class="stat-foot">sin pagos registrados</div>
+ </div>
+ </section>
 
-    <section class="panel">
-        <div class="panel-toolbar">
-            <div>
-                <div class="panel-title">Socios</div>
-                <div class="panel-count">{{ total }} resultado{{ 's' if total != 1 else '' }}</div>
-            </div>
-            <form method="GET" action="/empleado" class="search-bar">
-                <input type="text" name="buscar" placeholder="Nombre o CUI/DPI" value="{{ buscar }}">
-                <button type="submit" class="btn-buscar">Buscar</button>
-                {% if buscar %}
-                    <a href="/empleado" class="btn-limpiar">Limpiar</a>
-                {% endif %}
-            </form>
-        </div>
+ <section class="panel">
+ <div class="panel-toolbar">
+ <div>
+ <div class="panel-title">Socios</div>
+ <div class="panel-count">{{ total }} resultado{{ 's' if total != 1 else '' }}</div>
+ </div>
+ <form method="GET" action="/empleado" class="search-bar">
+ <input type="text" name="buscar" placeholder="Nombre o CUI/DPI" value="{{ buscar }}">
+ <button type="submit" class="btn-buscar">Buscar</button>
+ {% if buscar %}
+ <a href="/empleado" class="btn-limpiar">Limpiar</a>
+ {% endif %}
+ </form>
+ </div>
 
-        <div class="table-scroll">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Socio</th>
-                        <th>Datos</th>
-                        <th>Membresia</th>
-                        <th>Vencimiento</th>
-                        <th>Accion</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for u in usuarios %}
-                    <tr>
-                        <td>
-                            <div class="member-cell">
-                                {% set inicial = (u.nombre[0]|upper) if u.nombre else 'S' %}
-                                <div class="avatar">{{ inicial }}</div>
-                                <div>
-                                    <div class="socio-nombre">{{ u.nombre }} {{ u.apellido }}</div>
-                                    <div class="socio-num">{{ u.tipo_doc }}: {{ u.cui }}</div>
-                                    {% if u.telefono %}
-                                        <div class="socio-num" style="color:var(--muted); font-size:11px; margin-top:2px; display:inline-flex; align-items:center; gap:4px;">
-                                            📞 {{ u.telefono }}
-                                            {% if u.ultimo_vencimiento %}
-                                            <a href="{{ link_whatsapp_vencimiento(u.telefono, u.nombre, u.ultimo_vencimiento) }}" target="_blank" style="color:#25D366; text-decoration:none;" title="Abrir WhatsApp Web">💬</a>
-                                            {% endif %}
-                                        </div>
-                                    {% endif %}
-                                </div>
-                            </div>
-                        </td>
-                        <td>
-                            {% if u.edad %}
-                                <div class="data-main">{{ u.edad }} anios{% if u.peso %} | {{ u.peso }} lb{% endif %}{% if u.altura %} | {{ u.altura }} m{% endif %}</div>
-                                <div class="data-sub">{{ u.objetivo or 'Sin objetivo' }}</div>
-                            {% else %}
-                                <div class="data-main">Sin perfil</div>
-                                <div class="data-sub">Datos pendientes</div>
-                            {% endif %}
-                        </td>
-                        <td>
-                            {% if u.ultimo_vencimiento %}
-                                {% set dias = (u.ultimo_vencimiento - fecha_hoy).days %}
-                                {% if dias >= 0 %}
-                                    <span class="badge badge-aldia">Al dia</span>
-                                {% else %}
-                                    <span class="badge badge-vencido">Vencida</span>
-                                {% endif %}
-                            {% else %}
-                                <span class="badge badge-sinpago">Sin pagos</span>
-                            {% endif %}
-                            
-                            {% if cargos_pendientes.get(u.cui) %}
-                            <br>
-                            <button class="badge badge-vencido" style="margin-top:4px;cursor:pointer;border:none;" onclick="abrirPagarCargo('{{ u.cui }}', '{{ u.nombre }} {{ u.apellido }}')">
-                                {{ cargos_pendientes.get(u.cui)|length }} Cargo(s)
-                            </button>
-                            <script>
-                                window.cargos_{{ u.cui }} = {{ cargos_pendientes.get(u.cui)|tojson }};
-                            </script>
-                            {% endif %}
-                        </td>
-                        <td>
-                            {% if u.ultimo_vencimiento %}
-                                {% set dias = (u.ultimo_vencimiento - fecha_hoy).days %}
-                                <div class="due-main">{{ u.ultimo_vencimiento.strftime('%d/%m/%Y') }}</div>
-                                {% if dias >= 0 %}
-                                    <div class="due-sub">{{ dias }} dia{{ 's' if dias != 1 else '' }} restante{{ 's' if dias != 1 else '' }}</div>
-                                {% else %}
-                                    <div class="due-sub">Hace {{ dias * -1 }} dia{{ 's' if dias != -1 else '' }}</div>
-                                {% endif %}
+ <div class="table-scroll">
+ <table>
+ <thead>
+ <tr>
+ <th>Socio</th>
+ <th>Datos</th>
+ <th>Membresia</th>
+ <th>Vencimiento</th>
+ <th>Accion</th>
+ </tr>
+ </thead>
+ <tbody>
+ {% for u in usuarios %}
+ <tr>
+ <td>
+ <div class="member-cell">
+ {% set inicial = (u.nombre[0]|upper) if u.nombre else 'S' %}
+ <div class="avatar">{{ inicial }}</div>
+ <div>
+ <div class="socio-nombre">{{ u.nombre }} {{ u.apellido }}</div>
+ <div class="socio-num">{{ u.tipo_doc }}: {{ u.cui }}</div>
+ {% if u.telefono %}
+ <div class="socio-num" style="color:var(--muted); font-size:11px; margin-top:2px; display:inline-flex; align-items:center; gap:4px;">
+ {{ u.telefono }}
+ {% if u.ultimo_vencimiento %}
+ <a href="{{ link_whatsapp_vencimiento(u.telefono, u.nombre, u.ultimo_vencimiento) }}" target="_blank" style="color:#25D366; text-decoration:none;" title="Abrir WhatsApp Web"></a>
+ {% endif %}
+ </div>
+ {% endif %}
+ </div>
+ </div>
+ </td>
+ <td>
+ {% if u.edad %}
+ <div class="data-main">{{ u.edad }} anios{% if u.peso %} | {{ u.peso }} lb{% endif %}{% if u.altura %} | {{ u.altura }} m{% endif %}</div>
+ <div class="data-sub">{{ u.objetivo or 'Sin objetivo' }}</div>
+ {% else %}
+ <div class="data-main">Sin perfil</div>
+ <div class="data-sub">Datos pendientes</div>
+ {% endif %}
+ </td>
+ <td>
+ {% if u.ultimo_vencimiento %}
+ {% set dias = (u.ultimo_vencimiento - fecha_hoy).days %}
+ {% if dias >= 0 %}
+ <span class="badge badge-aldia">Al dia</span>
+ {% else %}
+ <span class="badge badge-vencido">Vencida</span>
+ {% endif %}
+ {% else %}
+ <span class="badge badge-sinpago">Sin pagos</span>
+ {% endif %}
+ 
+ {% if cargos_pendientes.get(u.cui) %}
+ <br>
+ <button class="badge badge-vencido" style="margin-top:4px;cursor:pointer;border:none;" onclick="abrirPagarCargo('{{ u.cui }}', '{{ u.nombre }} {{ u.apellido }}')">
+ {{ cargos_pendientes.get(u.cui)|length }} Cargo(s)
+ </button>
+ <script>
+ window.cargos_{{ u.cui }} = {{ cargos_pendientes.get(u.cui)|tojson }};
+ </script>
+ {% endif %}
+ </td>
+ <td>
+ {% if u.ultimo_vencimiento %}
+ {% set dias = (u.ultimo_vencimiento - fecha_hoy).days %}
+ <div class="due-main">{{ u.ultimo_vencimiento.strftime('%d/%m/%Y') }}</div>
+ {% if dias >= 0 %}
+ <div class="due-sub">{{ dias }} dia{{ 's' if dias != 1 else '' }} restante{{ 's' if dias != 1 else '' }}</div>
+ {% else %}
+ <div class="due-sub">Hace {{ dias * -1 }} dia{{ 's' if dias != -1 else '' }}</div>
+ {% endif %}
 
-                            {% else %}
-                                <div class="due-main">Pendiente</div>
-                                <div class="due-sub">Primer pago por registrar</div>
-                            {% endif %}
-                        </td>
-                        <td>
-                            {% if u.estado.lower() == "activo" %}
-                                <div style="display:flex; gap:4px;">
-                                    <button class="btn-pago btn-abrir-pago" style="flex:1; margin:0;" data-id="{{ u.cui }}" data-nombre="{{ u.nombre }} {{ u.apellido }}">Registrar pago</button>
-                                    <button type="button" class="btn-pago" onclick="abrirCargo('{{ u.cui }}', '{{ u.nombre }} {{ u.apellido }}')" style="flex:1; margin:0; background:var(--gray-border);color:white;">+ Crear Cargo</button>
-                                </div>
-                            {% else %}
-                                <span class="locked-text">Cuenta inactiva</span>
-                                <div style="display:flex; gap:4px; margin-top:4px;">
-                                    <button type="button" class="btn-pago" onclick="abrirCargo('{{ u.cui }}', '{{ u.nombre }} {{ u.apellido }}')" style="flex:1; margin:0; background:var(--gray-border);color:white;">+ Crear Cargo</button>
-                                </div>
-                            {% endif %}
-                            <a href="/contrato/{{ u.cui }}" target="_blank" class="btn-limpiar" style="margin-top:8px; padding: 4px 8px; min-height: 28px; font-size: 12px; display: inline-flex;" title="Descargar Contrato">📄 Contrato</a>
-                        </td>
-                    </tr>
-                    {% endfor %}
+ {% else %}
+ <div class="due-main">Pendiente</div>
+ <div class="due-sub">Primer pago por registrar</div>
+ {% endif %}
+ </td>
+ <td>
+ {% if u.estado.lower() == "activo" %}
+ <div style="display:flex; gap:4px;">
+ <button class="btn-pago btn-abrir-pago" style="flex:1; margin:0;" data-id="{{ u.cui }}" data-nombre="{{ u.nombre }} {{ u.apellido }}">Registrar pago</button>
+ <button type="button" class="btn-pago" onclick="abrirCargo('{{ u.cui }}', '{{ u.nombre }} {{ u.apellido }}')" style="flex:1; margin:0; background:var(--gray-border);color:white;">+ Crear Cargo</button>
+ </div>
+ {% else %}
+ <span class="locked-text">Cuenta inactiva</span>
+ <div style="display:flex; gap:4px; margin-top:4px;">
+ <button type="button" class="btn-pago" onclick="abrirCargo('{{ u.cui }}', '{{ u.nombre }} {{ u.apellido }}')" style="flex:1; margin:0; background:var(--gray-border);color:white;">+ Crear Cargo</button>
+ </div>
+ {% endif %}
+ <a href="/contrato/{{ u.cui }}" target="_blank" class="btn-limpiar" style="margin-top:8px; padding: 4px 8px; min-height: 28px; font-size: 12px; display: inline-flex;" title="Descargar Contrato"> Contrato</a>
+ </td>
+ </tr>
+ {% endfor %}
 
-                    {% if not usuarios %}
-                    <tr>
-                        <td colspan="5" class="empty">
-                            {% if buscar %}No se encontraron socios con "{{ buscar }}"{% else %}No hay socios registrados{% endif %}
-                        </td>
-                    </tr>
-                    {% endif %}
-                </tbody>
-            </table>
-        </div>
-    </section>
+ {% if not usuarios %}
+ <tr>
+ <td colspan="5" class="empty">
+ {% if buscar %}No se encontraron socios con "{{ buscar }}"{% else %}No hay socios registrados{% endif %}
+ </td>
+ </tr>
+ {% endif %}
+ </tbody>
+ </table>
+ </div>
+ </section>
 </main>
 
 <div id="modalPago" class="modal" data-precio="{{ precio_mensual }}">
-    <div class="modal-box">
-        <div class="modal-head">
-            <div>
-                <div class="modal-kicker">Registrar pago</div>
-                <div id="modalNombre" class="modal-name"></div>
-            </div>
-            <button type="button" class="modal-close" onclick="cerrarPago()">x</button>
-        </div>
+ <div class="modal-box">
+ <div class="modal-head">
+ <div>
+ <div class="modal-kicker">Registrar pago</div>
+ <div id="modalNombre" class="modal-name"></div>
+ </div>
+ <button type="button" class="modal-close" onclick="cerrarPago()">x</button>
+ </div>
 
-        <form id="formPago" method="POST">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            
-            <div class="field">
-                <label class="field-label">Método de Pago</label>
-                <select name="metodo_pago" class="field-select" onchange="document.getElementById('divReferenciaEmpleado').style.display = this.value === 'efectivo' ? 'none' : 'block'">
-                    <option value="efectivo">Efectivo</option>
-                    <option value="tarjeta">Tarjeta</option>
-                    <option value="transferencia">Transferencia</option>
-                </select>
-            </div>
-            <div id="divReferenciaEmpleado" class="field" style="display:none;">
-                <label class="field-label">Referencia (Tarjeta / Transferencia)</label>
-                <input type="text" name="referencia" style="width:100%; padding:10px; border:1px solid var(--line); border-radius:8px; background:var(--surface-1); color:var(--text-1); font-family:inherit; font-size:14px;" placeholder="Número de autorización o boleta">
-            </div>
+ <form id="formPago" method="POST">
+ <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+ 
+ <div class="field">
+ <label class="field-label">Método de Pago</label>
+ <select name="metodo_pago" class="field-select" onchange="document.getElementById('divReferenciaEmpleado').style.display = this.value === 'efectivo' ? 'none' : 'block'">
+ <option value="efectivo">Efectivo</option>
+ <option value="tarjeta">Tarjeta</option>
+ <option value="transferencia">Transferencia</option>
+ </select>
+ </div>
+ <div id="divReferenciaEmpleado" class="field" style="display:none;">
+ <label class="field-label">Referencia (Tarjeta / Transferencia)</label>
+ <input type="text" name="referencia" style="width:100%; padding:10px; border:1px solid var(--line); border-radius:8px; background:var(--surface-1); color:var(--text-1); font-family:inherit; font-size:14px;" placeholder="Número de autorización o boleta">
+ </div>
 
-            <div class="field">
-                <label class="field-label">Anio</label>
-                <select id="anioModal" class="field-select" onchange="actualizarMesesBloqueados()">
-                    <option value="2024">2024</option>
-                    <option value="2025">2025</option>
-                    <option value="2026" selected>2026</option>
-                    <option value="2027">2027</option>
-                    <option value="2028">2028</option>
-                </select>
-            </div>
+ <div class="field">
+ <label class="field-label">Anio</label>
+ <select id="anioModal" class="field-select" onchange="actualizarMesesBloqueados()">
+ <option value="2024">2024</option>
+ <option value="2025">2025</option>
+ <option value="2026" selected>2026</option>
+ <option value="2027">2027</option>
+ <option value="2028">2028</option>
+ </select>
+ </div>
 
-            <div class="field">
-                <label class="field-label">Meses a pagar</label>
-                <div class="month-grid">
-                    {% for m, nombre in [(1,'Enero'),(2,'Febrero'),(3,'Marzo'),(4,'Abril'),(5,'Mayo'),(6,'Junio'),(7,'Julio'),(8,'Agosto'),(9,'Septiembre'),(10,'Octubre'),(11,'Noviembre'),(12,'Diciembre')] %}
-                    <label class="month-option" id="lbl-{{ m }}">
-                        <input type="checkbox" name="meses_sel" value="{{ m }}" data-mes="{{ m }}">
-                        {{ nombre }}
-                    </label>
-                    {% endfor %}
-                </div>
-            </div>
+ <div class="field">
+ <label class="field-label">Meses a pagar</label>
+ <div class="month-grid">
+ {% for m, nombre in [(1,'Enero'),(2,'Febrero'),(3,'Marzo'),(4,'Abril'),(5,'Mayo'),(6,'Junio'),(7,'Julio'),(8,'Agosto'),(9,'Septiembre'),(10,'Octubre'),(11,'Noviembre'),(12,'Diciembre')] %}
+ <label class="month-option" id="lbl-{{ m }}">
+ <input type="checkbox" name="meses_sel" value="{{ m }}" data-mes="{{ m }}">
+ {{ nombre }}
+ </label>
+ {% endfor %}
+ </div>
+ </div>
 
-            <div id="resumenPago" class="payment-summary">Selecciona al menos un mes</div>
+ <div id="resumenPago" class="payment-summary">Selecciona al menos un mes</div>
 
-            <input type="hidden" name="anio_sel" id="anioHidden">
-            <input type="hidden" name="meses_lista" id="mesesHidden">
-            <button type="button" class="modal-submit" onclick="submitPago()">Registrar pago</button>
-        </form>
-    </div>
+ <input type="hidden" name="anio_sel" id="anioHidden">
+ <input type="hidden" name="meses_lista" id="mesesHidden">
+ <button type="button" class="modal-submit" onclick="submitPago()">Registrar pago</button>
+ </form>
+ </div>
 </div>
 
-<!-- ═══════ MODAL CREAR CARGO ═══════ -->
+<!-- MODAL CREAR CARGO -->
 <div id="modalCrearCargo" class="modal">
-    <div class="modal-box">
-        <div class="modal-head">
-            <div>
-                <div class="modal-kicker">Crear Cargo Manual</div>
-                <div class="modal-name" id="modalCargoNombre"></div>
-            </div>
-            <button type="button" class="modal-close" onclick="cerrarCargo()">x</button>
-        </div>
-        <form id="formCrearCargo" method="POST">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <input type="hidden" name="origen" value="/empleado">
-            <div class="field">
-                <label class="field-label">Descripción</label>
-                <input type="text" name="descripcion" class="field-select" placeholder="Ej: Inscripción, Botella de agua..." style="padding: 10px; width: 100%; box-sizing: border-box; background: var(--surface-2); border: 1px solid var(--line); color: var(--text);" required>
-            </div>
-            <div class="field">
-                <label class="field-label">Monto (Q)</label>
-                <input type="number" step="0.01" name="monto" class="field-select" placeholder="Ej: 150.00" style="padding: 10px; width: 100%; box-sizing: border-box; background: var(--surface-2); border: 1px solid var(--line); color: var(--text);" required>
-            </div>
-            <button type="submit" class="modal-submit" style="width: 100%;">Crear Cargo</button>
-        </form>
-    </div>
+ <div class="modal-box">
+ <div class="modal-head">
+ <div>
+ <div class="modal-kicker">Crear Cargo Manual</div>
+ <div class="modal-name" id="modalCargoNombre"></div>
+ </div>
+ <button type="button" class="modal-close" onclick="cerrarCargo()">x</button>
+ </div>
+ <form id="formCrearCargo" method="POST">
+ <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+ <input type="hidden" name="origen" value="/empleado">
+ <div class="field">
+ <label class="field-label">Descripción</label>
+ <input type="text" name="descripcion" class="field-select" placeholder="Ej: Inscripción, Botella de agua..." style="padding: 10px; width: 100%; box-sizing: border-box; background: var(--surface-2); border: 1px solid var(--line); color: var(--text);" required>
+ </div>
+ <div class="field">
+ <label class="field-label">Monto (Q)</label>
+ <input type="number" step="0.01" name="monto" class="field-select" placeholder="Ej: 150.00" style="padding: 10px; width: 100%; box-sizing: border-box; background: var(--surface-2); border: 1px solid var(--line); color: var(--text);" required>
+ </div>
+ <button type="submit" class="modal-submit" style="width: 100%;">Crear Cargo</button>
+ </form>
+ </div>
 </div>
 
-<!-- ═══════ MODAL PAGAR CARGO ═══════ -->
+<!-- MODAL PAGAR CARGO -->
 <div id="modalPagarCargo" class="modal">
-    <div class="modal-box">
-        <div class="modal-head">
-            <div>
-                <div class="modal-kicker">Cargos Pendientes</div>
-                <div class="modal-name" id="modalPagarCargoNombre"></div>
-            </div>
-            <button type="button" class="modal-close" onclick="cerrarPagarCargo()">x</button>
-        </div>
-        <div id="listaCargosPendientes" style="max-height:300px;overflow-y:auto;margin-bottom:16px;">
-            <!-- Se llena con JS -->
-        </div>
-    </div>
+ <div class="modal-box">
+ <div class="modal-head">
+ <div>
+ <div class="modal-kicker">Cargos Pendientes</div>
+ <div class="modal-name" id="modalPagarCargoNombre"></div>
+ </div>
+ <button type="button" class="modal-close" onclick="cerrarPagarCargo()">x</button>
+ </div>
+ <div id="listaCargosPendientes" style="max-height:300px;overflow-y:auto;margin-bottom:16px;">
+ <!-- Se llena con JS -->
+ </div>
+ </div>
 </div>
 
 <script>
-// ── Funciones de Cargos ──
+// Funciones de Cargos 
 function abrirCargo(cui, nombre) {
-    document.getElementById('modalCargoNombre').textContent = nombre;
-    document.getElementById('formCrearCargo').action = '/crear_cargo/' + cui;
-    document.getElementById('modalCrearCargo').classList.add('show');
+ document.getElementById('modalCargoNombre').textContent = nombre;
+ document.getElementById('formCrearCargo').action = '/crear_cargo/' + cui;
+ document.getElementById('modalCrearCargo').classList.add('show');
 }
 function cerrarCargo() {
-    document.getElementById('modalCrearCargo').classList.remove('show');
+ document.getElementById('modalCrearCargo').classList.remove('show');
 }
 
 function abrirPagarCargo(cui, nombre) {
-    document.getElementById('modalPagarCargoNombre').textContent = nombre;
-    const cargos = window['cargos_' + cui] || [];
-    const lista = document.getElementById('listaCargosPendientes');
-    lista.innerHTML = '';
-    
-    if (cargos.length === 0) {
-        lista.innerHTML = '<p style="color:var(--muted);font-size:14px;text-align:center;">No hay cargos pendientes.</p>';
-    } else {
-        cargos.forEach(c => {
-            lista.innerHTML += `
-                <div style="background:#1e1e1e;border:1px solid #2a2a2a;border-radius:10px;padding:12px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;">
-                    <div>
-                        <div style="font-size:14px;font-weight:600;color:#f5f5f5;margin-bottom:4px;">${c.descripcion}</div>
-                        <div style="font-size:12px;color:var(--muted);">Q${c.monto} • ${c.fecha_emision}</div>
-                    </div>
-                    <form action="/pagar_cargo/${c.id_cargo}" method="POST" style="margin:0;">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <input type="hidden" name="origen" value="/empleado">
-                        <button type="submit" class="btn-pago" style="background:var(--green);color:black;">Pagar</button>
-                    </form>
-                </div>
-            `;
-        });
-    }
-    
-    document.getElementById('modalPagarCargo').classList.add('show');
+ document.getElementById('modalPagarCargoNombre').textContent = nombre;
+ const cargos = window['cargos_' + cui] || [];
+ const lista = document.getElementById('listaCargosPendientes');
+ lista.innerHTML = '';
+ 
+ if (cargos.length === 0) {
+ lista.innerHTML = '<p style="color:var(--muted);font-size:14px;text-align:center;">No hay cargos pendientes.</p>';
+ } else {
+ cargos.forEach(c => {
+ lista.innerHTML += `
+ <div style="background:#1e1e1e;border:1px solid #2a2a2a;border-radius:10px;padding:12px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;">
+ <div>
+ <div style="font-size:14px;font-weight:600;color:#f5f5f5;margin-bottom:4px;">${c.descripcion}</div>
+ <div style="font-size:12px;color:var(--muted);">Q${c.monto} • ${c.fecha_emision}</div>
+ </div>
+ <form action="/pagar_cargo/${c.id_cargo}" method="POST" style="margin:0;">
+ <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+ <input type="hidden" name="origen" value="/empleado">
+ <button type="submit" class="btn-pago" style="background:var(--green);color:black;">Pagar</button>
+ </form>
+ </div>
+ `;
+ });
+ }
+ 
+ document.getElementById('modalPagarCargo').classList.add('show');
 }
 function cerrarPagarCargo() {
-    document.getElementById('modalPagarCargo').classList.remove('show');
+ document.getElementById('modalPagarCargo').classList.remove('show');
 }
 const PRECIO = parseFloat(document.getElementById('modalPago').dataset.precio);
 const MESES_NOMBRES = ['', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
@@ -890,98 +890,98 @@ const PAGOS_REGISTRADOS = {{ periodos_pagados|tojson }};
 let socioPagoActual = null;
 
 document.addEventListener('click', function(e) {
-    const btn = e.target.closest('.btn-abrir-pago');
-    if (btn) abrirPago(btn.dataset.id, btn.dataset.nombre);
+ const btn = e.target.closest('.btn-abrir-pago');
+ if (btn) abrirPago(btn.dataset.id, btn.dataset.nombre);
 });
 
 document.addEventListener('change', function(e) {
-    if (e.target.name === 'meses_sel' && !e.target.disabled) {
-        toggleLbl(e.target.dataset.mes, e.target.checked);
-        actualizarResumen();
-    }
+ if (e.target.name === 'meses_sel' && !e.target.disabled) {
+ toggleLbl(e.target.dataset.mes, e.target.checked);
+ actualizarResumen();
+ }
 });
 
 function abrirPago(id, nombre) {
-    socioPagoActual = String(id);
-    document.getElementById('modalNombre').textContent = nombre;
-    document.getElementById('formPago').action = '/admin/registrar_pago/' + id;
-    document.querySelectorAll('input[name="meses_sel"]').forEach(c => {
-        c.checked = false;
-        toggleLbl(c.value, false);
-    });
-    actualizarMesesBloqueados();
-    document.getElementById('modalPago').classList.add('show');
+ socioPagoActual = String(id);
+ document.getElementById('modalNombre').textContent = nombre;
+ document.getElementById('formPago').action = '/admin/registrar_pago/' + id;
+ document.querySelectorAll('input[name="meses_sel"]').forEach(c => {
+ c.checked = false;
+ toggleLbl(c.value, false);
+ });
+ actualizarMesesBloqueados();
+ document.getElementById('modalPago').classList.add('show');
 }
 
 function cerrarPago() {
-    document.getElementById('modalPago').classList.remove('show');
+ document.getElementById('modalPago').classList.remove('show');
 }
 
 function toggleLbl(m, checked) {
-    const lbl = document.getElementById('lbl-' + m);
-    if (lbl) {
-        lbl.style.borderColor = checked ? 'rgba(249,115,22,0.7)' : 'var(--line)';
-        lbl.style.background = checked ? 'rgba(249,115,22,0.12)' : 'var(--surface-2)';
-    }
+ const lbl = document.getElementById('lbl-' + m);
+ if (lbl) {
+ lbl.style.borderColor = checked ? 'rgba(249,115,22,0.7)' : 'var(--line)';
+ lbl.style.background = checked ? 'rgba(249,115,22,0.12)' : 'var(--surface-2)';
+ }
 }
 
 function actualizarMesesBloqueados() {
-    const anio = document.getElementById('anioModal').value;
-    const pagados = new Set(PAGOS_REGISTRADOS[socioPagoActual] || []);
-    document.querySelectorAll('input[name="meses_sel"]').forEach(c => {
-        const bloqueado = pagados.has(`${anio}-${parseInt(c.value)}`);
-        c.disabled = bloqueado;
-        if (bloqueado) c.checked = false;
-        const lbl = document.getElementById('lbl-' + c.value);
-        if (lbl) {
-            lbl.style.opacity = bloqueado ? '0.42' : '1';
-            lbl.style.cursor = bloqueado ? 'not-allowed' : 'pointer';
-            lbl.title = bloqueado ? 'Este mes ya fue pagado' : '';
-        }
-        toggleLbl(c.value, c.checked);
-    });
-    actualizarResumen();
+ const anio = document.getElementById('anioModal').value;
+ const pagados = new Set(PAGOS_REGISTRADOS[socioPagoActual] || []);
+ document.querySelectorAll('input[name="meses_sel"]').forEach(c => {
+ const bloqueado = pagados.has(`${anio}-${parseInt(c.value)}`);
+ c.disabled = bloqueado;
+ if (bloqueado) c.checked = false;
+ const lbl = document.getElementById('lbl-' + c.value);
+ if (lbl) {
+ lbl.style.opacity = bloqueado ? '0.42' : '1';
+ lbl.style.cursor = bloqueado ? 'not-allowed' : 'pointer';
+ lbl.title = bloqueado ? 'Este mes ya fue pagado' : '';
+ }
+ toggleLbl(c.value, c.checked);
+ });
+ actualizarResumen();
 }
 
 function calcularMontoPago(meses) {
-    const cant_6 = Math.floor(meses / 6);
-    const resto_6 = meses % 6;
-    const cant_3 = Math.floor(resto_6 / 3);
-    const resto_3 = resto_6 % 3;
-    return (cant_6 * 1100) + (cant_3 * 600) + (resto_3 * 225);
+ const cant_6 = Math.floor(meses / 6);
+ const resto_6 = meses % 6;
+ const cant_3 = Math.floor(resto_6 / 3);
+ const resto_3 = resto_6 % 3;
+ return (cant_6 * 1100) + (cant_3 * 600) + (resto_3 * 225);
 }
 
 function actualizarResumen() {
-    const checks = [...document.querySelectorAll('input[name="meses_sel"]:checked:not(:disabled)')];
-    const anio = document.getElementById('anioModal').value;
-    const resumen = document.getElementById('resumenPago');
-    if (!checks.length) {
-        resumen.innerHTML = '<span style="color:var(--muted)">Selecciona al menos un mes</span>';
-        return;
-    }
-    const nombres = checks.map(c => MESES_NOMBRES[parseInt(c.value)]).join(', ');
-    const total = calcularMontoPago(checks.length);
-    const totalStr = Number(total).toLocaleString('en-US');
-    resumen.innerHTML = `<span style="color:var(--text);font-weight:800;">${nombres} ${anio}</span><br><span style="color:var(--accent);font-weight:800;">Q${totalStr}</span> <span style="color:var(--muted)">por ${checks.length} mes${checks.length > 1 ? 'es' : ''}</span>`;
+ const checks = [...document.querySelectorAll('input[name="meses_sel"]:checked:not(:disabled)')];
+ const anio = document.getElementById('anioModal').value;
+ const resumen = document.getElementById('resumenPago');
+ if (!checks.length) {
+ resumen.innerHTML = '<span style="color:var(--muted)">Selecciona al menos un mes</span>';
+ return;
+ }
+ const nombres = checks.map(c => MESES_NOMBRES[parseInt(c.value)]).join(', ');
+ const total = calcularMontoPago(checks.length);
+ const totalStr = Number(total).toLocaleString('en-US');
+ resumen.innerHTML = `<span style="color:var(--text);font-weight:800;">${nombres} ${anio}</span><br><span style="color:var(--accent);font-weight:800;">Q${totalStr}</span> <span style="color:var(--muted)">por ${checks.length} mes${checks.length > 1 ? 'es' : ''}</span>`;
 }
 
 function submitPago() {
-    const checks = [...document.querySelectorAll('input[name="meses_sel"]:checked:not(:disabled)')];
-    if (!checks.length) {
-        alert('Selecciona al menos un mes');
-        return;
-    }
-    document.getElementById('anioHidden').value = document.getElementById('anioModal').value;
-    document.getElementById('mesesHidden').value = checks.map(c => c.value).join(',');
-    document.getElementById('formPago').submit();
+ const checks = [...document.querySelectorAll('input[name="meses_sel"]:checked:not(:disabled)')];
+ if (!checks.length) {
+ alert('Selecciona al menos un mes');
+ return;
+ }
+ document.getElementById('anioHidden').value = document.getElementById('anioModal').value;
+ document.getElementById('mesesHidden').value = checks.map(c => c.value).join(',');
+ document.getElementById('formPago').submit();
 }
 
 document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') cerrarPago();
+ if (e.key === 'Escape') cerrarPago();
 });
 
 document.getElementById('modalPago').addEventListener('click', e => {
-    if (e.target === e.currentTarget) cerrarPago();
+ if (e.target === e.currentTarget) cerrarPago();
 });
 
 
