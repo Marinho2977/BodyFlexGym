@@ -3138,6 +3138,16 @@ def tienda():
     cursor.execute("SELECT DISTINCT categoria FROM productos WHERE categoria IS NOT NULL AND categoria != '' ORDER BY categoria ASC")
     categorias = [r["categoria"] for r in cursor.fetchall()]
 
+    socios = []
+    if session.get("rol") in ("admin", "empleado"):
+        cursor.execute("""
+            SELECT cui, nombre, apellido
+            FROM usuarios
+            WHERE estado = 'activo' AND id_rol = '03'
+            ORDER BY nombre, apellido
+        """)
+        socios = cursor.fetchall()
+
     conn.close()
 
     return render_template(
@@ -3145,8 +3155,10 @@ def tienda():
         productos=productos,
         categorias=categorias,
         categoria_actual=categoria_filtro,
-        busqueda=busqueda
+        busqueda=busqueda,
+        socios=socios
     )
+
 
 
 if __name__ == "__main__":
