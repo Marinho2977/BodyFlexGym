@@ -33,216 +33,216 @@ app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 def allowed_file(filename):
- return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 def formatear_telefono_gt(telefono):
- if not telefono:
- return None
- num = re.sub(r"\D", "", str(telefono))
- if len(num) == 8:
- return f"502{num}"
- elif len(num) == 11 and num.startswith("502"):
- return num
- return num if num else None
+    if not telefono:
+        return None
+    num = re.sub(r"\D", "", str(telefono))
+    if len(num) == 8:
+        return f"502{num}"
+    elif len(num) == 11 and num.startswith("502"):
+        return num
+    return num if num else None
 
 def link_whatsapp_vencimiento(telefono, nombre, fecha_vencimiento):
- if not telefono or not fecha_vencimiento:
- return "#"
- num_gt = formatear_telefono_gt(telefono)
- if not num_gt:
- return "#"
- venc_str = fecha_vencimiento.strftime('%d/%m/%Y') if hasattr(fecha_vencimiento, 'strftime') else str(fecha_vencimiento)
- msg = f"Hola {nombre}, te recordamos que tu mensualidad en Bodyflex Gym vence el {venc_str}. ¡Renueva a tiempo para seguir entrenando! "
- return f"https://wa.me/{num_gt}?text={quote(msg)}"
+    if not telefono or not fecha_vencimiento:
+        return "#"
+    num_gt = formatear_telefono_gt(telefono)
+    if not num_gt:
+        return "#"
+    venc_str = fecha_vencimiento.strftime('%d/%m/%Y') if hasattr(fecha_vencimiento, 'strftime') else str(fecha_vencimiento)
+    msg = f"Hola {nombre}, te recordamos que tu mensualidad en Bodyflex Gym vence el {venc_str}. ??Renueva a tiempo para seguir entrenando! ????"
+    return f"https://wa.me/{num_gt}?text={quote(msg)}"
 
 def enviar_whatsapp_api(telefono, mensaje):
- api_url = os.environ.get("WHATSAPP_API_URL")
- api_token = os.environ.get("WHATSAPP_TOKEN")
- num_gt = formatear_telefono_gt(telefono)
+    api_url = os.environ.get("WHATSAPP_API_URL")
+    api_token = os.environ.get("WHATSAPP_TOKEN")
+    num_gt = formatear_telefono_gt(telefono)
 
- if not num_gt:
- return False, "Número de teléfono no válido"
+    if not num_gt:
+        return False, "N??mero de tel??fono no v??lido"
 
- if api_url and api_token:
- try:
- payload = {
- "phone": f"+{num_gt}",
- "message": mensaje
- }
- data = json.dumps(payload).encode("utf-8")
- req = urllib.request.Request(
- api_url,
- data=data,
- headers={"Content-Type": "application/json", "Token": api_token},
- method="POST"
- )
- with urllib.request.urlopen(req, timeout=10) as response:
- res_body = response.read().decode("utf-8")
- return True, f"Enviado por Wassenger API: {res_body[:100]}"
- except Exception as e:
- return False, f"Error al llamar API WhatsApp: {str(e)}"
- else:
- return True, f"Aviso listo para WhatsApp +{num_gt}"
+    if api_url and api_token:
+        try:
+            payload = {
+                "phone": f"+{num_gt}",
+                "message": mensaje
+            }
+            data = json.dumps(payload).encode("utf-8")
+            req = urllib.request.Request(
+                api_url,
+                data=data,
+                headers={"Content-Type": "application/json", "Token": api_token},
+                method="POST"
+            )
+            with urllib.request.urlopen(req, timeout=10) as response:
+                res_body = response.read().decode("utf-8")
+                return True, f"Enviado por Wassenger API: {res_body[:100]}"
+        except Exception as e:
+            return False, f"Error al llamar API WhatsApp: {str(e)}"
+    else:
+        return True, f"Aviso listo para WhatsApp +{num_gt}"
 
 def procesar_envio_automatico_whatsapp(dias_anticipacion=7):
- try:
- conn = conectar_db()
- cursor = conn.cursor(dictionary=True)
- hoy = date.today()
- 
- cursor.execute("""
- SELECT u.cui, u.nombre, u.apellido, u.telefono, MAX(p.fecha_vencimiento) AS ultimo_vencimiento
- FROM usuarios u
- LEFT JOIN pagos p ON u.cui = p.cui_usuario
- WHERE u.estado = 'activo' AND u.telefono IS NOT NULL AND u.telefono != ''
- GROUP BY u.cui, u.nombre, u.apellido, u.telefono
- """)
- usuarios_all = cursor.fetchall()
- 
- envios_exitosos = 0
- detalles_envio = []
+    try:
+        conn = conectar_db()
+        cursor = conn.cursor(dictionary=True)
+        hoy = date.today()
+        
+        cursor.execute("""
+            SELECT u.cui, u.nombre, u.apellido, u.telefono, MAX(p.fecha_vencimiento) AS ultimo_vencimiento
+            FROM usuarios u
+            LEFT JOIN pagos p ON u.cui = p.cui_usuario
+            WHERE u.estado = 'activo' AND u.telefono IS NOT NULL AND u.telefono != ''
+            GROUP BY u.cui, u.nombre, u.apellido, u.telefono
+        """)
+        usuarios_all = cursor.fetchall()
+        
+        envios_exitosos = 0
+        detalles_envio = []
 
- for u in usuarios_all:
- if u["ultimo_vencimiento"]:
- dias_restantes = (u["ultimo_vencimiento"] - hoy).days
- if 0 <= dias_restantes <= dias_anticipacion:
- venc_str = u["ultimo_vencimiento"].strftime('%d/%m/%Y')
- mensaje = f"Hola {u['nombre']}, te recordamos que tu mensualidad en Bodyflex Gym vence el {venc_str} (en {dias_restantes} días). ¡Renueva a tiempo para seguir entrenando sin interrupciones! "
- 
- ok, res = enviar_whatsapp_api(u["telefono"], mensaje)
- if ok:
- envios_exitosos += 1
- detalles_envio.append(f"{u['nombre']} {u['apellido']} ({u['telefono']})")
+        for u in usuarios_all:
+            if u["ultimo_vencimiento"]:
+                dias_restantes = (u["ultimo_vencimiento"] - hoy).days
+                if 0 <= dias_restantes <= dias_anticipacion:
+                    venc_str = u["ultimo_vencimiento"].strftime('%d/%m/%Y')
+                    mensaje = f"Hola {u['nombre']}, te recordamos que tu mensualidad en Bodyflex Gym vence el {venc_str} (en {dias_restantes} d??as). ??Renueva a tiempo para seguir entrenando sin interrupciones! ????"
+                    
+                    ok, res = enviar_whatsapp_api(u["telefono"], mensaje)
+                    if ok:
+                        envios_exitosos += 1
+                        detalles_envio.append(f"{u['nombre']} {u['apellido']} ({u['telefono']})")
 
- conn.close()
- return envios_exitosos, detalles_envio
- except Exception as e:
- print(f"[ERROR WHATSAPP AUTO] {e}")
- return 0, []
+        conn.close()
+        return envios_exitosos, detalles_envio
+    except Exception as e:
+        print(f"[ERROR WHATSAPP AUTO] {e}")
+        return 0, []
 
 def procesar_envio_manual_whatsapp():
- """Envía recordatorio a TODOS los socios activos con teléfono y pagos registrados, sin importar cuántos días faltan."""
- try:
- conn = conectar_db()
- cursor = conn.cursor(dictionary=True)
- hoy = date.today()
- 
- cursor.execute("""
- SELECT u.cui, u.nombre, u.apellido, u.telefono, MAX(p.fecha_vencimiento) AS ultimo_vencimiento
- FROM usuarios u
- LEFT JOIN pagos p ON u.cui = p.cui_usuario
- WHERE u.estado = 'activo' AND u.telefono IS NOT NULL AND u.telefono != ''
- GROUP BY u.cui, u.nombre, u.apellido, u.telefono
- """)
- usuarios_all = cursor.fetchall()
- 
- envios_exitosos = 0
- detalles_envio = []
+    """Env??a recordatorio a TODOS los socios activos con tel??fono y pagos registrados, sin importar cu??ntos d??as faltan."""
+    try:
+        conn = conectar_db()
+        cursor = conn.cursor(dictionary=True)
+        hoy = date.today()
+        
+        cursor.execute("""
+            SELECT u.cui, u.nombre, u.apellido, u.telefono, MAX(p.fecha_vencimiento) AS ultimo_vencimiento
+            FROM usuarios u
+            LEFT JOIN pagos p ON u.cui = p.cui_usuario
+            WHERE u.estado = 'activo' AND u.telefono IS NOT NULL AND u.telefono != ''
+            GROUP BY u.cui, u.nombre, u.apellido, u.telefono
+        """)
+        usuarios_all = cursor.fetchall()
+        
+        envios_exitosos = 0
+        detalles_envio = []
 
- for u in usuarios_all:
- if u["ultimo_vencimiento"]:
- dias_restantes = (u["ultimo_vencimiento"] - hoy).days
- venc_str = u["ultimo_vencimiento"].strftime('%d/%m/%Y')
- if dias_restantes < 0:
- mensaje = f"Hola {u['nombre']}, tu mensualidad en Bodyflex Gym venció el {venc_str} (hace {abs(dias_restantes)} días). ¡Acércate a renovar para seguir entrenando! "
- elif dias_restantes == 0:
- mensaje = f"Hola {u['nombre']}, tu mensualidad en Bodyflex Gym vence HOY {venc_str}. ¡Renueva hoy para no perder tu acceso! "
- else:
- mensaje = f"Hola {u['nombre']}, te recordamos que tu mensualidad en Bodyflex Gym vence el {venc_str} (en {dias_restantes} días). ¡Renueva a tiempo para seguir entrenando sin interrupciones! "
- 
- ok, res = enviar_whatsapp_api(u["telefono"], mensaje)
- if ok:
- envios_exitosos += 1
- detalles_envio.append(f"{u['nombre']} {u['apellido']} ({u['telefono']}) — {'vencido' if dias_restantes < 0 else f'{dias_restantes}d'}")
+        for u in usuarios_all:
+            if u["ultimo_vencimiento"]:
+                dias_restantes = (u["ultimo_vencimiento"] - hoy).days
+                venc_str = u["ultimo_vencimiento"].strftime('%d/%m/%Y')
+                if dias_restantes < 0:
+                    mensaje = f"Hola {u['nombre']}, tu mensualidad en Bodyflex Gym venci?? el {venc_str} (hace {abs(dias_restantes)} d??as). ??Ac??rcate a renovar para seguir entrenando! ????"
+                elif dias_restantes == 0:
+                    mensaje = f"Hola {u['nombre']}, tu mensualidad en Bodyflex Gym vence HOY {venc_str}. ??Renueva hoy para no perder tu acceso! ????"
+                else:
+                    mensaje = f"Hola {u['nombre']}, te recordamos que tu mensualidad en Bodyflex Gym vence el {venc_str} (en {dias_restantes} d??as). ??Renueva a tiempo para seguir entrenando sin interrupciones! ????"
+                
+                ok, res = enviar_whatsapp_api(u["telefono"], mensaje)
+                if ok:
+                    envios_exitosos += 1
+                    detalles_envio.append(f"{u['nombre']} {u['apellido']} ({u['telefono']}) ??? {'vencido' if dias_restantes < 0 else f'{dias_restantes}d'}")
 
- conn.close()
- return envios_exitosos, detalles_envio
- except Exception as e:
- print(f"[ERROR WHATSAPP MANUAL] {e}")
- return 0, []
+        conn.close()
+        return envios_exitosos, detalles_envio
+    except Exception as e:
+        print(f"[ERROR WHATSAPP MANUAL] {e}")
+        return 0, []
 
 def iniciar_planificador_whatsapp():
- def ejecutor_loop():
- time.sleep(15)
- while True:
- try:
- procesar_envio_automatico_whatsapp(dias_anticipacion=7)
- except Exception as e:
- print(f"[ERROR LOOP WHATSAPP] {e}")
- time.sleep(12 * 3600)
+    def ejecutor_loop():
+        time.sleep(15)
+        while True:
+            try:
+                procesar_envio_automatico_whatsapp(dias_anticipacion=7)
+            except Exception as e:
+                print(f"[ERROR LOOP WHATSAPP] {e}")
+            time.sleep(12 * 3600)
 
- thread = threading.Thread(target=ejecutor_loop, daemon=True)
- thread.start()
+    thread = threading.Thread(target=ejecutor_loop, daemon=True)
+    thread.start()
 
 iniciar_planificador_whatsapp()
 
 @app.route("/admin/whatsapp/enviar_automatico", methods=["POST", "GET"])
 def ejecutar_whatsapp_manual():
- if request.method == "POST" and session.get("rol") not in ("admin", "empleado"):
- return redirect("/login")
- 
- cant, detalles = procesar_envio_manual_whatsapp()
- if request.method == "POST":
- flash(f" Avisos de WhatsApp enviados a TODOS los socios con teléfono registrado. Se procesaron {cant} socio(s).", "success")
- return redirect(request.referrer or "/admin")
- else:
- return {"status": "ok", "procesados": cant, "socios": detalles}
+    if request.method == "POST" and session.get("rol") not in ("admin", "empleado"):
+        return redirect("/login")
+    
+    cant, detalles = procesar_envio_manual_whatsapp()
+    if request.method == "POST":
+        flash(f"??? Avisos de WhatsApp enviados a TODOS los socios con tel??fono registrado. Se procesaron {cant} socio(s).", "success")
+        return redirect(request.referrer or "/admin")
+    else:
+        return {"status": "ok", "procesados": cant, "socios": detalles}
 
 @app.route("/cron/recordatorios_whatsapp", methods=["POST", "GET"])
 def ejecutar_whatsapp_cron():
- cant, detalles = procesar_envio_automatico_whatsapp(dias_anticipacion=7)
- return {"status": "ok", "procesados": cant, "socios": detalles}
+    cant, detalles = procesar_envio_automatico_whatsapp(dias_anticipacion=7)
+    return {"status": "ok", "procesados": cant, "socios": detalles}
 
 @app.route("/admin/whatsapp/enviar_individual/<cui>", methods=["POST"])
 def ejecutar_whatsapp_individual(cui):
- if session.get("rol") not in ("admin", "empleado"):
- return jsonify({"ok": False, "error": "No autorizado"}), 403
- 
- try:
- conn = conectar_db()
- cursor = conn.cursor(dictionary=True)
- cursor.execute("""
- SELECT u.cui, u.nombre, u.apellido, u.telefono, MAX(p.fecha_vencimiento) AS ultimo_vencimiento
- FROM usuarios u
- LEFT JOIN pagos p ON u.cui = p.cui_usuario
- WHERE u.cui = %s AND u.telefono IS NOT NULL AND u.telefono != ''
- GROUP BY u.cui, u.nombre, u.apellido, u.telefono
- """, (cui,))
- u = cursor.fetchone()
- conn.close()
+    if session.get("rol") not in ("admin", "empleado"):
+        return jsonify({"ok": False, "error": "No autorizado"}), 403
+    
+    try:
+        conn = conectar_db()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT u.cui, u.nombre, u.apellido, u.telefono, MAX(p.fecha_vencimiento) AS ultimo_vencimiento
+            FROM usuarios u
+            LEFT JOIN pagos p ON u.cui = p.cui_usuario
+            WHERE u.cui = %s AND u.telefono IS NOT NULL AND u.telefono != ''
+            GROUP BY u.cui, u.nombre, u.apellido, u.telefono
+        """, (cui,))
+        u = cursor.fetchone()
+        conn.close()
 
- if not u or not u.get("telefono"):
- return jsonify({"ok": False, "error": "Socio sin teléfono registrado"}), 400
- 
- hoy = date.today()
- if u["ultimo_vencimiento"]:
- dias_restantes = (u["ultimo_vencimiento"] - hoy).days
- venc_str = u["ultimo_vencimiento"].strftime('%d/%m/%Y')
- if dias_restantes < 0:
- mensaje = f"Hola {u['nombre']}, tu mensualidad en Bodyflex Gym venció el {venc_str} (hace {abs(dias_restantes)} días). ¡Acércate a renovar para seguir entrenando! "
- elif dias_restantes == 0:
- mensaje = f"Hola {u['nombre']}, tu mensualidad en Bodyflex Gym vence HOY {venc_str}. ¡Renueva hoy para no perder tu acceso! "
- else:
- mensaje = f"Hola {u['nombre']}, te recordamos que tu mensualidad en Bodyflex Gym vence el {venc_str} (en {dias_restantes} días). ¡Renueva a tiempo para seguir entrenando sin interrupciones! "
- else:
- mensaje = f"Hola {u['nombre']}, te saludamos de Bodyflex Gym. ¡Esperamos verte pronto en tus entrenamientos! "
- 
- ok, res = enviar_whatsapp_api(u["telefono"], mensaje)
- if ok:
- return jsonify({"ok": True, "mensaje": f"Mensaje de WhatsApp enviado a {u['nombre']} exitosamente."})
- else:
- return jsonify({"ok": False, "error": res}), 400
- except Exception as e:
- return jsonify({"ok": False, "error": str(e)}), 500
+        if not u or not u.get("telefono"):
+            return jsonify({"ok": False, "error": "Socio sin tel??fono registrado"}), 400
+        
+        hoy = date.today()
+        if u["ultimo_vencimiento"]:
+            dias_restantes = (u["ultimo_vencimiento"] - hoy).days
+            venc_str = u["ultimo_vencimiento"].strftime('%d/%m/%Y')
+            if dias_restantes < 0:
+                mensaje = f"Hola {u['nombre']}, tu mensualidad en Bodyflex Gym venci?? el {venc_str} (hace {abs(dias_restantes)} d??as). ??Ac??rcate a renovar para seguir entrenando! ????"
+            elif dias_restantes == 0:
+                mensaje = f"Hola {u['nombre']}, tu mensualidad en Bodyflex Gym vence HOY {venc_str}. ??Renueva hoy para no perder tu acceso! ????"
+            else:
+                mensaje = f"Hola {u['nombre']}, te recordamos que tu mensualidad en Bodyflex Gym vence el {venc_str} (en {dias_restantes} d??as). ??Renueva a tiempo para seguir entrenando sin interrupciones! ????"
+        else:
+            mensaje = f"Hola {u['nombre']}, te saludamos de Bodyflex Gym. ??Esperamos verte pronto en tus entrenamientos! ????"
+        
+        ok, res = enviar_whatsapp_api(u["telefono"], mensaje)
+        if ok:
+            return jsonify({"ok": True, "mensaje": f"Mensaje de WhatsApp enviado a {u['nombre']} exitosamente."})
+        else:
+            return jsonify({"ok": False, "error": res}), 400
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
 
-# 
+# ???????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
 # CSRF PROTECTION
-# 
+# ???????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
 
 def generar_csrf_token():
- if "_csrf_token" not in session:
- session["_csrf_token"] = secrets.token_hex(32)
- return session["_csrf_token"]
+    if "_csrf_token" not in session:
+        session["_csrf_token"] = secrets.token_hex(32)
+    return session["_csrf_token"]
 
 app.jinja_env.globals["csrf_token"] = generar_csrf_token
 app.jinja_env.globals["link_whatsapp_vencimiento"] = link_whatsapp_vencimiento
@@ -250,1458 +250,1458 @@ app.jinja_env.globals["formatear_telefono_gt"] = formatear_telefono_gt
 
 @app.before_request
 def verificar_csrf():
- if request.method == "POST":
- token_sesion = session.get("_csrf_token")
- token_form = request.form.get("csrf_token")
- if not token_sesion or token_sesion != token_form:
- flash("Sesión inválida. Intenta de nuevo.", "error")
- return redirect(request.referrer or "/login")
+    if request.method == "POST":
+        token_sesion = session.get("_csrf_token")
+        token_form   = request.form.get("csrf_token")
+        if not token_sesion or token_sesion != token_form:
+            flash("Sesi??n inv??lida. Intenta de nuevo.", "error")
+            return redirect(request.referrer or "/login")
 
 @app.after_request
 def sin_cache(response):
- response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
- response.headers["Pragma"] = "no-cache"
- response.headers["Expires"] = "0"
- return response
+    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
 
-# --- CONFIGURACIÓN DE BASE DE DATOS ---
+# --- CONFIGURACI??N DE BASE DE DATOS ---
 def conectar_db():
- return mysql.connector.connect(
- host=os.environ.get('MYSQLHOST'),
- user=os.environ.get('MYSQLUSER'),
- password=os.environ.get('MYSQLPASSWORD'),
- database=os.environ.get('MYSQLDATABASE'),
- port=int(os.environ.get('MYSQLPORT', 3306))
- )
+    return mysql.connector.connect(
+        host=os.environ.get('MYSQLHOST'),
+        user=os.environ.get('MYSQLUSER'),
+        password=os.environ.get('MYSQLPASSWORD'),
+        database=os.environ.get('MYSQLDATABASE'),
+        port=int(os.environ.get('MYSQLPORT', 3306))
+    )
 
 def obtener_precio_plan(meses_buscados, default_precio):
- try:
- conn = mysql.connector.connect(
- host=os.environ.get('MYSQLHOST'),
- user=os.environ.get('MYSQLUSER'),
- password=os.environ.get('MYSQLPASSWORD'),
- database=os.environ.get('MYSQLDATABASE'),
- port=int(os.environ.get('MYSQLPORT', 3306))
- )
- cursor = conn.cursor(dictionary=True)
- cursor.execute("SELECT precio FROM planes_membresia WHERE duracion_meses=%s AND estado='activo' LIMIT 1", (meses_buscados,))
- plan = cursor.fetchone()
- conn.close()
- if plan:
- return float(plan["precio"])
- except:
- pass
- return default_precio
+    try:
+        conn = mysql.connector.connect(
+            host=os.environ.get('MYSQLHOST'),
+            user=os.environ.get('MYSQLUSER'),
+            password=os.environ.get('MYSQLPASSWORD'),
+            database=os.environ.get('MYSQLDATABASE'),
+            port=int(os.environ.get('MYSQLPORT', 3306))
+        )
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT precio FROM planes_membresia WHERE duracion_meses=%s AND estado='activo' LIMIT 1", (meses_buscados,))
+        plan = cursor.fetchone()
+        conn.close()
+        if plan:
+            return float(plan["precio"])
+    except:
+        pass
+    return default_precio
 
 def obtener_precio_mensual():
- return obtener_precio_plan(1, 225.0)
+    return obtener_precio_plan(1, 225.0)
 
 MESES_NOMBRES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
- "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
+                 "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
 MESES_POR_NOMBRE = {nombre.lower(): i + 1 for i, nombre in enumerate(MESES_NOMBRES)}
 
 def calcular_monto_pago(meses):
- cant_6 = meses // 6
- resto_6 = meses % 6
- cant_3 = resto_6 // 3
- resto_3 = resto_6 % 3
- 
- precio_1 = obtener_precio_plan(1, 225.0)
- precio_3 = obtener_precio_plan(3, 600.0)
- precio_6 = obtener_precio_plan(6, 1100.0)
- 
- return float((cant_6 * precio_6) + (cant_3 * precio_3) + (resto_3 * precio_1))
+    cant_6 = meses // 6
+    resto_6 = meses % 6
+    cant_3 = resto_6 // 3
+    resto_3 = resto_6 % 3
+    
+    precio_1 = obtener_precio_plan(1, 225.0)
+    precio_3 = obtener_precio_plan(3, 600.0)
+    precio_6 = obtener_precio_plan(6, 1100.0)
+    
+    return float((cant_6 * precio_6) + (cant_3 * precio_3) + (resto_3 * precio_1))
 
 def calcular_fecha_vencimiento_dia_3(anio, mes):
- siguiente_anio = anio + (mes // 12)
- siguiente_mes = (mes % 12) + 1
- return date(siguiente_anio, siguiente_mes, 3)
+    siguiente_anio = anio + (mes // 12)
+    siguiente_mes = (mes % 12) + 1
+    return date(siguiente_anio, siguiente_mes, 3)
 
 
-# --- CONFIGURACIÓN DE CORREO ---
-GMAIL_USER = os.environ.get("GMAIL_USER")
+# --- CONFIGURACI??N DE CORREO ---
+GMAIL_USER     = os.environ.get("GMAIL_USER")
 GMAIL_PASSWORD = os.environ.get("GMAIL_PASSWORD")
 
-# 
+# ???????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
 # HELPERS
-# 
+# ???????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
 
 def registrar_log(tipo, detalle, afectado_id=None, afectado_nombre=None):
- actor_cui = session.get("usuario_id")
- actor_nombre = session.get("nombre", "Sistema")
- actor_rol = session.get("rol", "—")
- if actor_rol not in ("admin", "empleado") and actor_nombre != "Sistema":
- return
- try:
+    actor_cui    = session.get("usuario_id")
+    actor_nombre = session.get("nombre", "Sistema")
+    actor_rol    = session.get("rol", "???")
+    if actor_rol not in ("admin", "empleado") and actor_nombre != "Sistema":
+        return
+    try:
 
- conn = conectar_db()
- cursor = conn.cursor()
- cursor.execute("""
- INSERT INTO auditoria (tipo, actor_id, actor_nombre, actor_rol,
- afectado_id, afectado_nombre, detalle)
- VALUES (%s, %s, %s, %s, %s, %s, %s)
- """, (tipo, actor_cui, actor_nombre, actor_rol,
- afectado_id, afectado_nombre, detalle))
- conn.commit()
- conn.close()
- except Exception as e:
- print(f"[LOG ERROR] {e}")
+        conn   = conectar_db()
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO auditoria (tipo, actor_id, actor_nombre, actor_rol,
+                                   afectado_id, afectado_nombre, detalle)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+        """, (tipo, actor_cui, actor_nombre, actor_rol,
+               afectado_id, afectado_nombre, detalle))
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"[LOG ERROR] {e}")
 
 
 def validar_contrasena(password):
- """
- Valida que la contraseña cumpla con los requisitos mínimos de seguridad:
- - Al menos 8 caracteres
- - Al menos una mayúscula
- - Al menos una minúscula
- - Al menos un número
- - Al menos un carácter especial (ej: @, #, $, !, etc.)
- """
- if len(password) < 8:
- return False, "La contraseña debe tener al menos 8 caracteres"
- if not re.search(r"[A-Z]", password):
- return False, "La contraseña debe tener al menos una mayúscula"
- if not re.search(r"[a-z]", password):
- return False, "La contraseña debe tener al menos una minúscula"
- if not re.search(r"[0-9]", password):
- return False, "La contraseña debe tener al menos un número"
- if not re.search(r"[^A-Za-z0-9]", password):
- return False, "La contraseña debe tener al menos un carácter especial (ej: @, #, $, !)"
- return True, None
+    """
+    Valida que la contrase??a cumpla con los requisitos m??nimos de seguridad:
+    - Al menos 8 caracteres
+    - Al menos una may??scula
+    - Al menos una min??scula
+    - Al menos un n??mero
+    - Al menos un car??cter especial (ej: @, #, $, !, etc.)
+    """
+    if len(password) < 8:
+        return False, "La contrase??a debe tener al menos 8 caracteres"
+    if not re.search(r"[A-Z]", password):
+        return False, "La contrase??a debe tener al menos una may??scula"
+    if not re.search(r"[a-z]", password):
+        return False, "La contrase??a debe tener al menos una min??scula"
+    if not re.search(r"[0-9]", password):
+        return False, "La contrase??a debe tener al menos un n??mero"
+    if not re.search(r"[^A-Za-z0-9]", password):
+        return False, "La contrase??a debe tener al menos un car??cter especial (ej: @, #, $, !)"
+    return True, None
 
 
 def _sumar_meses(anio, mes, cantidad):
- total = (anio * 12) + (mes - 1) + cantidad
- return total // 12, (total % 12) + 1
+    total = (anio * 12) + (mes - 1) + cantidad
+    return total // 12, (total % 12) + 1
 
 
 def periodos_desde_mes_pagado(descripcion):
- if not descripcion:
- return set()
+    if not descripcion:
+        return set()
 
- texto = re.sub(r"\s+", " ", str(descripcion)).strip()
- meses_regex = "|".join(MESES_NOMBRES)
- rango = re.search(
- rf"\b({meses_regex})\s+(\d{{4}})\s*(?:-|\u2013|\u2014|a)\s*({meses_regex})\s+(\d{{4}})\b",
- texto,
- flags=re.IGNORECASE
- )
- if rango:
- mes_inicio = MESES_POR_NOMBRE[rango.group(1).lower()]
- anio_inicio = int(rango.group(2))
- mes_fin = MESES_POR_NOMBRE[rango.group(3).lower()]
- anio_fin = int(rango.group(4))
- periodos = set()
- total_inicio = anio_inicio * 12 + mes_inicio
- total_fin = anio_fin * 12 + mes_fin
- if total_inicio <= total_fin and total_fin - total_inicio < 120:
- for offset in range(total_fin - total_inicio + 1):
- periodos.add(_sumar_meses(anio_inicio, mes_inicio, offset))
- return periodos
+    texto = re.sub(r"\s+", " ", str(descripcion)).strip()
+    meses_regex = "|".join(MESES_NOMBRES)
+    rango = re.search(
+        rf"\b({meses_regex})\s+(\d{{4}})\s*(?:-|\u2013|\u2014|a)\s*({meses_regex})\s+(\d{{4}})\b",
+        texto,
+        flags=re.IGNORECASE
+    )
+    if rango:
+        mes_inicio = MESES_POR_NOMBRE[rango.group(1).lower()]
+        anio_inicio = int(rango.group(2))
+        mes_fin = MESES_POR_NOMBRE[rango.group(3).lower()]
+        anio_fin = int(rango.group(4))
+        periodos = set()
+        total_inicio = anio_inicio * 12 + mes_inicio
+        total_fin = anio_fin * 12 + mes_fin
+        if total_inicio <= total_fin and total_fin - total_inicio < 120:
+            for offset in range(total_fin - total_inicio + 1):
+                periodos.add(_sumar_meses(anio_inicio, mes_inicio, offset))
+        return periodos
 
- anios = re.findall(r"\b(\d{4})\b", texto)
- if not anios:
- return set()
+    anios = re.findall(r"\b(\d{4})\b", texto)
+    if not anios:
+        return set()
 
- anio = int(anios[-1])
- meses = re.findall(rf"\b({meses_regex})\b", texto, flags=re.IGNORECASE)
- return {(anio, MESES_POR_NOMBRE[mes.lower()]) for mes in meses}
+    anio = int(anios[-1])
+    meses = re.findall(rf"\b({meses_regex})\b", texto, flags=re.IGNORECASE)
+    return {(anio, MESES_POR_NOMBRE[mes.lower()]) for mes in meses}
 
 
 def formatear_periodos(periodos):
- ordenados = sorted(periodos)
- return ", ".join(f"{MESES_NOMBRES[mes - 1]} {anio}" for anio, mes in ordenados)
+    ordenados = sorted(periodos)
+    return ", ".join(f"{MESES_NOMBRES[mes - 1]} {anio}" for anio, mes in ordenados)
 
 
 def cargos_pendientes_por_usuario(cursor, cuis):
- resultado = {cui: [] for cui in cuis}
- if not cuis:
- return resultado
- 
- placeholders = ",".join(["%s"] * len(cuis))
- cursor.execute(f"SELECT id_cargo, cui_usuario, descripcion, monto, fecha_emision FROM cargos WHERE estado='pendiente' AND cui_usuario IN ({placeholders}) ORDER BY fecha_emision ASC", tuple(cuis))
- for r in cursor.fetchall():
- resultado[r['cui_usuario']].append(r)
- return resultado
+    resultado = {cui: [] for cui in cuis}
+    if not cuis:
+        return resultado
+    
+    placeholders = ",".join(["%s"] * len(cuis))
+    cursor.execute(f"SELECT id_cargo, cui_usuario, descripcion, monto, fecha_emision FROM cargos WHERE estado='pendiente' AND cui_usuario IN ({placeholders}) ORDER BY fecha_emision ASC", tuple(cuis))
+    for r in cursor.fetchall():
+        resultado[r['cui_usuario']].append(r)
+    return resultado
 
 
 def periodos_pagados_por_usuario(cursor, cuis):
- if not cuis:
- return {}
+    if not cuis:
+        return {}
 
- placeholders = ", ".join(["%s"] * len(cuis))
- cursor.execute(f"""
- SELECT cui_usuario, descripcion
- FROM pagos
- WHERE cui_usuario IN ({placeholders})
- """, tuple(cuis))
+    placeholders = ", ".join(["%s"] * len(cuis))
+    cursor.execute(f"""
+        SELECT cui_usuario, descripcion
+        FROM pagos
+        WHERE cui_usuario IN ({placeholders})
+    """, tuple(cuis))
 
- periodos = {str(cui): [] for cui in cuis}
- for pago in cursor.fetchall():
- cui = str(pago["cui_usuario"])
- for anio, mes in sorted(periodos_desde_mes_pagado(pago.get("descripcion"))):
- clave = f"{anio}-{mes}"
- if clave not in periodos.setdefault(cui, []):
- periodos[cui].append(clave)
- return periodos
+    periodos = {str(cui): [] for cui in cuis}
+    for pago in cursor.fetchall():
+        cui = str(pago["cui_usuario"])
+        for anio, mes in sorted(periodos_desde_mes_pagado(pago.get("descripcion"))):
+            clave = f"{anio}-{mes}"
+            if clave not in periodos.setdefault(cui, []):
+                periodos[cui].append(clave)
+    return periodos
 
 
 def enviar_correo_reset(destino, token, nombre):
- gmail_user = GMAIL_USER
- gmail_pwd = GMAIL_PASSWORD.replace(" ", "") if GMAIL_PASSWORD else None
+    gmail_user = GMAIL_USER
+    gmail_pwd  = GMAIL_PASSWORD.replace(" ", "") if GMAIL_PASSWORD else None
 
- if not gmail_user or not gmail_pwd:
- raise ValueError("Variables de entorno GMAIL_USER o GMAIL_PASSWORD no configuradas en Railway.")
+    if not gmail_user or not gmail_pwd:
+        raise ValueError("Variables de entorno GMAIL_USER o GMAIL_PASSWORD no configuradas en Railway.")
 
- base_url = os.environ.get("BASE_URL", "http://localhost:5000")
- link = f"{base_url}/reset_password/{token}"
- asunto = "Recuperación de contraseña — Bodyflex Gym"
+    base_url = os.environ.get("BASE_URL", "http://localhost:5000")
+    link     = f"{base_url}/reset_password/{token}"
+    asunto   = "Recuperaci??n de contrase??a ??? Bodyflex Gym"
 
- html = f"""
- <!DOCTYPE html>
- <html><head><meta charset="UTF-8"></head>
- <body style="margin:0;padding:0;background:#0f0f0f;font-family:'Helvetica Neue',Arial,sans-serif;">
- <table width="100%" cellpadding="0" cellspacing="0" style="background:#0f0f0f;padding:40px 20px;">
- <tr><td align="center">
- <table width="500" cellpadding="0" cellspacing="0"
- style="background:#1a1a1a;border-radius:16px;border:1px solid #2e2e2e;overflow:hidden;">
- <tr>
- <td style="background:#141414;padding:28px 36px;border-bottom:1px solid #2e2e2e;">
- <span style="font-weight:900;font-size:22px;color:#f5f5f5;letter-spacing:-0.5px;">
- BODYFLEX<span style="color:#FF6B00;">GYM</span>
- </span>
- </td>
- </tr>
- <tr>
- <td style="padding:36px;">
- <div style="font-size:36px;margin-bottom:16px;"></div>
- <h1 style="color:#f5f5f5;font-size:22px;font-weight:700;margin:0 0 12px;">
- Recupera tu contraseña
- </h1>
- <p style="color:#9ca3af;font-size:14px;line-height:1.6;margin:0 0 28px;">
- Hola <strong style="color:#f5f5f5;">{nombre}</strong>, recibimos una solicitud para
- restablecer la contraseña de tu cuenta en Bodyflex Gym.
- </p>
- <table cellpadding="0" cellspacing="0" style="margin-bottom:28px;">
- <tr>
- <td style="background:#FF6B00;border-radius:10px;">
- <a href="{link}"
- style="display:inline-block;padding:14px 32px;color:#fff;text-decoration:none;
- font-weight:700;font-size:15px;">
- Restablecer contraseña →
- </a>
- </td>
- </tr>
- </table>
- <div style="background:#222;border:1px solid #2e2e2e;border-radius:10px;padding:16px;margin-bottom:24px;">
- <p style="color:#9ca3af;font-size:13px;margin:0;">
- Este enlace expira en <strong style="color:#FF6B00;">1 hora</strong>.
- Si no solicitaste este cambio, ignora este correo.
- </p>
- </div>
- <p style="color:#555;font-size:11px;margin:0;word-break:break-all;">
- Si el botón no funciona copia este enlace:<br>
- <span style="color:#FF6B00;">{link}</span>
- </p>
- </td>
- </tr>
- <tr>
- <td style="background:#141414;padding:20px 36px;border-top:1px solid #2e2e2e;">
- <p style="color:#555;font-size:11px;margin:0;text-align:center;">
- Bodyflex Gym — Este correo fue generado automáticamente.
- </p>
- </td>
- </tr>
- </table>
- </td></tr>
- </table>
- </body></html>
- """
+    html = f"""
+    <!DOCTYPE html>
+    <html><head><meta charset="UTF-8"></head>
+    <body style="margin:0;padding:0;background:#0f0f0f;font-family:'Helvetica Neue',Arial,sans-serif;">
+      <table width="100%" cellpadding="0" cellspacing="0" style="background:#0f0f0f;padding:40px 20px;">
+        <tr><td align="center">
+          <table width="500" cellpadding="0" cellspacing="0"
+                 style="background:#1a1a1a;border-radius:16px;border:1px solid #2e2e2e;overflow:hidden;">
+            <tr>
+              <td style="background:#141414;padding:28px 36px;border-bottom:1px solid #2e2e2e;">
+                <span style="font-weight:900;font-size:22px;color:#f5f5f5;letter-spacing:-0.5px;">
+                  BODYFLEX<span style="color:#FF6B00;">GYM</span>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:36px;">
+                <div style="font-size:36px;margin-bottom:16px;">????</div>
+                <h1 style="color:#f5f5f5;font-size:22px;font-weight:700;margin:0 0 12px;">
+                  Recupera tu contrase??a
+                </h1>
+                <p style="color:#9ca3af;font-size:14px;line-height:1.6;margin:0 0 28px;">
+                  Hola <strong style="color:#f5f5f5;">{nombre}</strong>, recibimos una solicitud para
+                  restablecer la contrase??a de tu cuenta en Bodyflex Gym.
+                </p>
+                <table cellpadding="0" cellspacing="0" style="margin-bottom:28px;">
+                  <tr>
+                    <td style="background:#FF6B00;border-radius:10px;">
+                      <a href="{link}"
+                         style="display:inline-block;padding:14px 32px;color:#fff;text-decoration:none;
+                                font-weight:700;font-size:15px;">
+                        Restablecer contrase??a ???
+                      </a>
+                    </td>
+                  </tr>
+                </table>
+                <div style="background:#222;border:1px solid #2e2e2e;border-radius:10px;padding:16px;margin-bottom:24px;">
+                  <p style="color:#9ca3af;font-size:13px;margin:0;">
+                    ??? Este enlace expira en <strong style="color:#FF6B00;">1 hora</strong>.
+                    Si no solicitaste este cambio, ignora este correo.
+                  </p>
+                </div>
+                <p style="color:#555;font-size:11px;margin:0;word-break:break-all;">
+                  Si el bot??n no funciona copia este enlace:<br>
+                  <span style="color:#FF6B00;">{link}</span>
+                </p>
+              </td>
+            </tr>
+            <tr>
+              <td style="background:#141414;padding:20px 36px;border-top:1px solid #2e2e2e;">
+                <p style="color:#555;font-size:11px;margin:0;text-align:center;">
+                  Bodyflex Gym ??? Este correo fue generado autom??ticamente.
+                </p>
+              </td>
+            </tr>
+          </table>
+        </td></tr>
+      </table>
+    </body></html>
+    """
 
- texto = f"Hola {nombre},\n\nRestablecer contraseña:\n{link}\n\nExpira en 1 hora.\n\n— Bodyflex Gym"
+    texto = f"Hola {nombre},\n\nRestablecer contrase??a:\n{link}\n\nExpira en 1 hora.\n\n??? Bodyflex Gym"
 
- msg = MIMEMultipart("alternative")
- msg["Subject"] = asunto
- msg["From"] = f"Bodyflex Gym <{gmail_user}>"
- msg["To"] = destino
- msg.attach(MIMEText(texto, "plain"))
- msg.attach(MIMEText(html, "html"))
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = asunto
+    msg["From"]    = f"Bodyflex Gym <{gmail_user}>"
+    msg["To"]      = destino
+    msg.attach(MIMEText(texto, "plain"))
+    msg.attach(MIMEText(html, "html"))
 
- contexto_ssl = ssl.create_default_context()
- with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=contexto_ssl) as server:
- server.login(gmail_user, gmail_pwd)
- server.sendmail(gmail_user, destino, msg.as_string())
+    contexto_ssl = ssl.create_default_context()
+    with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=contexto_ssl) as server:
+        server.login(gmail_user, gmail_pwd)
+        server.sendmail(gmail_user, destino, msg.as_string())
 
 
-# 
+# ???????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
 # REGISTRO
-# 
+# ???????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
 
 @app.route("/registrar", methods=["POST"])
 def registrar():
- nombre = request.form.get("nombre", "").strip()
- apellido = request.form.get("apellido", "").strip()
- email_raw = request.form.get("correo", "").strip()
- password = request.form.get("password", "").strip()
- numero_doc = request.form.get("numero_doc", "").strip()
- tipo_doc = request.form.get("tipo_doc", "CUI").strip()
- telefono = request.form.get("telefono", "").strip()
+    nombre     = request.form.get("nombre",     "").strip()
+    apellido   = request.form.get("apellido",   "").strip()
+    email_raw  = request.form.get("correo",     "").strip()
+    password   = request.form.get("password",   "").strip()
+    numero_doc = request.form.get("numero_doc", "").strip()
+    tipo_doc   = request.form.get("tipo_doc",   "CUI").strip()
+    telefono   = request.form.get("telefono",   "").strip()
 
- # El correo es OPCIONAL — si viene vacío se guarda como NULL
- email = email_raw if email_raw else None
+    # El correo es OPCIONAL ??? si viene vac??o se guarda como NULL
+    email = email_raw if email_raw else None
 
- if not nombre or not apellido or not password or not numero_doc or not telefono:
- flash("Nombre, apellido, documento, teléfono y contraseña son obligatorios", "error")
- return redirect("/registro")
+    if not nombre or not apellido or not password or not numero_doc or not telefono:
+        flash("Nombre, apellido, documento, tel??fono y contrase??a son obligatorios", "error")
+        return redirect("/registro")
 
- # Validar email solo si lo proporcionaron
- if email and "@" not in email:
- flash("Correo inválido", "error")
- return redirect("/registro")
+    # Validar email solo si lo proporcionaron
+    if email and "@" not in email:
+        flash("Correo inv??lido", "error")
+        return redirect("/registro")
 
- if not numero_doc.isdigit() or len(numero_doc) != 13:
- flash("El CUI/DPI debe tener exactamente 13 dígitos", "error")
- return redirect("/registro")
+    if not numero_doc.isdigit() or len(numero_doc) != 13:
+        flash("El CUI/DPI debe tener exactamente 13 d??gitos", "error")
+        return redirect("/registro")
 
- if not telefono.isdigit() or len(telefono) != 8:
- flash("El número de teléfono debe tener exactamente 8 dígitos", "error")
- return redirect("/registro")
+    if not telefono.isdigit() or len(telefono) != 8:
+        flash("El n??mero de tel??fono debe tener exactamente 8 d??gitos", "error")
+        return redirect("/registro")
 
- if tipo_doc not in ("CUI", "DPI"):
- tipo_doc = "CUI"
+    if tipo_doc not in ("CUI", "DPI"):
+        tipo_doc = "CUI"
 
- es_valida, msg_error = validar_contrasena(password)
- if not es_valida:
- flash(msg_error, "error")
- return redirect("/registro")
+    es_valida, msg_error = validar_contrasena(password)
+    if not es_valida:
+        flash(msg_error, "error")
+        return redirect("/registro")
 
- conn = conectar_db()
- cursor = conn.cursor()
+    conn   = conectar_db()
+    cursor = conn.cursor()
 
- # Verificar email duplicado solo si se proporcionó
- if email:
- cursor.execute("SELECT cui FROM usuarios WHERE email=%s", (email,))
- if cursor.fetchone():
- conn.close()
- flash("Ese correo ya está registrado", "error")
- return redirect("/registro")
+    # Verificar email duplicado solo si se proporcion??
+    if email:
+        cursor.execute("SELECT cui FROM usuarios WHERE email=%s", (email,))
+        if cursor.fetchone():
+            conn.close()
+            flash("Ese correo ya est?? registrado", "error")
+            return redirect("/registro")
 
- # Verificar CUI duplicado
- cursor.execute("SELECT cui FROM usuarios WHERE cui=%s", (int(numero_doc),))
- if cursor.fetchone():
- conn.close()
- flash("Ese CUI/DPI ya está registrado", "error")
- return redirect("/registro")
+    # Verificar CUI duplicado
+    cursor.execute("SELECT cui FROM usuarios WHERE cui=%s", (int(numero_doc),))
+    if cursor.fetchone():
+        conn.close()
+        flash("Ese CUI/DPI ya est?? registrado", "error")
+        return redirect("/registro")
 
- password_hash = generate_password_hash(password)
- cursor.execute("""
- INSERT INTO usuarios (cui, tipo_doc, nombre, apellido, email, password, estado, telefono)
- VALUES (%s, %s, %s, %s, %s, %s, 'activo', %s)
- """, (int(numero_doc), tipo_doc, nombre, apellido, email, password_hash, telefono))
- 
- cursor.execute("""
- INSERT INTO perfiles (cui_usuario)
- VALUES (%s)
- """, (int(numero_doc),))
- 
- conn.commit()
- conn.close()
+    password_hash = generate_password_hash(password)
+    cursor.execute("""
+        INSERT INTO usuarios (cui, tipo_doc, nombre, apellido, email, password, estado, telefono)
+        VALUES (%s, %s, %s, %s, %s, %s, 'activo', %s)
+    """, (int(numero_doc), tipo_doc, nombre, apellido, email, password_hash, telefono))
+    
+    cursor.execute("""
+        INSERT INTO perfiles (cui_usuario)
+        VALUES (%s)
+    """, (int(numero_doc),))
+    
+    conn.commit()
+    conn.close()
 
- flash("Cuenta creada exitosamente. ¡Inicia sesión!", "success")
- return redirect("/login")
+    flash("Cuenta creada exitosamente. ??Inicia sesi??n!", "success")
+    return redirect("/login")
 
 
-# 
-# INICIO DE SESIÓN — acepta correo O CUI (13 dígitos)
-# 
+# ???????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+# INICIO DE SESI??N ??? acepta correo O CUI (13 d??gitos)
+# ???????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
 
 @app.route("/iniciar", methods=["POST"])
 def iniciar():
- identificador = request.form.get("identificador", "").strip()
- password = request.form.get("password", "")
+    identificador = request.form.get("identificador", "").strip()
+    password      = request.form.get("password", "")
 
- if not identificador or not password:
- flash("Completa todos los campos", "error")
- return redirect("/login")
+    if not identificador or not password:
+        flash("Completa todos los campos", "error")
+        return redirect("/login")
 
- conn = conectar_db()
- cursor = conn.cursor(dictionary=True)
+    conn   = conectar_db()
+    cursor = conn.cursor(dictionary=True)
 
- # Detectar si ingresaron CUI (13 dígitos numéricos) o correo
- if identificador.isdigit() and len(identificador) == 13:
- cursor.execute("""
- SELECT u.cui, u.nombre, u.apellido, u.email, u.password, u.estado, r.descripcion AS rol, p.edad
- FROM usuarios u
- JOIN roles r ON u.id_rol = r.id_rol
- LEFT JOIN perfiles p ON u.cui = p.cui_usuario
- WHERE u.cui = %s
- """, (int(identificador),))
- else:
- cursor.execute("""
- SELECT u.cui, u.nombre, u.apellido, u.email, u.password, u.estado, r.descripcion AS rol, p.edad
- FROM usuarios u
- JOIN roles r ON u.id_rol = r.id_rol
- LEFT JOIN perfiles p ON u.cui = p.cui_usuario
- WHERE u.email = %s
- """, (identificador,))
+    # Detectar si ingresaron CUI (13 d??gitos num??ricos) o correo
+    if identificador.isdigit() and len(identificador) == 13:
+        cursor.execute("""
+            SELECT u.cui, u.nombre, u.apellido, u.email, u.password, u.estado, r.descripcion AS rol, p.edad
+            FROM usuarios u
+            JOIN roles r ON u.id_rol = r.id_rol
+            LEFT JOIN perfiles p ON u.cui = p.cui_usuario
+            WHERE u.cui = %s
+        """, (int(identificador),))
+    else:
+        cursor.execute("""
+            SELECT u.cui, u.nombre, u.apellido, u.email, u.password, u.estado, r.descripcion AS rol, p.edad
+            FROM usuarios u
+            JOIN roles r ON u.id_rol = r.id_rol
+            LEFT JOIN perfiles p ON u.cui = p.cui_usuario
+            WHERE u.email = %s
+        """, (identificador,))
 
- usuario = cursor.fetchone()
+    usuario = cursor.fetchone()
 
- if not usuario:
- conn.close()
- flash("Identificador o contraseña incorrectos", "error")
- return redirect("/login")
+    if not usuario:
+        conn.close()
+        flash("Identificador o contrase??a incorrectos", "error")
+        return redirect("/login")
 
- if usuario["estado"].lower() != "activo":
- conn.close()
- flash("Tu cuenta está inactiva. Contacta al gimnasio.", "error")
- return redirect("/login")
+    if usuario["estado"].lower() != "activo":
+        conn.close()
+        flash("Tu cuenta est?? inactiva. Contacta al gimnasio.", "error")
+        return redirect("/login")
 
- if not check_password_hash(usuario["password"], password):
- conn.close()
- flash("Identificador o contraseña incorrectos", "error")
- return redirect("/login")
+    if not check_password_hash(usuario["password"], password):
+        conn.close()
+        flash("Identificador o contrase??a incorrectos", "error")
+        return redirect("/login")
 
- conn.close()
- session["usuario_id"] = usuario["cui"]
- session["nombre"] = usuario["nombre"]
- session["rol"] = usuario["rol"]
+    conn.close()
+    session["usuario_id"] = usuario["cui"]
+    session["nombre"]     = usuario["nombre"]
+    session["rol"]        = usuario["rol"]
 
- # registrar_log("login", "Inició sesión")
+    # registrar_log("login", "Inici?? sesi??n")
 
- if usuario["rol"] == "admin":
- return redirect("/admin")
- if usuario["rol"] == "empleado":
- return redirect("/empleado")
- if not usuario["edad"]:
- return redirect("/completar_perfil")
- return redirect("/panel")
+    if usuario["rol"] == "admin":
+        return redirect("/admin")
+    if usuario["rol"] == "empleado":
+        return redirect("/empleado")
+    if not usuario["edad"]:
+        return redirect("/completar_perfil")
+    return redirect("/panel")
 
 
-# 
+# ???????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
 # PANEL ADMIN
-# 
+# ???????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
 
 @app.route("/admin")
 def admin_panel():
- if "usuario_id" not in session or session.get("rol") != "admin":
- return redirect("/login")
+    if "usuario_id" not in session or session.get("rol") != "admin":
+        return redirect("/login")
 
- buscar = request.args.get("buscar")
- filtro = request.args.get("filtro")
- pagina = int(request.args.get("pagina", 1))
- por_pagina = 20
+    buscar = request.args.get("buscar")
+    filtro = request.args.get("filtro")
+    pagina = int(request.args.get("pagina", 1))
+    por_pagina = 20
 
- conn = conectar_db()
- cursor = conn.cursor(dictionary=True)
+    conn   = conectar_db()
+    cursor = conn.cursor(dictionary=True)
 
- query = """
- SELECT
- u.cui, u.tipo_doc, u.nombre, u.apellido, u.email,
- u.estado, r.descripcion AS rol,
- p.edad, p.peso, p.altura, p.objetivo, u.telefono,
- (SELECT MAX(fecha_vencimiento) FROM pagos WHERE pagos.cui_usuario = u.cui) AS ultimo_vencimiento
- FROM usuarios u
- JOIN roles r ON u.id_rol = r.id_rol
- LEFT JOIN perfiles p ON u.cui = p.cui_usuario
- WHERE u.id_rol = '03'
- """
- params = []
+    query = """
+        SELECT
+            u.cui, u.tipo_doc, u.nombre, u.apellido, u.email,
+            u.estado, r.descripcion AS rol,
+            p.edad, p.peso, p.altura, p.objetivo, u.telefono,
+            (SELECT MAX(fecha_vencimiento) FROM pagos WHERE pagos.cui_usuario = u.cui) AS ultimo_vencimiento
+        FROM usuarios u
+        JOIN roles r ON u.id_rol = r.id_rol
+        LEFT JOIN perfiles p ON u.cui = p.cui_usuario
+        WHERE u.id_rol = '03'
+    """
+    params = []
 
- if buscar:
- query += " AND (u.nombre LIKE %s OR u.apellido LIKE %s)"
- params.extend([f"%{buscar}%", f"%{buscar}%"])
+    if buscar:
+        query += " AND (u.nombre LIKE %s OR u.apellido LIKE %s)"
+        params.extend([f"%{buscar}%", f"%{buscar}%"])
 
- cursor.execute(query, params)
- usuarios_all = cursor.fetchall()
+    cursor.execute(query, params)
+    usuarios_all = cursor.fetchall()
 
- cursor.execute("SELECT cui, tipo_doc, nombre, apellido, email, estado FROM usuarios WHERE id_rol='02'")
- empleados = cursor.fetchall()
+    cursor.execute("SELECT cui, tipo_doc, nombre, apellido, email, estado FROM usuarios WHERE id_rol='02'")
+    empleados = cursor.fetchall()
 
- periodos_pagados = periodos_pagados_por_usuario(cursor, [u["cui"] for u in usuarios_all])
- cargos_pendientes = cargos_pendientes_por_usuario(cursor, [u["cui"] for u in usuarios_all])
+    periodos_pagados = periodos_pagados_por_usuario(cursor, [u["cui"] for u in usuarios_all])
+    cargos_pendientes = cargos_pendientes_por_usuario(cursor, [u["cui"] for u in usuarios_all])
 
- cursor.execute("SELECT * FROM productos ORDER BY nombre ASC")
- productos = cursor.fetchall()
+    cursor.execute("SELECT * FROM productos ORDER BY nombre ASC")
+    productos = cursor.fetchall()
 
- conn.close()
+    conn.close()
 
- fecha_hoy = date.today()
+    fecha_hoy = date.today()
 
- if filtro == "vencidos":
- usuarios_all = [u for u in usuarios_all if u["ultimo_vencimiento"] and u["ultimo_vencimiento"] < fecha_hoy]
- if filtro == "activos":
- usuarios_all = [u for u in usuarios_all if u["ultimo_vencimiento"] and u["ultimo_vencimiento"] >= fecha_hoy]
+    if filtro == "vencidos":
+        usuarios_all = [u for u in usuarios_all if u["ultimo_vencimiento"] and u["ultimo_vencimiento"] < fecha_hoy]
+    if filtro == "activos":
+        usuarios_all = [u for u in usuarios_all if u["ultimo_vencimiento"] and u["ultimo_vencimiento"] >= fecha_hoy]
 
- # Paginación 
- total_socios = len(usuarios_all)
- total_paginas = max(1, math.ceil(total_socios / por_pagina))
- pagina = max(1, min(pagina, total_paginas))
- offset = (pagina - 1) * por_pagina
- usuarios = usuarios_all[offset:offset + por_pagina]
+    # ?????? Paginaci??n ??????
+    total_socios = len(usuarios_all)
+    total_paginas = max(1, math.ceil(total_socios / por_pagina))
+    pagina = max(1, min(pagina, total_paginas))
+    offset = (pagina - 1) * por_pagina
+    usuarios = usuarios_all[offset:offset + por_pagina]
 
- return render_template("admin.html", usuarios=usuarios, empleados=empleados,
- fecha_hoy=fecha_hoy, precio_mensual=obtener_precio_mensual(),
- periodos_pagados=periodos_pagados,
- cargos_pendientes=cargos_pendientes,
- productos=productos,
- pagina=pagina, total_paginas=total_paginas,
- total_socios=total_socios)
+    return render_template("admin.html", usuarios=usuarios, empleados=empleados,
+                           fecha_hoy=fecha_hoy, precio_mensual=obtener_precio_mensual(),
+                           periodos_pagados=periodos_pagados,
+                           cargos_pendientes=cargos_pendientes,
+                           productos=productos,
+                           pagina=pagina, total_paginas=total_paginas,
+                           total_socios=total_socios)
 
 
 @app.route("/admin/empleados")
 def admin_empleados():
- if "usuario_id" not in session or session.get("rol") != "admin":
- return redirect("/login")
- conn = conectar_db()
- cursor = conn.cursor(dictionary=True)
- cursor.execute("SELECT cui, tipo_doc, nombre, apellido, email, estado FROM usuarios WHERE id_rol='02'")
- empleados = cursor.fetchall()
- conn.close()
- return render_template("empleados_admin.html", empleados=empleados, total_empleados=len(empleados))
+    if "usuario_id" not in session or session.get("rol") != "admin":
+        return redirect("/login")
+    conn = conectar_db()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("SELECT cui, tipo_doc, nombre, apellido, email, estado FROM usuarios WHERE id_rol='02'")
+    empleados = cursor.fetchall()
+    conn.close()
+    return render_template("empleados_admin.html", empleados=empleados, total_empleados=len(empleados))
 
 
 
 @app.route("/admin/hacer_admin/<int:cui>", methods=["POST"])
 def hacer_admin(cui):
- if "usuario_id" not in session or session.get("rol") != "admin":
- return redirect("/login")
- conn = conectar_db(); cursor = conn.cursor()
- cursor.execute("SELECT nombre, apellido FROM usuarios WHERE cui=%s", (cui,))
- u = cursor.fetchone()
- cursor.execute("UPDATE usuarios SET id_rol='01' WHERE cui=%s", (cui,))
- conn.commit(); conn.close()
- registrar_log("rol", "Promovió a Admin", afectado_id=cui,
- afectado_nombre=f"{u[0]} {u[1]}" if u else None)
- flash("Usuario promovido a administrador", "success")
- return redirect("/admin")
+    if "usuario_id" not in session or session.get("rol") != "admin":
+        return redirect("/login")
+    conn = conectar_db(); cursor = conn.cursor()
+    cursor.execute("SELECT nombre, apellido FROM usuarios WHERE cui=%s", (cui,))
+    u = cursor.fetchone()
+    cursor.execute("UPDATE usuarios SET id_rol='01' WHERE cui=%s", (cui,))
+    conn.commit(); conn.close()
+    registrar_log("rol", "Promovi?? a Admin", afectado_id=cui,
+                  afectado_nombre=f"{u[0]} {u[1]}" if u else None)
+    flash("Usuario promovido a administrador", "success")
+    return redirect("/admin")
 
 
 @app.route("/admin/quitar_admin/<int:cui>", methods=["POST"])
 def quitar_admin(cui):
- if "usuario_id" not in session or session.get("rol") != "admin":
- return redirect("/login")
- if cui == session["usuario_id"]:
- flash("No puedes quitarte tu propio rol admin", "error")
- return redirect("/admin")
- conn = conectar_db(); cursor = conn.cursor()
- cursor.execute("SELECT nombre, apellido FROM usuarios WHERE cui=%s", (cui,))
- u = cursor.fetchone()
- cursor.execute("UPDATE usuarios SET id_rol='03' WHERE cui=%s", (cui,))
- conn.commit(); conn.close()
- registrar_log("rol", "Quitó rol Admin → Usuario", afectado_id=cui,
- afectado_nombre=f"{u[0]} {u[1]}" if u else None)
- flash("Rol admin removido", "success")
- return redirect("/admin")
+    if "usuario_id" not in session or session.get("rol") != "admin":
+        return redirect("/login")
+    if cui == session["usuario_id"]:
+        flash("No puedes quitarte tu propio rol admin", "error")
+        return redirect("/admin")
+    conn = conectar_db(); cursor = conn.cursor()
+    cursor.execute("SELECT nombre, apellido FROM usuarios WHERE cui=%s", (cui,))
+    u = cursor.fetchone()
+    cursor.execute("UPDATE usuarios SET id_rol='03' WHERE cui=%s", (cui,))
+    conn.commit(); conn.close()
+    registrar_log("rol", "Quit?? rol Admin ??? Usuario", afectado_id=cui,
+                  afectado_nombre=f"{u[0]} {u[1]}" if u else None)
+    flash("Rol admin removido", "success")
+    return redirect("/admin")
 
 
 @app.route("/admin/hacer_empleado/<int:cui>", methods=["POST"])
 def hacer_empleado(cui):
- if "usuario_id" not in session or session.get("rol") != "admin":
- return redirect("/login")
- conn = conectar_db(); cursor = conn.cursor()
- cursor.execute("SELECT nombre, apellido FROM usuarios WHERE cui=%s", (cui,))
- u = cursor.fetchone()
- cursor.execute("UPDATE usuarios SET id_rol='02' WHERE cui=%s", (cui,))
- conn.commit(); conn.close()
- registrar_log("rol", "Asignó como Empleado", afectado_id=cui,
- afectado_nombre=f"{u[0]} {u[1]}" if u else None)
- flash("Usuario asignado como empleado", "success")
- return redirect("/admin")
+    if "usuario_id" not in session or session.get("rol") != "admin":
+        return redirect("/login")
+    conn = conectar_db(); cursor = conn.cursor()
+    cursor.execute("SELECT nombre, apellido FROM usuarios WHERE cui=%s", (cui,))
+    u = cursor.fetchone()
+    cursor.execute("UPDATE usuarios SET id_rol='02' WHERE cui=%s", (cui,))
+    conn.commit(); conn.close()
+    registrar_log("rol", "Asign?? como Empleado", afectado_id=cui,
+                  afectado_nombre=f"{u[0]} {u[1]}" if u else None)
+    flash("Usuario asignado como empleado", "success")
+    return redirect("/admin")
 
 
 @app.route("/admin/quitar_empleado/<int:cui>", methods=["POST"])
 def quitar_empleado(cui):
- if "usuario_id" not in session or session.get("rol") != "admin":
- return redirect("/login")
- conn = conectar_db(); cursor = conn.cursor()
- cursor.execute("SELECT nombre, apellido FROM usuarios WHERE cui=%s", (cui,))
- u = cursor.fetchone()
- cursor.execute("UPDATE usuarios SET id_rol='03' WHERE cui=%s", (cui,))
- conn.commit(); conn.close()
- registrar_log("rol", "Quitó rol Empleado → Usuario", afectado_id=cui,
- afectado_nombre=f"{u[0]} {u[1]}" if u else None)
- flash("Rol empleado removido", "success")
- return redirect("/admin")
+    if "usuario_id" not in session or session.get("rol") != "admin":
+        return redirect("/login")
+    conn = conectar_db(); cursor = conn.cursor()
+    cursor.execute("SELECT nombre, apellido FROM usuarios WHERE cui=%s", (cui,))
+    u = cursor.fetchone()
+    cursor.execute("UPDATE usuarios SET id_rol='03' WHERE cui=%s", (cui,))
+    conn.commit(); conn.close()
+    registrar_log("rol", "Quit?? rol Empleado ??? Usuario", afectado_id=cui,
+                  afectado_nombre=f"{u[0]} {u[1]}" if u else None)
+    flash("Rol empleado removido", "success")
+    return redirect("/admin")
 
 
 @app.route("/admin/pagos/<int:cui>")
 def ver_pagos(cui):
- if "usuario_id" not in session or session.get("rol") not in ("admin", "empleado"):
- return redirect("/login")
+    if "usuario_id" not in session or session.get("rol") not in ("admin", "empleado"):
+        return redirect("/login")
 
- fecha_inicio = request.args.get("fecha_inicio", "").strip()
- fecha_fin = request.args.get("fecha_fin", "").strip()
+    fecha_inicio = request.args.get("fecha_inicio", "").strip()
+    fecha_fin    = request.args.get("fecha_fin", "").strip()
 
- conn = conectar_db()
- cursor = conn.cursor(dictionary=True)
+    conn   = conectar_db()
+    cursor = conn.cursor(dictionary=True)
 
- query = """
- SELECT u.nombre, u.apellido,
- p.id_pago, p.monto, p.fecha_pago, p.fecha_vencimiento, p.descripcion
- FROM pagos p
- JOIN usuarios u ON u.cui = p.cui_usuario
- WHERE u.cui = %s
- """
- params = [cui]
+    query = """
+        SELECT u.nombre, u.apellido,
+               p.id_pago, p.monto, p.fecha_pago, p.fecha_vencimiento, p.descripcion
+        FROM pagos p
+        JOIN usuarios u ON u.cui = p.cui_usuario
+        WHERE u.cui = %s
+    """
+    params = [cui]
 
- if fecha_inicio:
- query += " AND p.fecha_pago >= %s"
- params.append(fecha_inicio)
- if fecha_fin:
- query += " AND p.fecha_pago <= %s"
- params.append(fecha_fin)
+    if fecha_inicio:
+        query += " AND p.fecha_pago >= %s"
+        params.append(fecha_inicio)
+    if fecha_fin:
+        query += " AND p.fecha_pago <= %s"
+        params.append(fecha_fin)
 
- query += " ORDER BY p.fecha_pago DESC"
- cursor.execute(query, params)
- pagos = cursor.fetchall()
+    query += " ORDER BY p.fecha_pago DESC"
+    cursor.execute(query, params)
+    pagos = cursor.fetchall()
 
- # Recalculate based on active list
- total_ingresos = sum(float(p["monto"]) for p in pagos)
- total_meses = int(total_ingresos / obtener_precio_mensual()) if obtener_precio_mensual() > 0 else 0
+    # Recalculate based on active list
+    total_ingresos = sum(float(p["monto"]) for p in pagos)
+    total_meses  = int(total_ingresos / obtener_precio_mensual()) if obtener_precio_mensual() > 0 else 0
 
- nombre_socio = "Sin pagos"
- if pagos:
- nombre_socio = f"{pagos[0]['nombre']} {pagos[0]['apellido']}"
- else:
- # Fetch name if no payment records exist matching filter
- cursor.execute("SELECT nombre, apellido FROM usuarios WHERE cui = %s", (cui,))
- socio = cursor.fetchone()
- if socio:
- nombre_socio = f"{socio['nombre']} {socio['apellido']}"
- 
- conn.close()
+    nombre_socio = "Sin pagos"
+    if pagos:
+        nombre_socio = f"{pagos[0]['nombre']} {pagos[0]['apellido']}"
+    else:
+        # Fetch name if no payment records exist matching filter
+        cursor.execute("SELECT nombre, apellido FROM usuarios WHERE cui = %s", (cui,))
+        socio = cursor.fetchone()
+        if socio:
+            nombre_socio = f"{socio['nombre']} {socio['apellido']}"
+            
+    conn.close()
 
- return render_template("pagos_admin.html", pagos=pagos, total=total_meses,
- total_ingresos=total_ingresos,
- nombre_socio=nombre_socio, cui=cui)
+    return render_template("pagos_admin.html", pagos=pagos, total=total_meses,
+                           total_ingresos=total_ingresos,
+                           nombre_socio=nombre_socio, cui=cui)
 
 
 @app.route("/admin/pagos/<int:cui>/excel")
 def exportar_pagos_excel(cui):
- if "usuario_id" not in session or session.get("rol") not in ("admin", "empleado"):
- return redirect("/login")
+    if "usuario_id" not in session or session.get("rol") not in ("admin", "empleado"):
+        return redirect("/login")
 
- fecha_inicio = request.args.get("fecha_inicio", "").strip()
- fecha_fin = request.args.get("fecha_fin", "").strip()
+    fecha_inicio = request.args.get("fecha_inicio", "").strip()
+    fecha_fin    = request.args.get("fecha_fin", "").strip()
 
- conn = conectar_db()
- cursor = conn.cursor(dictionary=True)
+    conn   = conectar_db()
+    cursor = conn.cursor(dictionary=True)
 
- query = """
- SELECT u.nombre, u.apellido,
- p.id_pago, p.monto, p.fecha_pago, p.fecha_vencimiento, p.descripcion
- FROM pagos p
- JOIN usuarios u ON u.cui = p.cui_usuario
- WHERE u.cui = %s
- """
- params = [cui]
+    query = """
+        SELECT u.nombre, u.apellido,
+               p.id_pago, p.monto, p.fecha_pago, p.fecha_vencimiento, p.descripcion
+        FROM pagos p
+        JOIN usuarios u ON u.cui = p.cui_usuario
+        WHERE u.cui = %s
+    """
+    params = [cui]
 
- if fecha_inicio:
- query += " AND p.fecha_pago >= %s"
- params.append(fecha_inicio)
- if fecha_fin:
- query += " AND p.fecha_pago <= %s"
- params.append(fecha_fin)
+    if fecha_inicio:
+        query += " AND p.fecha_pago >= %s"
+        params.append(fecha_inicio)
+    if fecha_fin:
+        query += " AND p.fecha_pago <= %s"
+        params.append(fecha_fin)
 
- query += " ORDER BY p.fecha_pago DESC"
- cursor.execute(query, params)
- pagos = cursor.fetchall()
- 
- nombre_socio = "Socio"
- if pagos:
- nombre_socio = f"{pagos[0]['nombre']} {pagos[0]['apellido']}"
- else:
- cursor.execute("SELECT nombre, apellido FROM usuarios WHERE cui = %s", (cui,))
- socio = cursor.fetchone()
- if socio:
- nombre_socio = f"{socio['nombre']} {socio['apellido']}"
- 
- conn.close()
+    query += " ORDER BY p.fecha_pago DESC"
+    cursor.execute(query, params)
+    pagos = cursor.fetchall()
+    
+    nombre_socio = "Socio"
+    if pagos:
+        nombre_socio = f"{pagos[0]['nombre']} {pagos[0]['apellido']}"
+    else:
+        cursor.execute("SELECT nombre, apellido FROM usuarios WHERE cui = %s", (cui,))
+        socio = cursor.fetchone()
+        if socio:
+            nombre_socio = f"{socio['nombre']} {socio['apellido']}"
+            
+    conn.close()
 
- headers = ["ID Pago", "Fecha Pago", "Periodo Pagado", "Monto", "Fecha Vencimiento"]
- rows = []
- for p in pagos:
- rows.append([
- p["id_pago"],
- p["fecha_pago"],
- p["descripcion"] or "—",
- float(p["monto"]),
- p["fecha_vencimiento"]
- ])
+    headers = ["ID Pago", "Fecha Pago", "Periodo Pagado", "Monto", "Fecha Vencimiento"]
+    rows = []
+    for p in pagos:
+        rows.append([
+            p["id_pago"],
+            p["fecha_pago"],
+            p["descripcion"] or "???",
+            float(p["monto"]),
+            p["fecha_vencimiento"]
+        ])
 
- excel_bytes = generar_reporte_excel(headers, rows, f"Historial Pagos — {nombre_socio}")
- response = make_response(excel_bytes)
- response.headers['Content-Type'] = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
- response.headers['Content-Disposition'] = f'attachment; filename=pagos_{cui}.xlsx'
- return response
+    excel_bytes = generar_reporte_excel(headers, rows, f"Historial Pagos ??? {nombre_socio}")
+    response = make_response(excel_bytes)
+    response.headers['Content-Type'] = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    response.headers['Content-Disposition'] = f'attachment; filename=pagos_{cui}.xlsx'
+    return response
 
 
 @app.route("/admin/pagos/<int:cui>/pdf")
 def exportar_pagos_pdf(cui):
- if "usuario_id" not in session or session.get("rol") not in ("admin", "empleado"):
- return redirect("/login")
+    if "usuario_id" not in session or session.get("rol") not in ("admin", "empleado"):
+        return redirect("/login")
 
- fecha_inicio = request.args.get("fecha_inicio", "").strip()
- fecha_fin = request.args.get("fecha_fin", "").strip()
+    fecha_inicio = request.args.get("fecha_inicio", "").strip()
+    fecha_fin    = request.args.get("fecha_fin", "").strip()
 
- conn = conectar_db()
- cursor = conn.cursor(dictionary=True)
+    conn   = conectar_db()
+    cursor = conn.cursor(dictionary=True)
 
- query = """
- SELECT u.nombre, u.apellido,
- p.id_pago, p.monto, p.fecha_pago, p.fecha_vencimiento, p.descripcion
- FROM pagos p
- JOIN usuarios u ON u.cui = p.cui_usuario
- WHERE u.cui = %s
- """
- params = [cui]
+    query = """
+        SELECT u.nombre, u.apellido,
+               p.id_pago, p.monto, p.fecha_pago, p.fecha_vencimiento, p.descripcion
+        FROM pagos p
+        JOIN usuarios u ON u.cui = p.cui_usuario
+        WHERE u.cui = %s
+    """
+    params = [cui]
 
- if fecha_inicio:
- query += " AND p.fecha_pago >= %s"
- params.append(fecha_inicio)
- if fecha_fin:
- query += " AND p.fecha_pago <= %s"
- params.append(fecha_fin)
+    if fecha_inicio:
+        query += " AND p.fecha_pago >= %s"
+        params.append(fecha_inicio)
+    if fecha_fin:
+        query += " AND p.fecha_pago <= %s"
+        params.append(fecha_fin)
 
- query += " ORDER BY p.fecha_pago DESC"
- cursor.execute(query, params)
- pagos = cursor.fetchall()
- 
- nombre_socio = "Socio"
- if pagos:
- nombre_socio = f"{pagos[0]['nombre']} {pagos[0]['apellido']}"
- else:
- cursor.execute("SELECT nombre, apellido FROM usuarios WHERE cui = %s", (cui,))
- socio = cursor.fetchone()
- if socio:
- nombre_socio = f"{socio['nombre']} {socio['apellido']}"
- 
- conn.close()
+    query += " ORDER BY p.fecha_pago DESC"
+    cursor.execute(query, params)
+    pagos = cursor.fetchall()
+    
+    nombre_socio = "Socio"
+    if pagos:
+        nombre_socio = f"{pagos[0]['nombre']} {pagos[0]['apellido']}"
+    else:
+        cursor.execute("SELECT nombre, apellido FROM usuarios WHERE cui = %s", (cui,))
+        socio = cursor.fetchone()
+        if socio:
+            nombre_socio = f"{socio['nombre']} {socio['apellido']}"
+            
+    conn.close()
 
- headers = ["No.", "Fecha Pago", "Mes Pagado", "Vencimiento", "Monto"]
- rows = []
- for idx, p in enumerate(pagos):
- rows.append([
- idx + 1,
- p["fecha_pago"],
- p["descripcion"] or "—",
- p["fecha_vencimiento"],
- float(p["monto"])
- ])
+    headers = ["No.", "Fecha Pago", "Mes Pagado", "Vencimiento", "Monto"]
+    rows = []
+    for idx, p in enumerate(pagos):
+        rows.append([
+            idx + 1,
+            p["fecha_pago"],
+            p["descripcion"] or "???",
+            p["fecha_vencimiento"],
+            float(p["monto"])
+        ])
 
- sub = f"Historial de pagos de membresia de {nombre_socio} (CUI: {cui})"
- if fecha_inicio or fecha_fin:
- sub += f" | Rango: {fecha_inicio or '...'} a {fecha_fin or '...'}"
+    sub = f"Historial de pagos de membresia de {nombre_socio} (CUI: {cui})"
+    if fecha_inicio or fecha_fin:
+        sub += f" | Rango: {fecha_inicio or '...'} a {fecha_fin or '...'}"
 
- pdf_bytes = generar_reporte_pdf(headers, rows, "Historial de Pagos", sub)
- response = make_response(pdf_bytes)
- response.headers['Content-Type'] = 'application/pdf'
- response.headers['Content-Disposition'] = f'attachment; filename=pagos_{cui}.pdf'
- return response
+    pdf_bytes = generar_reporte_pdf(headers, rows, "Historial de Pagos", sub)
+    response = make_response(pdf_bytes)
+    response.headers['Content-Type'] = 'application/pdf'
+    response.headers['Content-Disposition'] = f'attachment; filename=pagos_{cui}.pdf'
+    return response
 
 
 
 @app.route("/admin/desactivar/<int:cui>", methods=["POST"])
 def desactivar_usuario(cui):
- if "usuario_id" not in session or session.get("rol") != "admin":
- return redirect("/login")
- conn = conectar_db(); cursor = conn.cursor()
- cursor.execute("SELECT nombre, apellido FROM usuarios WHERE cui=%s", (cui,))
- u = cursor.fetchone()
- cursor.execute("UPDATE usuarios SET estado='inactivo' WHERE cui=%s", (cui,))
- conn.commit(); conn.close()
- registrar_log("desactivar", "Desactivó la cuenta", afectado_id=cui,
- afectado_nombre=f"{u[0]} {u[1]}" if u else None)
- flash("Usuario desactivado", "success")
- return redirect("/admin")
+    if "usuario_id" not in session or session.get("rol") != "admin":
+        return redirect("/login")
+    conn = conectar_db(); cursor = conn.cursor()
+    cursor.execute("SELECT nombre, apellido FROM usuarios WHERE cui=%s", (cui,))
+    u = cursor.fetchone()
+    cursor.execute("UPDATE usuarios SET estado='inactivo' WHERE cui=%s", (cui,))
+    conn.commit(); conn.close()
+    registrar_log("desactivar", "Desactiv?? la cuenta", afectado_id=cui,
+                  afectado_nombre=f"{u[0]} {u[1]}" if u else None)
+    flash("Usuario desactivado", "success")
+    return redirect("/admin")
 
 
 @app.route("/admin/reactivar/<int:cui>", methods=["POST"])
 def reactivar_usuario(cui):
- if "usuario_id" not in session or session.get("rol") != "admin":
- return redirect("/login")
- conn = conectar_db(); cursor = conn.cursor()
- cursor.execute("SELECT nombre, apellido FROM usuarios WHERE cui=%s", (cui,))
- u = cursor.fetchone()
- cursor.execute("UPDATE usuarios SET estado='activo' WHERE cui=%s", (cui,))
- conn.commit(); conn.close()
- registrar_log("activacion", "Reactivó la cuenta", afectado_id=cui,
- afectado_nombre=f"{u[0]} {u[1]}" if u else None)
- flash("Usuario reactivado", "success")
- return redirect("/admin")
+    if "usuario_id" not in session or session.get("rol") != "admin":
+        return redirect("/login")
+    conn = conectar_db(); cursor = conn.cursor()
+    cursor.execute("SELECT nombre, apellido FROM usuarios WHERE cui=%s", (cui,))
+    u = cursor.fetchone()
+    cursor.execute("UPDATE usuarios SET estado='activo' WHERE cui=%s", (cui,))
+    conn.commit(); conn.close()
+    registrar_log("activacion", "Reactiv?? la cuenta", afectado_id=cui,
+                  afectado_nombre=f"{u[0]} {u[1]}" if u else None)
+    flash("Usuario reactivado", "success")
+    return redirect("/admin")
 
 
 @app.route("/admin/eliminar_usuario/<int:cui>", methods=["POST"])
 def eliminar_usuario(cui):
- if "usuario_id" not in session or session.get("rol") != "admin":
- return redirect("/login")
- 
- if cui == session["usuario_id"]:
- flash("No puedes eliminarte a ti mismo", "error")
- return redirect(request.referrer or "/admin")
- 
- conn = conectar_db()
- cursor = conn.cursor()
- try:
- cursor.execute("SELECT nombre, apellido, rol FROM usuarios WHERE cui=%s", (cui,))
- u = cursor.fetchone()
- if not u:
- flash("Usuario no encontrado", "error")
- return redirect(request.referrer or "/admin")
- 
- nombre_completo = f"{u[0]} {u[1]}"
- rol = u[2]
- 
- # Eliminar dependencias
- cursor.execute("DELETE FROM pagos WHERE cui_usuario=%s", (cui,))
- cursor.execute("DELETE FROM recuperar_contra WHERE cui_usuario=%s", (cui,))
- 
- try:
- cursor.execute("DELETE FROM asistencia WHERE cui_usuario=%s", (cui,))
- except:
- pass
- try:
- cursor.execute("DELETE FROM metas WHERE cui_usuario=%s", (cui,))
- except:
- pass
- 
- cursor.execute("DELETE FROM usuarios WHERE cui=%s", (cui,))
- 
- registrar_log("eliminacion", f"Eliminó cuenta de {rol}", afectado_id=cui, afectado_nombre=nombre_completo)
- 
- conn.commit()
- flash(f"{'Empleado' if rol == 'empleado' else 'Socio'} eliminado exitosamente", "success")
- except Exception as e:
- conn.rollback()
- flash(f"Error al eliminar: {str(e)}", "error")
- finally:
- conn.close()
- 
- return redirect(request.referrer or "/admin")
+    if "usuario_id" not in session or session.get("rol") != "admin":
+        return redirect("/login")
+    
+    if cui == session["usuario_id"]:
+        flash("No puedes eliminarte a ti mismo", "error")
+        return redirect(request.referrer or "/admin")
+        
+    conn = conectar_db()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("SELECT nombre, apellido, rol FROM usuarios WHERE cui=%s", (cui,))
+        u = cursor.fetchone()
+        if not u:
+            flash("Usuario no encontrado", "error")
+            return redirect(request.referrer or "/admin")
+            
+        nombre_completo = f"{u[0]} {u[1]}"
+        rol = u[2]
+        
+        # Eliminar dependencias
+        cursor.execute("DELETE FROM pagos WHERE cui_usuario=%s", (cui,))
+        cursor.execute("DELETE FROM recuperar_contra WHERE cui_usuario=%s", (cui,))
+        
+        try:
+            cursor.execute("DELETE FROM asistencia WHERE cui_usuario=%s", (cui,))
+        except:
+            pass
+        try:
+            cursor.execute("DELETE FROM metas WHERE cui_usuario=%s", (cui,))
+        except:
+            pass
+            
+        cursor.execute("DELETE FROM usuarios WHERE cui=%s", (cui,))
+        
+        registrar_log("eliminacion", f"Elimin?? cuenta de {rol}", afectado_id=cui, afectado_nombre=nombre_completo)
+        
+        conn.commit()
+        flash(f"{'Empleado' if rol == 'empleado' else 'Socio'} eliminado exitosamente", "success")
+    except Exception as e:
+        conn.rollback()
+        flash(f"Error al eliminar: {str(e)}", "error")
+    finally:
+        conn.close()
+        
+    return redirect(request.referrer or "/admin")
 
 
 @app.route("/admin/registrar_pago/<int:cui>", methods=["POST"])
 def registrar_pago(cui):
- if "usuario_id" not in session or session.get("rol") not in ("admin", "empleado"):
- return redirect("/login")
+    if "usuario_id" not in session or session.get("rol") not in ("admin", "empleado"):
+        return redirect("/login")
 
- meses_lista = request.form.get("meses_lista", "")
- anio_sel = request.form.get("anio_sel", str(date.today().year))
- metodo_pago = request.form.get("metodo_pago", "efectivo")
- referencia = request.form.get("referencia", "").strip() or None
- redirect_destino = "/empleado" if session.get("rol") == "empleado" else "/admin"
- conn = conectar_db()
- cursor = conn.cursor(dictionary=True)
+    meses_lista = request.form.get("meses_lista", "")
+    anio_sel    = request.form.get("anio_sel", str(date.today().year))
+    metodo_pago = request.form.get("metodo_pago", "efectivo")
+    referencia  = request.form.get("referencia", "").strip() or None
+    redirect_destino = "/empleado" if session.get("rol") == "empleado" else "/admin"
+    conn   = conectar_db()
+    cursor = conn.cursor(dictionary=True)
 
- cursor.execute("SELECT MAX(fecha_vencimiento) AS ultimo FROM pagos WHERE cui_usuario=%s", (cui,))
- resultado = cursor.fetchone()
+    cursor.execute("SELECT MAX(fecha_vencimiento) AS ultimo FROM pagos WHERE cui_usuario=%s", (cui,))
+    resultado = cursor.fetchone()
 
- cursor.execute("SELECT nombre, apellido FROM usuarios WHERE cui=%s", (cui,))
- socio = cursor.fetchone()
+    cursor.execute("SELECT nombre, apellido FROM usuarios WHERE cui=%s", (cui,))
+    socio = cursor.fetchone()
 
- hoy = date.today()
- fecha_base = resultado["ultimo"] if resultado["ultimo"] and resultado["ultimo"] >= hoy else hoy
+    hoy        = date.today()
+    fecha_base = resultado["ultimo"] if resultado["ultimo"] and resultado["ultimo"] >= hoy else hoy
 
- try:
- anio_i = int(anio_sel)
- except ValueError:
- conn.close()
- flash("Selecciona un anio valido para registrar el pago.", "error")
- return redirect(redirect_destino)
+    try:
+        anio_i = int(anio_sel)
+    except ValueError:
+        conn.close()
+        flash("Selecciona un anio valido para registrar el pago.", "error")
+        return redirect(redirect_destino)
 
- if meses_lista:
- meses_nums = sorted(set(int(m) for m in meses_lista.split(",") if m.strip().isdigit()))
- if not meses_nums or any(m < 1 or m > 12 for m in meses_nums):
- conn.close()
- flash("Selecciona al menos un mes valido para registrar el pago.", "error")
- return redirect(redirect_destino)
+    if meses_lista:
+        meses_nums = sorted(set(int(m) for m in meses_lista.split(",") if m.strip().isdigit()))
+        if not meses_nums or any(m < 1 or m > 12 for m in meses_nums):
+            conn.close()
+            flash("Selecciona al menos un mes valido para registrar el pago.", "error")
+            return redirect(redirect_destino)
 
- meses = len(meses_nums)
- periodos_solicitados = {(anio_i, m) for m in meses_nums}
- nombres_sel = [MESES_NOMBRES[m-1] for m in meses_nums]
- if meses == 1:
- descripcion = f"{nombres_sel[0]} {anio_i}"
- else:
- descripcion = f"{', '.join(nombres_sel[:-1])} y {nombres_sel[-1]} {anio_i}"
- ultimo_mes = max(meses_nums)
- ultimo_anio = anio_i
- else:
- meses = int(request.form.get("meses", 1))
- mes_i = fecha_base.month if fecha_base > hoy else hoy.month
- periodos_solicitados = {_sumar_meses(anio_i, mes_i, offset) for offset in range(meses)}
- if meses == 1:
- descripcion = f"{MESES_NOMBRES[mes_i-1]} {anio_i}"
- else:
- mes_fin = ((mes_i - 1 + meses - 1) % 12) + 1
- anio_fin = anio_i + ((mes_i - 1 + meses - 1) // 12)
- descripcion = f"{MESES_NOMBRES[mes_i-1]} {anio_i} — {MESES_NOMBRES[mes_fin-1]} {anio_fin}"
- ultimo_anio, ultimo_mes = max(periodos_solicitados)
+        meses      = len(meses_nums)
+        periodos_solicitados = {(anio_i, m) for m in meses_nums}
+        nombres_sel = [MESES_NOMBRES[m-1] for m in meses_nums]
+        if meses == 1:
+            descripcion = f"{nombres_sel[0]} {anio_i}"
+        else:
+            descripcion = f"{', '.join(nombres_sel[:-1])} y {nombres_sel[-1]} {anio_i}"
+        ultimo_mes = max(meses_nums)
+        ultimo_anio = anio_i
+    else:
+        meses  = int(request.form.get("meses", 1))
+        mes_i  = fecha_base.month if fecha_base > hoy else hoy.month
+        periodos_solicitados = {_sumar_meses(anio_i, mes_i, offset) for offset in range(meses)}
+        if meses == 1:
+            descripcion = f"{MESES_NOMBRES[mes_i-1]} {anio_i}"
+        else:
+            mes_fin  = ((mes_i - 1 + meses - 1) % 12) + 1
+            anio_fin = anio_i + ((mes_i - 1 + meses - 1) // 12)
+            descripcion = f"{MESES_NOMBRES[mes_i-1]} {anio_i} ??? {MESES_NOMBRES[mes_fin-1]} {anio_fin}"
+        ultimo_anio, ultimo_mes = max(periodos_solicitados)
 
- cursor.execute("SELECT descripcion FROM pagos WHERE cui_usuario=%s", (cui,))
- periodos_registrados = set()
- for pago in cursor.fetchall():
- periodos_registrados.update(periodos_desde_mes_pagado(pago.get("descripcion")))
+    cursor.execute("SELECT descripcion FROM pagos WHERE cui_usuario=%s", (cui,))
+    periodos_registrados = set()
+    for pago in cursor.fetchall():
+        periodos_registrados.update(periodos_desde_mes_pagado(pago.get("descripcion")))
 
- duplicados = periodos_solicitados & periodos_registrados
- if duplicados:
- conn.close()
- flash(f"No se puede registrar: {formatear_periodos(duplicados)} ya fue pagado para este socio.", "error")
- return redirect(redirect_destino)
+    duplicados = periodos_solicitados & periodos_registrados
+    if duplicados:
+        conn.close()
+        flash(f"No se puede registrar: {formatear_periodos(duplicados)} ya fue pagado para este socio.", "error")
+        return redirect(redirect_destino)
 
- nueva_fecha = calcular_fecha_vencimiento_dia_3(ultimo_anio, ultimo_mes)
- monto_total = calcular_monto_pago(meses)
+    nueva_fecha = calcular_fecha_vencimiento_dia_3(ultimo_anio, ultimo_mes)
+    monto_total = calcular_monto_pago(meses)
 
- cursor = conn.cursor()
- cursor.execute("INSERT INTO pagos (cui_usuario, fecha_pago, fecha_vencimiento, monto, descripcion, metodo_pago, referencia) VALUES (%s,%s,%s,%s,%s,%s,%s)",
- (cui, hoy, nueva_fecha, monto_total, descripcion, metodo_pago, referencia))
- conn.commit(); conn.close()
+    cursor = conn.cursor()
+    cursor.execute("INSERT INTO pagos (cui_usuario, fecha_pago, fecha_vencimiento, monto, descripcion, metodo_pago, referencia) VALUES (%s,%s,%s,%s,%s,%s,%s)",
+                   (cui, hoy, nueva_fecha, monto_total, descripcion, metodo_pago, referencia))
+    conn.commit(); conn.close()
 
- nombre_socio = f"{socio['nombre']} {socio['apellido']}" if socio else "—"
- registrar_log("pago", f"Registró pago de {meses} mes(es) — Q{int(monto_total):,}",
- afectado_id=cui, afectado_nombre=nombre_socio)
+    nombre_socio = f"{socio['nombre']} {socio['apellido']}" if socio else "???"
+    registrar_log("pago", f"Registr?? pago de {meses} mes(es) ??? Q{int(monto_total):,}",
+                  afectado_id=cui, afectado_nombre=nombre_socio)
 
- flash(f"Pago de {meses} mes(es) registrado — Q{int(monto_total):,}", "success")
-
-
- return redirect(redirect_destino)
+    flash(f"Pago de {meses} mes(es) registrado ??? Q{int(monto_total):,}", "success")
 
 
-# 
+    return redirect(redirect_destino)
+
+
+# ???????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
 # CARGOS MANUALES
-# 
+# ???????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
 
 @app.route("/crear_cargo/<int:cui>", methods=["POST"])
 def crear_cargo(cui):
- if "usuario_id" not in session or session.get("rol") not in ("admin", "empleado"):
- return redirect("/login")
- 
- descripcion = request.form.get("descripcion", "").strip()
- monto = request.form.get("monto", "").strip()
- origen = request.form.get("origen", "/admin").strip()
- id_producto = request.form.get("id_producto") or None
- 
- if not descripcion or not monto:
- flash("Descripción y monto son obligatorios para el cargo", "error")
- return redirect(origen)
- 
- conn = conectar_db()
- cursor = conn.cursor(dictionary=True)
- cursor.execute("SELECT nombre, apellido FROM usuarios WHERE cui=%s", (cui,))
- socio = cursor.fetchone()
- 
- hoy = date.today()
- cursor.execute("""
- INSERT INTO cargos (cui_usuario, descripcion, monto, fecha_emision, estado, id_producto) 
- VALUES (%s, %s, %s, %s, 'pendiente', %s)
- """, (cui, descripcion, monto, hoy, id_producto))
- 
- # Descontar del inventario si es un producto
- if id_producto:
- cursor.execute("UPDATE productos SET cantidad = cantidad - 1 WHERE id_producto = %s", (id_producto,))
- 
- conn.commit()
- conn.close()
- 
- nombre_socio = f"{socio['nombre']} {socio['apellido']}" if socio else "—"
- registrar_log("cargo", f"Creó cargo manual: '{descripcion}' (Q{monto})", afectado_id=cui, afectado_nombre=nombre_socio)
- 
- flash(f"Cargo '{descripcion}' creado exitosamente", "success")
- return redirect(origen)
+    if "usuario_id" not in session or session.get("rol") not in ("admin", "empleado"):
+        return redirect("/login")
+        
+    descripcion = request.form.get("descripcion", "").strip()
+    monto = request.form.get("monto", "").strip()
+    origen = request.form.get("origen", "/admin").strip()
+    id_producto = request.form.get("id_producto") or None
+    
+    if not descripcion or not monto:
+        flash("Descripci??n y monto son obligatorios para el cargo", "error")
+        return redirect(origen)
+        
+    conn = conectar_db()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("SELECT nombre, apellido FROM usuarios WHERE cui=%s", (cui,))
+    socio = cursor.fetchone()
+    
+    hoy = date.today()
+    cursor.execute("""
+        INSERT INTO cargos (cui_usuario, descripcion, monto, fecha_emision, estado, id_producto) 
+        VALUES (%s, %s, %s, %s, 'pendiente', %s)
+    """, (cui, descripcion, monto, hoy, id_producto))
+    
+    # Descontar del inventario si es un producto
+    if id_producto:
+        cursor.execute("UPDATE productos SET cantidad = cantidad - 1 WHERE id_producto = %s", (id_producto,))
+        
+    conn.commit()
+    conn.close()
+    
+    nombre_socio = f"{socio['nombre']} {socio['apellido']}" if socio else "???"
+    registrar_log("cargo", f"Cre?? cargo manual: '{descripcion}' (Q{monto})", afectado_id=cui, afectado_nombre=nombre_socio)
+    
+    flash(f"Cargo '{descripcion}' creado exitosamente", "success")
+    return redirect(origen)
 
 
 @app.route("/pagar_cargo/<int:id_cargo>", methods=["POST"])
 def pagar_cargo(id_cargo):
- if "usuario_id" not in session or session.get("rol") not in ("admin", "empleado"):
- return redirect("/login")
- 
- origen = request.form.get("origen", "/admin").strip()
- conn = conectar_db()
- cursor = conn.cursor(dictionary=True)
- 
- cursor.execute("SELECT c.cui_usuario, c.monto, c.descripcion, c.estado, u.nombre, u.apellido FROM cargos c JOIN usuarios u ON c.cui_usuario = u.cui WHERE c.id_cargo=%s", (id_cargo,))
- cargo = cursor.fetchone()
- 
- if not cargo or cargo['estado'] == 'pagado':
- conn.close()
- flash("Cargo inválido o ya pagado", "error")
- return redirect(origen)
- 
- hoy = date.today()
- 
- # Obtener el último fecha_vencimiento para no alterarlo
- cursor.execute("SELECT MAX(fecha_vencimiento) as max_venc FROM pagos WHERE cui_usuario=%s", (cargo['cui_usuario'],))
- res_venc = cursor.fetchone()
- vencimiento_actual = res_venc['max_venc'] if res_venc and res_venc['max_venc'] else hoy
- 
- # 1. Actualizar estado del cargo
- cursor.execute("UPDATE cargos SET estado='pagado' WHERE id_cargo=%s", (id_cargo,))
- 
- # 2. Insertar pago con el id_cargo
- # Ponemos la misma fecha de vencimiento actual para no avanzar su membresía
- cursor.execute("""
- INSERT INTO pagos (cui_usuario, fecha_pago, fecha_vencimiento, monto, descripcion, id_cargo) 
- VALUES (%s, %s, %s, %s, %s, %s)
- """, (cargo['cui_usuario'], hoy, vencimiento_actual, cargo['monto'], f"Cargo: {cargo['descripcion']}", id_cargo))
- 
- nuevo_id_pago = cursor.lastrowid
- conn.commit()
- conn.close()
- 
- nombre_socio = f"{cargo['nombre']} {cargo['apellido']}"
- registrar_log("pago", f"Pagó cargo manual '{cargo['descripcion']}' (Q{cargo['monto']})", afectado_id=cargo['cui_usuario'], afectado_nombre=nombre_socio)
- 
- msg_exito = f"El cargo '{cargo['descripcion']}' ha sido pagado exitosamente. <a href='/recibo/{nuevo_id_pago}' target='_blank' style='color:#22c55e; font-weight:700; text-decoration:underline; margin-left:8px;'> Descargar Recibo PDF</a>"
- flash(msg_exito, "success")
- return redirect(origen)# 
-# AUDITORÍA
-# 
+    if "usuario_id" not in session or session.get("rol") not in ("admin", "empleado"):
+        return redirect("/login")
+        
+    origen = request.form.get("origen", "/admin").strip()
+    conn = conectar_db()
+    cursor = conn.cursor(dictionary=True)
+    
+    cursor.execute("SELECT c.cui_usuario, c.monto, c.descripcion, c.estado, u.nombre, u.apellido FROM cargos c JOIN usuarios u ON c.cui_usuario = u.cui WHERE c.id_cargo=%s", (id_cargo,))
+    cargo = cursor.fetchone()
+    
+    if not cargo or cargo['estado'] == 'pagado':
+        conn.close()
+        flash("Cargo inv??lido o ya pagado", "error")
+        return redirect(origen)
+        
+    hoy = date.today()
+    
+    # Obtener el ??ltimo fecha_vencimiento para no alterarlo
+    cursor.execute("SELECT MAX(fecha_vencimiento) as max_venc FROM pagos WHERE cui_usuario=%s", (cargo['cui_usuario'],))
+    res_venc = cursor.fetchone()
+    vencimiento_actual = res_venc['max_venc'] if res_venc and res_venc['max_venc'] else hoy
+    
+    # 1. Actualizar estado del cargo
+    cursor.execute("UPDATE cargos SET estado='pagado' WHERE id_cargo=%s", (id_cargo,))
+    
+    # 2. Insertar pago con el id_cargo
+    # Ponemos la misma fecha de vencimiento actual para no avanzar su membres??a
+    cursor.execute("""
+        INSERT INTO pagos (cui_usuario, fecha_pago, fecha_vencimiento, monto, descripcion, id_cargo) 
+        VALUES (%s, %s, %s, %s, %s, %s)
+    """, (cargo['cui_usuario'], hoy, vencimiento_actual, cargo['monto'], f"Cargo: {cargo['descripcion']}", id_cargo))
+    
+    nuevo_id_pago = cursor.lastrowid
+    conn.commit()
+    conn.close()
+    
+    nombre_socio = f"{cargo['nombre']} {cargo['apellido']}"
+    registrar_log("pago", f"Pag?? cargo manual '{cargo['descripcion']}' (Q{cargo['monto']})", afectado_id=cargo['cui_usuario'], afectado_nombre=nombre_socio)
+    
+    msg_exito = f"El cargo '{cargo['descripcion']}' ha sido pagado exitosamente. <a href='/recibo/{nuevo_id_pago}' target='_blank' style='color:#22c55e; font-weight:700; text-decoration:underline; margin-left:8px;'>???? Descargar Recibo PDF</a>"
+    flash(msg_exito, "success")
+    return redirect(origen)# ???????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+# AUDITOR??A
+# ???????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
 
 @app.route("/admin/auditoria")
 def auditoria():
- if "usuario_id" not in session or session.get("rol") != "admin":
- return redirect("/login")
+    if "usuario_id" not in session or session.get("rol") != "admin":
+        return redirect("/login")
 
- buscar = request.args.get("buscar", "").strip()
- tipo_filtro = request.args.get("tipo", "").strip()
- fecha_inicio = request.args.get("fecha_inicio", "").strip()
- fecha_fin = request.args.get("fecha_fin", "").strip()
- pagina = int(request.args.get("pagina", 1))
- por_pagina = 30
- offset = (pagina - 1) * por_pagina
+    buscar       = request.args.get("buscar", "").strip()
+    tipo_filtro  = request.args.get("tipo", "").strip()
+    fecha_inicio = request.args.get("fecha_inicio", "").strip()
+    fecha_fin    = request.args.get("fecha_fin", "").strip()
+    pagina       = int(request.args.get("pagina", 1))
+    por_pagina   = 30
+    offset       = (pagina - 1) * por_pagina
 
- # Por defecto, si es primera carga sin argumentos, solo mostrar importantes (ocultar login y perfil)
- solo_importantes = request.args.get("solo_importantes", "0")
- if not request.args:
- solo_importantes = "1"
+    # Por defecto, si es primera carga sin argumentos, solo mostrar importantes (ocultar login y perfil)
+    solo_importantes = request.args.get("solo_importantes", "0")
+    if not request.args:
+        solo_importantes = "1"
 
- conn = conectar_db()
- cursor = conn.cursor(dictionary=True)
+    conn   = conectar_db()
+    cursor = conn.cursor(dictionary=True)
 
- condiciones = []
- params = []
+    condiciones = []
+    params      = []
 
- if buscar:
- condiciones.append("(actor_nombre LIKE %s OR afectado_nombre LIKE %s OR detalle LIKE %s)")
- params.extend([f"%{buscar}%", f"%{buscar}%", f"%{buscar}%"])
+    if buscar:
+        condiciones.append("(actor_nombre LIKE %s OR afectado_nombre LIKE %s OR detalle LIKE %s)")
+        params.extend([f"%{buscar}%", f"%{buscar}%", f"%{buscar}%"])
 
- if tipo_filtro:
- condiciones.append("tipo = %s")
- params.append(tipo_filtro)
- elif solo_importantes == "1":
- condiciones.append("tipo NOT IN ('login', 'perfil')")
+    if tipo_filtro:
+        condiciones.append("tipo = %s")
+        params.append(tipo_filtro)
+    elif solo_importantes == "1":
+        condiciones.append("tipo NOT IN ('login', 'perfil')")
 
- if fecha_inicio:
- condiciones.append("DATE(fecha) >= %s")
- params.append(fecha_inicio)
- if fecha_fin:
- condiciones.append("DATE(fecha) <= %s")
- params.append(fecha_fin)
+    if fecha_inicio:
+        condiciones.append("DATE(fecha) >= %s")
+        params.append(fecha_inicio)
+    if fecha_fin:
+        condiciones.append("DATE(fecha) <= %s")
+        params.append(fecha_fin)
 
- where = ("WHERE " + " AND ".join(condiciones)) if condiciones else ""
+    where = ("WHERE " + " AND ".join(condiciones)) if condiciones else ""
 
- cursor.execute(f"SELECT COUNT(*) AS total FROM auditoria {where}", params)
- total_acciones = cursor.fetchone()["total"]
- total_paginas = max(1, -(-total_acciones // por_pagina))
+    cursor.execute(f"SELECT COUNT(*) AS total FROM auditoria {where}", params)
+    total_acciones = cursor.fetchone()["total"]
+    total_paginas  = max(1, -(-total_acciones // por_pagina))
 
- cursor.execute(
- f"SELECT * FROM auditoria {where} ORDER BY fecha DESC LIMIT %s OFFSET %s",
- params + [por_pagina, offset]
- )
- auditoria_registros = cursor.fetchall()
+    cursor.execute(
+        f"SELECT * FROM auditoria {where} ORDER BY fecha DESC LIMIT %s OFFSET %s",
+        params + [por_pagina, offset]
+    )
+    auditoria_registros = cursor.fetchall()
 
- hoy_str = date.today().strftime("%Y-%m-%d")
- cursor.execute("SELECT COUNT(*) AS c FROM auditoria WHERE tipo='pago' AND DATE(fecha)=%s", (hoy_str,))
- pagos_hoy = cursor.fetchone()["c"]
+    hoy_str = date.today().strftime("%Y-%m-%d")
+    cursor.execute("SELECT COUNT(*) AS c FROM auditoria WHERE tipo='pago' AND DATE(fecha)=%s", (hoy_str,))
+    pagos_hoy = cursor.fetchone()["c"]
 
- cursor.execute("SELECT COUNT(*) AS c FROM auditoria WHERE tipo='rol'")
- cambios_rol = cursor.fetchone()["c"]
+    cursor.execute("SELECT COUNT(*) AS c FROM auditoria WHERE tipo='rol'")
+    cambios_rol = cursor.fetchone()["c"]
 
- cursor.execute("SELECT COUNT(*) AS c FROM auditoria WHERE tipo='desactivar'")
- desactivaciones = cursor.fetchone()["c"]
+    cursor.execute("SELECT COUNT(*) AS c FROM auditoria WHERE tipo='desactivar'")
+    desactivaciones = cursor.fetchone()["c"]
 
- conn.close()
+    conn.close()
 
- return render_template("auditoria.html",
- auditoria=auditoria_registros,
- total_acciones=total_acciones,
- pagos_hoy=pagos_hoy,
- cambios_rol=cambios_rol,
- desactivaciones=desactivaciones,
- buscar=buscar,
- tipo_filtro=tipo_filtro,
- pagina=pagina,
- total_paginas=total_paginas,
- solo_importantes=solo_importantes,
- )
+    return render_template("auditoria.html",
+        auditoria=auditoria_registros,
+        total_acciones=total_acciones,
+        pagos_hoy=pagos_hoy,
+        cambios_rol=cambios_rol,
+        desactivaciones=desactivaciones,
+        buscar=buscar,
+        tipo_filtro=tipo_filtro,
+        pagina=pagina,
+        total_paginas=total_paginas,
+        solo_importantes=solo_importantes,
+    )
 
 
 # Helper function to generate styled Excel report
 def generar_reporte_excel(headers, rows, title):
- import openpyxl
- from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
- from openpyxl.utils import get_column_letter
+    import openpyxl
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    from openpyxl.utils import get_column_letter
 
- wb = openpyxl.Workbook()
- ws = wb.active
- ws.title = title[:30]
- ws.views.sheetView[0].showGridLines = True
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = title[:30]
+    ws.views.sheetView[0].showGridLines = True
 
- font_title = Font(name='Segoe UI', size=15, bold=True, color='FF6B00')
- font_header = Font(name='Segoe UI', size=10, bold=True, color='FFFFFF')
- font_data = Font(name='Segoe UI', size=9.5)
- 
- fill_header = PatternFill(start_color='1F1F1F', end_color='1F1F1F', fill_type='solid')
- align_center = Alignment(horizontal='center', vertical='center')
- align_left = Alignment(horizontal='left', vertical='center')
- align_right = Alignment(horizontal='right', vertical='center')
+    font_title = Font(name='Segoe UI', size=15, bold=True, color='FF6B00')
+    font_header = Font(name='Segoe UI', size=10, bold=True, color='FFFFFF')
+    font_data = Font(name='Segoe UI', size=9.5)
+    
+    fill_header = PatternFill(start_color='1F1F1F', end_color='1F1F1F', fill_type='solid')
+    align_center = Alignment(horizontal='center', vertical='center')
+    align_left = Alignment(horizontal='left', vertical='center')
+    align_right = Alignment(horizontal='right', vertical='center')
 
- thin_border = Border(
- left=Side(style='thin', color='D9D9D9'),
- right=Side(style='thin', color='D9D9D9'),
- top=Side(style='thin', color='D9D9D9'),
- bottom=Side(style='thin', color='D9D9D9')
- )
+    thin_border = Border(
+        left=Side(style='thin', color='D9D9D9'),
+        right=Side(style='thin', color='D9D9D9'),
+        top=Side(style='thin', color='D9D9D9'),
+        bottom=Side(style='thin', color='D9D9D9')
+    )
 
- # Title Block
- ws.cell(row=1, column=1, value=title).font = font_title
- ws.row_dimensions[1].height = 36
- ws.cell(row=1, column=1).alignment = align_left
+    # Title Block
+    ws.cell(row=1, column=1, value=title).font = font_title
+    ws.row_dimensions[1].height = 36
+    ws.cell(row=1, column=1).alignment = align_left
 
- # Headers
- ws.append([]) # row 2 empty
- ws.append(headers) # row 3
- ws.row_dimensions[3].height = 24
- 
- for col_idx in range(1, len(headers) + 1):
- cell = ws.cell(row=3, column=col_idx)
- cell.font = font_header
- cell.fill = fill_header
- cell.alignment = align_center
- cell.border = thin_border
+    # Headers
+    ws.append([]) # row 2 empty
+    ws.append(headers) # row 3
+    ws.row_dimensions[3].height = 24
+    
+    for col_idx in range(1, len(headers) + 1):
+        cell = ws.cell(row=3, column=col_idx)
+        cell.font = font_header
+        cell.fill = fill_header
+        cell.alignment = align_center
+        cell.border = thin_border
 
- # Data Rows
- current_row = 4
- for r in rows:
- row_values = []
- for val in r:
- if isinstance(val, datetime):
- row_values.append(val.strftime('%Y-%m-%d %H:%M:%S'))
- elif isinstance(val, date):
- row_values.append(val.strftime('%Y-%m-%d'))
- else:
- row_values.append(val)
- ws.append(row_values)
- ws.row_dimensions[current_row].height = 20
- 
- for col_idx in range(1, len(r) + 1):
- cell = ws.cell(row=current_row, column=col_idx)
- cell.font = font_data
- cell.border = thin_border
- 
- val = r[col_idx - 1]
- if isinstance(val, (int, float, decimal.Decimal if 'decimal' in globals() else float)):
- cell.alignment = align_right
- header_name = headers[col_idx - 1].lower()
- if "monto" in header_name or "ingreso" in header_name or "total" in header_name:
- cell.number_format = '"Q"#,##0'
- elif isinstance(val, (date, datetime)):
- cell.alignment = align_center
- else:
- cell.alignment = align_left
- current_row += 1
+    # Data Rows
+    current_row = 4
+    for r in rows:
+        row_values = []
+        for val in r:
+            if isinstance(val, datetime):
+                row_values.append(val.strftime('%Y-%m-%d %H:%M:%S'))
+            elif isinstance(val, date):
+                row_values.append(val.strftime('%Y-%m-%d'))
+            else:
+                row_values.append(val)
+        ws.append(row_values)
+        ws.row_dimensions[current_row].height = 20
+        
+        for col_idx in range(1, len(r) + 1):
+            cell = ws.cell(row=current_row, column=col_idx)
+            cell.font = font_data
+            cell.border = thin_border
+            
+            val = r[col_idx - 1]
+            if isinstance(val, (int, float, decimal.Decimal if 'decimal' in globals() else float)):
+                cell.alignment = align_right
+                header_name = headers[col_idx - 1].lower()
+                if "monto" in header_name or "ingreso" in header_name or "total" in header_name:
+                    cell.number_format = '"Q"#,##0'
+            elif isinstance(val, (date, datetime)):
+                cell.alignment = align_center
+            else:
+                cell.alignment = align_left
+        current_row += 1
 
- # Auto-width
- for col in ws.columns:
- max_len = 0
- col_letter = get_column_letter(col[0].column)
- for cell in col:
- val_str = str(cell.value or '')
- if len(val_str) > max_len:
- max_len = len(val_str)
- ws.column_dimensions[col_letter].width = max(max_len + 4, 12)
+    # Auto-width
+    for col in ws.columns:
+        max_len = 0
+        col_letter = get_column_letter(col[0].column)
+        for cell in col:
+            val_str = str(cell.value or '')
+            if len(val_str) > max_len:
+                max_len = len(val_str)
+        ws.column_dimensions[col_letter].width = max(max_len + 4, 12)
 
- buf = BytesIO()
- wb.save(buf)
- buf.seek(0)
- return buf.read()
+    buf = BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    return buf.read()
 
 
 # Helper function to generate multi-page PDF report
 def generar_reporte_pdf(headers, rows, title, subtitle):
- from reportlab.lib.pagesizes import letter
- from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
- from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
- from reportlab.lib import colors
+    from reportlab.lib.pagesizes import letter
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib import colors
 
- buf = BytesIO()
- doc = SimpleDocTemplate(
- buf,
- pagesize=letter,
- leftMargin=36,
- rightMargin=36,
- topMargin=36,
- bottomMargin=36
- )
- story = []
+    buf = BytesIO()
+    doc = SimpleDocTemplate(
+        buf,
+        pagesize=letter,
+        leftMargin=36,
+        rightMargin=36,
+        topMargin=36,
+        bottomMargin=36
+    )
+    story = []
 
- styles = getSampleStyleSheet()
- title_style = ParagraphStyle(
- 'DocTitle',
- parent=styles['Normal'],
- fontName='Helvetica-Bold',
- fontSize=18,
- textColor=colors.HexColor('#FF6B00'),
- spaceAfter=4
- )
- sub_style = ParagraphStyle(
- 'DocSub',
- parent=styles['Normal'],
- fontName='Helvetica',
- fontSize=9,
- textColor=colors.HexColor('#666666'),
- spaceAfter=15
- )
- cell_style = ParagraphStyle(
- 'Cell',
- parent=styles['Normal'],
- fontName='Helvetica',
- fontSize=8,
- textColor=colors.HexColor('#333333')
- )
- header_style = ParagraphStyle(
- 'HeaderCell',
- parent=styles['Normal'],
- fontName='Helvetica-Bold',
- fontSize=8.5,
- textColor=colors.white
- )
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle(
+        'DocTitle',
+        parent=styles['Normal'],
+        fontName='Helvetica-Bold',
+        fontSize=18,
+        textColor=colors.HexColor('#FF6B00'),
+        spaceAfter=4
+    )
+    sub_style = ParagraphStyle(
+        'DocSub',
+        parent=styles['Normal'],
+        fontName='Helvetica',
+        fontSize=9,
+        textColor=colors.HexColor('#666666'),
+        spaceAfter=15
+    )
+    cell_style = ParagraphStyle(
+        'Cell',
+        parent=styles['Normal'],
+        fontName='Helvetica',
+        fontSize=8,
+        textColor=colors.HexColor('#333333')
+    )
+    header_style = ParagraphStyle(
+        'HeaderCell',
+        parent=styles['Normal'],
+        fontName='Helvetica-Bold',
+        fontSize=8.5,
+        textColor=colors.white
+    )
 
- story.append(Paragraph(title, title_style))
- story.append(Paragraph(subtitle, sub_style))
+    story.append(Paragraph(title, title_style))
+    story.append(Paragraph(subtitle, sub_style))
 
- data = [[Paragraph(h, header_style) for h in headers]]
- for r in rows:
- row_data = []
- for cell_val in r:
- if isinstance(cell_val, datetime):
- txt = cell_val.strftime('%d/%m/%Y %H:%M:%S')
- elif isinstance(cell_val, date):
- txt = cell_val.strftime('%d/%m/%Y')
- elif isinstance(cell_val, (int, float)):
- txt = f"Q{int(cell_val):,}"
- else:
- txt = str(cell_val or '—')
- row_data.append(Paragraph(txt, cell_style))
- data.append(row_data)
+    data = [[Paragraph(h, header_style) for h in headers]]
+    for r in rows:
+        row_data = []
+        for cell_val in r:
+            if isinstance(cell_val, datetime):
+                txt = cell_val.strftime('%d/%m/%Y %H:%M:%S')
+            elif isinstance(cell_val, date):
+                txt = cell_val.strftime('%d/%m/%Y')
+            elif isinstance(cell_val, (int, float)):
+                txt = f"Q{int(cell_val):,}"
+            else:
+                txt = str(cell_val or '???')
+            row_data.append(Paragraph(txt, cell_style))
+        data.append(row_data)
 
- width, height = letter
- usable_width = width - 72
- num_cols = len(headers)
- col_widths = [usable_width / num_cols] * num_cols
+    width, height = letter
+    usable_width = width - 72
+    num_cols = len(headers)
+    col_widths = [usable_width / num_cols] * num_cols
 
- if num_cols == 5: # Auditoria
- col_widths = [usable_width * 0.16, usable_width * 0.14, usable_width * 0.18, usable_width * 0.36, usable_width * 0.16]
- elif num_cols == 5 and headers[0] == "No.": # Pagos socio
- col_widths = [usable_width * 0.08, usable_width * 0.22, usable_width * 0.22, usable_width * 0.30, usable_width * 0.18]
+    if num_cols == 5: # Auditoria
+        col_widths = [usable_width * 0.16, usable_width * 0.14, usable_width * 0.18, usable_width * 0.36, usable_width * 0.16]
+    elif num_cols == 5 and headers[0] == "No.": # Pagos socio
+        col_widths = [usable_width * 0.08, usable_width * 0.22, usable_width * 0.22, usable_width * 0.30, usable_width * 0.18]
 
- t = Table(data, colWidths=col_widths, repeatRows=1)
- t.setStyle(TableStyle([
- ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#1F1F1F')),
- ('ALIGN', (0,0), (-1,-1), 'LEFT'),
- ('VALIGN', (0,0), (-1,-1), 'TOP'),
- ('BOTTOMPADDING', (0,0), (-1,-1), 5),
- ('TOPPADDING', (0,0), (-1,-1), 5),
- ('LEFTPADDING', (0,0), (-1,-1), 5),
- ('RIGHTPADDING', (0,0), (-1,-1), 5),
- ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#E5E5E5')),
- ]))
- story.append(t)
- doc.build(story)
- buf.seek(0)
- return buf.read()
+    t = Table(data, colWidths=col_widths, repeatRows=1)
+    t.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#1F1F1F')),
+        ('ALIGN', (0,0), (-1,-1), 'LEFT'),
+        ('VALIGN', (0,0), (-1,-1), 'TOP'),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 5),
+        ('TOPPADDING', (0,0), (-1,-1), 5),
+        ('LEFTPADDING', (0,0), (-1,-1), 5),
+        ('RIGHTPADDING', (0,0), (-1,-1), 5),
+        ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#E5E5E5')),
+    ]))
+    story.append(t)
+    doc.build(story)
+    buf.seek(0)
+    return buf.read()
 
 
 @app.route("/admin/auditoria/excel")
 def exportar_auditoria_excel():
- if "usuario_id" not in session or session.get("rol") != "admin":
- return redirect("/login")
+    if "usuario_id" not in session or session.get("rol") != "admin":
+        return redirect("/login")
 
- buscar = request.args.get("buscar", "").strip()
- tipo_filtro = request.args.get("tipo", "").strip()
- fecha_inicio = request.args.get("fecha_inicio", "").strip()
- fecha_fin = request.args.get("fecha_fin", "").strip()
+    buscar       = request.args.get("buscar", "").strip()
+    tipo_filtro  = request.args.get("tipo", "").strip()
+    fecha_inicio = request.args.get("fecha_inicio", "").strip()
+    fecha_fin    = request.args.get("fecha_fin", "").strip()
 
- conn = conectar_db()
- cursor = conn.cursor(dictionary=True)
+    conn   = conectar_db()
+    cursor = conn.cursor(dictionary=True)
 
- condiciones = []
- params = []
+    condiciones = []
+    params      = []
 
- if buscar:
- condiciones.append("(actor_nombre LIKE %s OR afectado_nombre LIKE %s OR detalle LIKE %s)")
- params.extend([f"%{buscar}%", f"%{buscar}%", f"%{buscar}%"])
+    if buscar:
+        condiciones.append("(actor_nombre LIKE %s OR afectado_nombre LIKE %s OR detalle LIKE %s)")
+        params.extend([f"%{buscar}%", f"%{buscar}%", f"%{buscar}%"])
 
- if tipo_filtro:
- condiciones.append("tipo = %s")
- params.append(tipo_filtro)
- else:
- condiciones.append("LOWER(tipo) NOT IN ('login', 'logout', 'inicio_sesion', 'sesion')")
+    if tipo_filtro:
+        condiciones.append("tipo = %s")
+        params.append(tipo_filtro)
+    else:
+        condiciones.append("LOWER(tipo) NOT IN ('login', 'logout', 'inicio_sesion', 'sesion')")
 
- if fecha_inicio:
- condiciones.append("DATE(fecha) >= %s")
- params.append(fecha_inicio)
- if fecha_fin:
- condiciones.append("DATE(fecha) <= %s")
- params.append(fecha_fin)
+    if fecha_inicio:
+        condiciones.append("DATE(fecha) >= %s")
+        params.append(fecha_inicio)
+    if fecha_fin:
+        condiciones.append("DATE(fecha) <= %s")
+        params.append(fecha_fin)
 
- where = ("WHERE " + " AND ".join(condiciones)) if condiciones else ""
+    where = ("WHERE " + " AND ".join(condiciones)) if condiciones else ""
 
- cursor.execute(f"SELECT fecha, tipo, actor_nombre, actor_rol, detalle, afectado_nombre FROM auditoria {where} ORDER BY fecha DESC", params)
- logs = cursor.fetchall()
- conn.close()
+    cursor.execute(f"SELECT fecha, tipo, actor_nombre, actor_rol, detalle, afectado_nombre FROM auditoria {where} ORDER BY fecha DESC", params)
+    logs = cursor.fetchall()
+    conn.close()
 
- headers = ["Fecha y Hora", "Tipo de Acción", "Realizado por", "Rol Actor", "Detalle", "Socio Afectado"]
- rows = []
- for log in logs:
- rows.append([
- log["fecha"],
- log["tipo"].capitalize(),
- log["actor_nombre"],
- log["actor_rol"],
- log["detalle"],
- log["afectado_nombre"] or "—"
- ])
+    headers = ["Fecha y Hora", "Tipo de Acci??n", "Realizado por", "Rol Actor", "Detalle", "Socio Afectado"]
+    rows = []
+    for log in logs:
+        rows.append([
+            log["fecha"],
+            log["tipo"].capitalize(),
+            log["actor_nombre"],
+            log["actor_rol"],
+            log["detalle"],
+            log["afectado_nombre"] or "???"
+        ])
 
- excel_bytes = generar_reporte_excel(headers, rows, "Reporte de Auditoria — Bodyflex Gym")
- response = make_response(excel_bytes)
- response.headers['Content-Type'] = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
- response.headers['Content-Disposition'] = 'attachment; filename=reporte_auditoria.xlsx'
- return response
+    excel_bytes = generar_reporte_excel(headers, rows, "Reporte de Auditoria ??? Bodyflex Gym")
+    response = make_response(excel_bytes)
+    response.headers['Content-Type'] = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    response.headers['Content-Disposition'] = 'attachment; filename=reporte_auditoria.xlsx'
+    return response
 
 
 @app.route("/admin/auditoria/pdf")
 def exportar_auditoria_pdf():
- if "usuario_id" not in session or session.get("rol") != "admin":
- return redirect("/login")
+    if "usuario_id" not in session or session.get("rol") != "admin":
+        return redirect("/login")
 
- buscar = request.args.get("buscar", "").strip()
- tipo_filtro = request.args.get("tipo", "").strip()
- fecha_inicio = request.args.get("fecha_inicio", "").strip()
- fecha_fin = request.args.get("fecha_fin", "").strip()
+    buscar       = request.args.get("buscar", "").strip()
+    tipo_filtro  = request.args.get("tipo", "").strip()
+    fecha_inicio = request.args.get("fecha_inicio", "").strip()
+    fecha_fin    = request.args.get("fecha_fin", "").strip()
 
- conn = conectar_db()
- cursor = conn.cursor(dictionary=True)
+    conn   = conectar_db()
+    cursor = conn.cursor(dictionary=True)
 
- condiciones = []
- params = []
+    condiciones = []
+    params      = []
 
- if buscar:
- condiciones.append("(actor_nombre LIKE %s OR afectado_nombre LIKE %s OR detalle LIKE %s)")
- params.extend([f"%{buscar}%", f"%{buscar}%", f"%{buscar}%"])
+    if buscar:
+        condiciones.append("(actor_nombre LIKE %s OR afectado_nombre LIKE %s OR detalle LIKE %s)")
+        params.extend([f"%{buscar}%", f"%{buscar}%", f"%{buscar}%"])
 
- if tipo_filtro:
- condiciones.append("tipo = %s")
- params.append(tipo_filtro)
- else:
- condiciones.append("LOWER(tipo) NOT IN ('login', 'logout', 'inicio_sesion', 'sesion')")
+    if tipo_filtro:
+        condiciones.append("tipo = %s")
+        params.append(tipo_filtro)
+    else:
+        condiciones.append("LOWER(tipo) NOT IN ('login', 'logout', 'inicio_sesion', 'sesion')")
 
- if fecha_inicio:
- condiciones.append("DATE(fecha) >= %s")
- params.append(fecha_inicio)
- if fecha_fin:
- condiciones.append("DATE(fecha) <= %s")
- params.append(fecha_fin)
+    if fecha_inicio:
+        condiciones.append("DATE(fecha) >= %s")
+        params.append(fecha_inicio)
+    if fecha_fin:
+        condiciones.append("DATE(fecha) <= %s")
+        params.append(fecha_fin)
 
- where = ("WHERE " + " AND ".join(condiciones)) if condiciones else ""
+    where = ("WHERE " + " AND ".join(condiciones)) if condiciones else ""
 
- cursor.execute(f"SELECT fecha, tipo, actor_nombre, actor_rol, detalle, afectado_nombre FROM auditoria {where} ORDER BY fecha DESC", params)
- logs = cursor.fetchall()
- conn.close()
+    cursor.execute(f"SELECT fecha, tipo, actor_nombre, actor_rol, detalle, afectado_nombre FROM auditoria {where} ORDER BY fecha DESC", params)
+    logs = cursor.fetchall()
+    conn.close()
 
- headers = ["Fecha", "Acción", "Realizado por", "Detalle", "Afectado"]
- rows = []
- for log in logs:
- rows.append([
- log["fecha"],
- log["tipo"].capitalize(),
- f"{log['actor_nombre']} ({log['actor_rol']})",
- log["detalle"],
- log["afectado_nombre"] or "—"
- ])
+    headers = ["Fecha", "Acci??n", "Realizado por", "Detalle", "Afectado"]
+    rows = []
+    for log in logs:
+        rows.append([
+            log["fecha"],
+            log["tipo"].capitalize(),
+            f"{log['actor_nombre']} ({log['actor_rol']})",
+            log["detalle"],
+            log["afectado_nombre"] or "???"
+        ])
 
- filtro_txt = f"Filtros: Busqueda: '{buscar or 'Todas'}' | Tipo: '{tipo_filtro or 'Todos'}'"
- if fecha_inicio or fecha_fin:
- filtro_txt += f" | Rango: {fecha_inicio or '...'} a {fecha_fin or '...'}"
+    filtro_txt = f"Filtros: Busqueda: '{buscar or 'Todas'}' | Tipo: '{tipo_filtro or 'Todos'}'"
+    if fecha_inicio or fecha_fin:
+        filtro_txt += f" | Rango: {fecha_inicio or '...'} a {fecha_fin or '...'}"
 
- pdf_bytes = generar_reporte_pdf(headers, rows, "Reporte de Auditoría", filtro_txt)
- response = make_response(pdf_bytes)
- response.headers['Content-Type'] = 'application/pdf'
- response.headers['Content-Disposition'] = 'attachment; filename=reporte_auditoria.pdf'
- return response
+    pdf_bytes = generar_reporte_pdf(headers, rows, "Reporte de Auditor??a", filtro_txt)
+    response = make_response(pdf_bytes)
+    response.headers['Content-Type'] = 'application/pdf'
+    response.headers['Content-Disposition'] = 'attachment; filename=reporte_auditoria.pdf'
+    return response
 
 
 @app.route("/admin/auditoria/limpiar", methods=["POST"])
 def limpiar_auditoria():
- if "usuario_id" not in session or session.get("rol") != "admin":
- return redirect("/login")
+    if "usuario_id" not in session or session.get("rol") != "admin":
+        return redirect("/login")
 
- conn = conectar_db()
- cursor = conn.cursor()
- # Eliminar todos los registros de tipo login y logs de usuarios regulares
- cursor.execute("DELETE FROM auditoria WHERE actor_rol IN ('user', 'socio') OR tipo = 'login'")
- conn.commit()
- conn.close()
+    conn = conectar_db()
+    cursor = conn.cursor()
+    # Eliminar todos los registros de tipo login y logs de usuarios regulares
+    cursor.execute("DELETE FROM auditoria WHERE actor_rol IN ('user', 'socio') OR tipo = 'login'")
+    conn.commit()
+    conn.close()
 
- flash("Se eliminaron todos los registros de inicios de sesión y logs de usuarios regulares exitosamente.", "success")
- return redirect("/admin/auditoria")
+    flash("Se eliminaron todos los registros de inicios de sesi??n y logs de usuarios regulares exitosamente.", "success")
+    return redirect("/admin/auditoria")
 
 
 @app.route("/admin/reportes")
 def admin_reportes():
- if "usuario_id" not in session or session.get("rol") != "admin":
- return redirect("/login")
+    if "usuario_id" not in session or session.get("rol") != "admin":
+        return redirect("/login")
 
- conn = conectar_db()
- cursor = conn.cursor(dictionary=True)
+    conn   = conectar_db()
+    cursor = conn.cursor(dictionary=True)
 
- # Métricas de ingresos mensuales (últimos 12 meses) 
- cursor.execute("""
- SELECT YEAR(fecha_pago) AS anio, MONTH(fecha_pago) AS mes,
- SUM(monto) AS total
- FROM pagos
- WHERE fecha_pago >= DATE_SUB(CURDATE(), INTERVAL 12 MONTH)
- GROUP BY YEAR(fecha_pago), MONTH(fecha_pago)
- ORDER BY anio, mes
- """)
- ingresos_raw = cursor.fetchall()
+    # ?????? M??tricas de ingresos mensuales (??ltimos 12 meses) ??????
+    cursor.execute("""
+        SELECT YEAR(fecha_pago) AS anio, MONTH(fecha_pago) AS mes,
+               SUM(monto) AS total
+        FROM pagos
+        WHERE fecha_pago >= DATE_SUB(CURDATE(), INTERVAL 12 MONTH)
+        GROUP BY YEAR(fecha_pago), MONTH(fecha_pago)
+        ORDER BY anio, mes
+    """)
+    ingresos_raw = cursor.fetchall()
 
- cursor.execute("SELECT COALESCE(SUM(monto), 0) AS total FROM pagos")
- total_ingresos_global = cursor.fetchone()["total"]
+    cursor.execute("SELECT COALESCE(SUM(monto), 0) AS total FROM pagos")
+    total_ingresos_global = cursor.fetchone()["total"]
 
- cursor.execute("""
- SELECT COALESCE(SUM(monto), 0) AS total FROM pagos
- WHERE YEAR(fecha_pago) = YEAR(CURDATE()) AND MONTH(fecha_pago) = MONTH(CURDATE())
- """)
- ingresos_mes_actual = cursor.fetchone()["total"]
+    cursor.execute("""
+        SELECT COALESCE(SUM(monto), 0) AS total FROM pagos
+        WHERE YEAR(fecha_pago) = YEAR(CURDATE()) AND MONTH(fecha_pago) = MONTH(CURDATE())
+    """)
+    ingresos_mes_actual = cursor.fetchone()["total"]
 
- conn.close()
+    conn.close()
 
- ingresos_labels = [f"{MESES_NOMBRES[r['mes']-1][:3]} {r['anio']}" for r in ingresos_raw]
- ingresos_data = [float(r['total']) for r in ingresos_raw]
+    ingresos_labels = [f"{MESES_NOMBRES[r['mes']-1][:3]} {r['anio']}" for r in ingresos_raw]
+    ingresos_data   = [float(r['total']) for r in ingresos_raw]
 
- fecha_hoy = date.today()
+    fecha_hoy = date.today()
 
- return render_template("reportes.html", 
- total_ingresos_global=total_ingresos_global,
- ingresos_mes_actual=ingresos_mes_actual,
- ingresos_labels=ingresos_labels,
- ingresos_data=ingresos_data,
- fecha_hoy=fecha_hoy)
+    return render_template("reportes.html", 
+                           total_ingresos_global=total_ingresos_global,
+                           ingresos_mes_actual=ingresos_mes_actual,
+                           ingresos_labels=ingresos_labels,
+                           ingresos_data=ingresos_data,
+                           fecha_hoy=fecha_hoy)
 
-# 
-# MÓDULO DE INVENTARIO
-# 
+# ???????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+# M??DULO DE INVENTARIO
+# ???????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
 
 import os
 from werkzeug.utils import secure_filename
@@ -1712,1444 +1712,1444 @@ app.config['UPLOAD_FOLDER_INVENTARIO'] = UPLOAD_FOLDER
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 
 def allowed_file(filename):
- return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 @app.route("/admin/inventario")
 def inventario_admin():
- if "usuario_id" not in session or session.get("rol") not in ("admin", "empleado"):
- return redirect("/login")
- 
- buscar = request.args.get("buscar", "")
- conn = conectar_db()
- cursor = conn.cursor(dictionary=True)
- 
- if buscar:
- cursor.execute("SELECT * FROM productos WHERE nombre LIKE %s OR categoria LIKE %s ORDER BY nombre", (f"%{buscar}%", f"%{buscar}%"))
- else:
- cursor.execute("SELECT * FROM productos ORDER BY nombre")
- 
- productos = cursor.fetchall()
- conn.close()
- 
- return render_template("inventario_admin.html", productos=productos, buscar=buscar)
+    if "usuario_id" not in session or session.get("rol") not in ("admin", "empleado"):
+        return redirect("/login")
+    
+    buscar = request.args.get("buscar", "")
+    conn = conectar_db()
+    cursor = conn.cursor(dictionary=True)
+    
+    if buscar:
+        cursor.execute("SELECT * FROM productos WHERE nombre LIKE %s OR categoria LIKE %s ORDER BY nombre", (f"%{buscar}%", f"%{buscar}%"))
+    else:
+        cursor.execute("SELECT * FROM productos ORDER BY nombre")
+        
+    productos = cursor.fetchall()
+    conn.close()
+    
+    return render_template("inventario_admin.html", productos=productos, buscar=buscar)
 
 @app.route("/admin/inventario/agregar", methods=["POST"])
 def agregar_producto():
- if "usuario_id" not in session or session.get("rol") not in ("admin", "empleado"):
- return redirect("/login")
- 
- nombre = request.form.get("nombre")
- descripcion = request.form.get("descripcion", "")
- cantidad = request.form.get("cantidad", 0)
- precio_costo = request.form.get("precio_costo") or None
- precio_venta = request.form.get("precio_venta", 0)
- categoria = request.form.get("categoria", "General")
- 
- foto = request.files.get("foto")
- foto_url = None
- if foto and allowed_file(foto.filename):
- filename = secure_filename(foto.filename)
- import time
- filename = f"{int(time.time())}_{filename}"
- foto.save(os.path.join(app.config['UPLOAD_FOLDER_INVENTARIO'], filename))
- foto_url = f"/static/uploads/inventario/{filename}"
- 
- conn = conectar_db()
- cursor = conn.cursor()
- cursor.execute("""
- INSERT INTO productos (nombre, descripcion, cantidad, precio_costo, precio_venta, categoria, foto_url)
- VALUES (%s, %s, %s, %s, %s, %s, %s)
- """, (nombre, descripcion, cantidad, precio_costo, precio_venta, categoria, foto_url))
- conn.commit()
- conn.close()
- 
- registrar_log("inventario", f"Agregó producto: {nombre}")
- flash("Producto agregado exitosamente", "success")
- return redirect("/admin/inventario")
+    if "usuario_id" not in session or session.get("rol") not in ("admin", "empleado"):
+        return redirect("/login")
+        
+    nombre = request.form.get("nombre")
+    descripcion = request.form.get("descripcion", "")
+    cantidad = request.form.get("cantidad", 0)
+    precio_costo = request.form.get("precio_costo") or None
+    precio_venta = request.form.get("precio_venta", 0)
+    categoria = request.form.get("categoria", "General")
+    
+    foto = request.files.get("foto")
+    foto_url = None
+    if foto and allowed_file(foto.filename):
+        filename = secure_filename(foto.filename)
+        import time
+        filename = f"{int(time.time())}_{filename}"
+        foto.save(os.path.join(app.config['UPLOAD_FOLDER_INVENTARIO'], filename))
+        foto_url = f"/static/uploads/inventario/{filename}"
+        
+    conn = conectar_db()
+    cursor = conn.cursor()
+    cursor.execute("""
+        INSERT INTO productos (nombre, descripcion, cantidad, precio_costo, precio_venta, categoria, foto_url)
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
+    """, (nombre, descripcion, cantidad, precio_costo, precio_venta, categoria, foto_url))
+    conn.commit()
+    conn.close()
+    
+    registrar_log("inventario", f"Agreg?? producto: {nombre}")
+    flash("Producto agregado exitosamente", "success")
+    return redirect("/admin/inventario")
 
 @app.route("/admin/inventario/editar/<int:id_producto>", methods=["POST"])
 def editar_producto(id_producto):
- if "usuario_id" not in session or session.get("rol") not in ("admin", "empleado"):
- return redirect("/login")
- 
- nombre = request.form.get("nombre")
- descripcion = request.form.get("descripcion", "")
- precio_costo = request.form.get("precio_costo") or None
- precio_venta = request.form.get("precio_venta", 0)
- categoria = request.form.get("categoria", "General")
- 
- conn = conectar_db()
- cursor = conn.cursor()
- 
- foto = request.files.get("foto")
- if foto and allowed_file(foto.filename):
- filename = secure_filename(foto.filename)
- import time
- filename = f"{int(time.time())}_{filename}"
- foto.save(os.path.join(app.config['UPLOAD_FOLDER_INVENTARIO'], filename))
- foto_url = f"/static/uploads/inventario/{filename}"
- 
- cursor.execute("""
- UPDATE productos SET nombre=%s, descripcion=%s, precio_costo=%s, precio_venta=%s, categoria=%s, foto_url=%s
- WHERE id_producto=%s
- """, (nombre, descripcion, precio_costo, precio_venta, categoria, foto_url, id_producto))
- else:
- cursor.execute("""
- UPDATE productos SET nombre=%s, descripcion=%s, precio_costo=%s, precio_venta=%s, categoria=%s
- WHERE id_producto=%s
- """, (nombre, descripcion, precio_costo, precio_venta, categoria, id_producto))
- 
- conn.commit()
- conn.close()
- 
- registrar_log("inventario", f"Editó producto: {nombre}")
- flash("Producto editado exitosamente", "success")
- return redirect("/admin/inventario")
+    if "usuario_id" not in session or session.get("rol") not in ("admin", "empleado"):
+        return redirect("/login")
+        
+    nombre = request.form.get("nombre")
+    descripcion = request.form.get("descripcion", "")
+    precio_costo = request.form.get("precio_costo") or None
+    precio_venta = request.form.get("precio_venta", 0)
+    categoria = request.form.get("categoria", "General")
+    
+    conn = conectar_db()
+    cursor = conn.cursor()
+    
+    foto = request.files.get("foto")
+    if foto and allowed_file(foto.filename):
+        filename = secure_filename(foto.filename)
+        import time
+        filename = f"{int(time.time())}_{filename}"
+        foto.save(os.path.join(app.config['UPLOAD_FOLDER_INVENTARIO'], filename))
+        foto_url = f"/static/uploads/inventario/{filename}"
+        
+        cursor.execute("""
+            UPDATE productos SET nombre=%s, descripcion=%s, precio_costo=%s, precio_venta=%s, categoria=%s, foto_url=%s
+            WHERE id_producto=%s
+        """, (nombre, descripcion, precio_costo, precio_venta, categoria, foto_url, id_producto))
+    else:
+        cursor.execute("""
+            UPDATE productos SET nombre=%s, descripcion=%s, precio_costo=%s, precio_venta=%s, categoria=%s
+            WHERE id_producto=%s
+        """, (nombre, descripcion, precio_costo, precio_venta, categoria, id_producto))
+        
+    conn.commit()
+    conn.close()
+    
+    registrar_log("inventario", f"Edit?? producto: {nombre}")
+    flash("Producto editado exitosamente", "success")
+    return redirect("/admin/inventario")
 
 @app.route("/admin/inventario/stock/<int:id_producto>", methods=["POST"])
 def ajustar_stock(id_producto):
- if "usuario_id" not in session or session.get("rol") not in ("admin", "empleado"):
- return redirect("/login")
- 
- ajuste = request.form.get("ajuste")
- 
- if not ajuste:
- flash("Ajuste inválido", "error")
- return redirect("/admin/inventario")
- 
- conn = conectar_db()
- cursor = conn.cursor()
- cursor.execute("UPDATE productos SET cantidad = cantidad + %s WHERE id_producto=%s", (ajuste, id_producto))
- conn.commit()
- conn.close()
- 
- registrar_log("inventario", f"Ajustó stock del producto ID {id_producto} en {ajuste}")
- flash("Stock actualizado", "success")
- return redirect("/admin/inventario")
+    if "usuario_id" not in session or session.get("rol") not in ("admin", "empleado"):
+        return redirect("/login")
+        
+    ajuste = request.form.get("ajuste")
+    
+    if not ajuste:
+        flash("Ajuste inv??lido", "error")
+        return redirect("/admin/inventario")
+        
+    conn = conectar_db()
+    cursor = conn.cursor()
+    cursor.execute("UPDATE productos SET cantidad = cantidad + %s WHERE id_producto=%s", (ajuste, id_producto))
+    conn.commit()
+    conn.close()
+    
+    registrar_log("inventario", f"Ajust?? stock del producto ID {id_producto} en {ajuste}")
+    flash("Stock actualizado", "success")
+    return redirect("/admin/inventario")
 
 @app.route("/admin/inventario/eliminar/<int:id_producto>", methods=["POST"])
 def eliminar_producto(id_producto):
- if "usuario_id" not in session or session.get("rol") not in ("admin", "empleado"):
- return redirect("/login")
- 
- conn = conectar_db()
- cursor = conn.cursor()
- cursor.execute("DELETE FROM productos WHERE id_producto=%s", (id_producto,))
- conn.commit()
- conn.close()
- 
- registrar_log("inventario", f"Eliminó producto ID {id_producto}")
- flash("Producto eliminado", "success")
- return redirect("/admin/inventario")
+    if "usuario_id" not in session or session.get("rol") not in ("admin", "empleado"):
+        return redirect("/login")
+        
+    conn = conectar_db()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM productos WHERE id_producto=%s", (id_producto,))
+    conn.commit()
+    conn.close()
+    
+    registrar_log("inventario", f"Elimin?? producto ID {id_producto}")
+    flash("Producto eliminado", "success")
+    return redirect("/admin/inventario")
 @app.route("/admin/auditoria/borrar_log/<int:id_log>", methods=["POST"])
 def borrar_log_individual(id_log):
- if "usuario_id" not in session or session.get("rol") != "admin":
- return redirect("/login")
+    if "usuario_id" not in session or session.get("rol") != "admin":
+        return redirect("/login")
 
- conn = conectar_db()
- cursor = conn.cursor()
- cursor.execute("DELETE FROM auditoria WHERE id_log = %s", (id_log,))
- conn.commit()
- conn.close()
+    conn = conectar_db()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM auditoria WHERE id_log = %s", (id_log,))
+    conn.commit()
+    conn.close()
 
- flash("Registro de auditoría eliminado exitosamente.", "success")
- return redirect(request.referrer or "/admin/auditoria")
+    flash("Registro de auditor??a eliminado exitosamente.", "success")
+    return redirect(request.referrer or "/admin/auditoria")
 
 
 @app.route("/admin/auditoria/borrar_usuario/<int:cui>", methods=["POST"])
 def borrar_logs_usuario(cui):
- if "usuario_id" not in session or session.get("rol") != "admin":
- return redirect("/login")
+    if "usuario_id" not in session or session.get("rol") != "admin":
+        return redirect("/login")
 
- conn = conectar_db()
- cursor = conn.cursor()
- cursor.execute("DELETE FROM auditoria WHERE actor_id = %s OR afectado_id = %s", (cui, cui))
- conn.commit()
- conn.close()
+    conn = conectar_db()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM auditoria WHERE actor_id = %s OR afectado_id = %s", (cui, cui))
+    conn.commit()
+    conn.close()
 
- flash("Se eliminaron todos los registros de auditoría asociados a este usuario.", "success")
- return redirect(request.referrer or "/admin/auditoria")
+    flash("Se eliminaron todos los registros de auditor??a asociados a este usuario.", "success")
+    return redirect(request.referrer or "/admin/auditoria")
 
 
 
-# 
-# ADMIN — Restablecer contraseña de un socio
-# 
+# ???????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+# ADMIN ??? Restablecer contrase??a de un socio
+# ???????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
 
 @app.route("/admin/reset_pass/<int:cui>", methods=["POST"])
 def admin_reset_pass(cui):
- """El admin genera una nueva contraseña temporal para un socio sin correo."""
- if "usuario_id" not in session or session.get("rol") != "admin":
- return redirect("/login")
+    """El admin genera una nueva contrase??a temporal para un socio sin correo."""
+    if "usuario_id" not in session or session.get("rol") != "admin":
+        return redirect("/login")
 
- nueva_pass = request.form.get("nueva_pass", "").strip()
+    nueva_pass = request.form.get("nueva_pass", "").strip()
 
- es_valida, msg_error = validar_contrasena(nueva_pass)
- if not es_valida:
- flash(msg_error, "error")
- return redirect("/admin")
+    es_valida, msg_error = validar_contrasena(nueva_pass)
+    if not es_valida:
+        flash(msg_error, "error")
+        return redirect("/admin")
 
- conn = conectar_db(); cursor = conn.cursor(dictionary=True)
- cursor.execute("SELECT nombre, apellido FROM usuarios WHERE cui=%s", (cui,))
- u = cursor.fetchone()
- if not u:
- conn.close()
- flash("Socio no encontrado", "error")
- return redirect("/admin")
+    conn = conectar_db(); cursor = conn.cursor(dictionary=True)
+    cursor.execute("SELECT nombre, apellido FROM usuarios WHERE cui=%s", (cui,))
+    u = cursor.fetchone()
+    if not u:
+        conn.close()
+        flash("Socio no encontrado", "error")
+        return redirect("/admin")
 
- nuevo_hash = generate_password_hash(nueva_pass)
- cursor = conn.cursor()
- cursor.execute("UPDATE usuarios SET password=%s WHERE cui=%s", (nuevo_hash, cui))
- conn.commit(); conn.close()
+    nuevo_hash = generate_password_hash(nueva_pass)
+    cursor = conn.cursor()
+    cursor.execute("UPDATE usuarios SET password=%s WHERE cui=%s", (nuevo_hash, cui))
+    conn.commit(); conn.close()
 
- registrar_log("perfil", f"Admin restableció contraseña temporalmente",
- afectado_id=cui, afectado_nombre=f"{u['nombre']} {u['apellido']}")
- flash(f"Contraseña restablecida para {u['nombre']} {u['apellido']}", "success")
- return redirect("/admin")
+    registrar_log("perfil", f"Admin restableci?? contrase??a temporalmente",
+                  afectado_id=cui, afectado_nombre=f"{u['nombre']} {u['apellido']}")
+    flash(f"Contrase??a restablecida para {u['nombre']} {u['apellido']}", "success")
+    return redirect("/admin")
 
 
-# 
-# CAMBIAR CONTRASEÑA
-# 
+# ???????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+# CAMBIAR CONTRASE??A
+# ???????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
 
 @app.route("/cambiar_password", methods=["GET", "POST"])
 def cambiar_password():
- if "usuario_id" not in session:
- return redirect("/login")
+    if "usuario_id" not in session:
+        return redirect("/login")
 
- if request.method == "GET":
- return render_template("cambiar_password.html")
+    if request.method == "GET":
+        return render_template("cambiar_password.html")
 
- actual = request.form.get("password_actual", "").strip()
- nueva = request.form.get("password_nueva", "").strip()
- confirmar = request.form.get("password_confirmar", "").strip()
+    actual    = request.form.get("password_actual", "").strip()
+    nueva     = request.form.get("password_nueva", "").strip()
+    confirmar = request.form.get("password_confirmar", "").strip()
 
- if not actual or not nueva or not confirmar:
- flash("Todos los campos son obligatorios", "error")
- return redirect("/cambiar_password")
+    if not actual or not nueva or not confirmar:
+        flash("Todos los campos son obligatorios", "error")
+        return redirect("/cambiar_password")
 
- if nueva != confirmar:
- flash("Las contraseñas nuevas no coinciden", "error")
- return redirect("/cambiar_password")
+    if nueva != confirmar:
+        flash("Las contrase??as nuevas no coinciden", "error")
+        return redirect("/cambiar_password")
 
- es_valida, msg_error = validar_contrasena(nueva)
- if not es_valida:
- flash(msg_error, "error")
- return redirect("/cambiar_password")
+    es_valida, msg_error = validar_contrasena(nueva)
+    if not es_valida:
+        flash(msg_error, "error")
+        return redirect("/cambiar_password")
 
- if nueva == actual:
- flash("La nueva contraseña debe ser diferente a la actual", "error")
- return redirect("/cambiar_password")
+    if nueva == actual:
+        flash("La nueva contrase??a debe ser diferente a la actual", "error")
+        return redirect("/cambiar_password")
 
- conn = conectar_db()
- cursor = conn.cursor(dictionary=True)
- cursor.execute("SELECT password FROM usuarios WHERE cui=%s", (session["usuario_id"],))
- usuario = cursor.fetchone()
+    conn   = conectar_db()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("SELECT password FROM usuarios WHERE cui=%s", (session["usuario_id"],))
+    usuario = cursor.fetchone()
 
- if not usuario or not check_password_hash(usuario["password"], actual):
- conn.close()
- flash("La contraseña actual es incorrecta", "error")
- return redirect("/cambiar_password")
+    if not usuario or not check_password_hash(usuario["password"], actual):
+        conn.close()
+        flash("La contrase??a actual es incorrecta", "error")
+        return redirect("/cambiar_password")
 
- nuevo_hash = generate_password_hash(nueva)
- cursor = conn.cursor()
- cursor.execute("UPDATE usuarios SET password=%s WHERE cui=%s",
- (nuevo_hash, session["usuario_id"]))
- conn.commit()
- conn.close()
+    nuevo_hash = generate_password_hash(nueva)
+    cursor = conn.cursor()
+    cursor.execute("UPDATE usuarios SET password=%s WHERE cui=%s",
+                   (nuevo_hash, session["usuario_id"]))
+    conn.commit()
+    conn.close()
 
- registrar_log("perfil", "Cambió su contraseña")
- flash("Contraseña actualizada correctamente ", "success")
+    registrar_log("perfil", "Cambi?? su contrase??a")
+    flash("Contrase??a actualizada correctamente ???", "success")
 
- rol = session.get("rol")
- if rol == "admin": return redirect("/admin")
- if rol == "empleado": return redirect("/empleado")
- return redirect("/panel")
+    rol = session.get("rol")
+    if rol == "admin":     return redirect("/admin")
+    if rol == "empleado":  return redirect("/empleado")
+    return redirect("/panel")
 
 
-# 
-# RECUPERAR CONTRASEÑA (olvidada)
-# 
+# ???????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+# RECUPERAR CONTRASE??A (olvidada)
+# ???????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
 
 @app.route("/recuperar_contra", methods=["GET", "POST"])
 def recuperar_contra_form():
- if request.method == "GET":
- return render_template("recuperar_contra.html")
+    if request.method == "GET":
+        return render_template("recuperar_contra.html")
 
- correo = request.form.get("correo", "").strip().lower()
+    correo = request.form.get("correo", "").strip().lower()
 
- if not correo or "@" not in correo:
- flash("Ingresa un correo válido", "error")
- return redirect("/recuperar_contra")
+    if not correo or "@" not in correo:
+        flash("Ingresa un correo v??lido", "error")
+        return redirect("/recuperar_contra")
 
- conn = conectar_db()
- cursor = conn.cursor(dictionary=True)
- cursor.execute("SELECT cui, nombre, email FROM usuarios WHERE email=%s AND estado='activo'", (correo,))
- usuario = cursor.fetchone()
+    conn   = conectar_db()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("SELECT cui, nombre, email FROM usuarios WHERE email=%s AND estado='activo'", (correo,))
+    usuario = cursor.fetchone()
 
- if usuario:
- token = secrets.token_urlsafe(48)
- expira = datetime.now() + timedelta(hours=1)
+    if usuario:
+        token  = secrets.token_urlsafe(48)
+        expira = datetime.now() + timedelta(hours=1)
 
- cursor = conn.cursor()
- cursor.execute("UPDATE recuperar_contra SET usado=1 WHERE cui_usuario=%s AND usado=0", (usuario["cui"],))
- cursor.execute("""
- INSERT INTO recuperar_contra (cui_usuario, token, expira)
- VALUES (%s, %s, %s)
- """, (usuario["cui"], token, expira))
- conn.commit()
- conn.close()
+        cursor = conn.cursor()
+        cursor.execute("UPDATE recuperar_contra SET usado=1 WHERE cui_usuario=%s AND usado=0", (usuario["cui"],))
+        cursor.execute("""
+            INSERT INTO recuperar_contra (cui_usuario, token, expira)
+            VALUES (%s, %s, %s)
+        """, (usuario["cui"], token, expira))
+        conn.commit()
+        conn.close()
 
- try:
- enviar_correo_reset(usuario["email"], token, usuario["nombre"])
- except Exception as e:
- print(f"[EMAIL ERROR] {e}")
- flash(f"Error al enviar el correo: {str(e)}", "error")
- return redirect("/recuperar_contra")
- else:
- conn.close()
+        try:
+            enviar_correo_reset(usuario["email"], token, usuario["nombre"])
+        except Exception as e:
+            print(f"[EMAIL ERROR] {e}")
+            flash(f"Error al enviar el correo: {str(e)}", "error")
+            return redirect("/recuperar_contra")
+    else:
+        conn.close()
 
- flash("Si ese correo está registrado, recibirás un enlace en los próximos minutos.", "success")
- return redirect("/recuperar_contra")
+    flash("Si ese correo est?? registrado, recibir??s un enlace en los pr??ximos minutos.", "success")
+    return redirect("/recuperar_contra")
 
 
 @app.route("/reset_password/<token>", methods=["GET", "POST"])
 def reset_password_form(token):
- if request.method == "GET":
- conn = conectar_db()
- cursor = conn.cursor(dictionary=True)
- cursor.execute("""
- SELECT * FROM recuperar_contra
- WHERE token=%s AND usado=0 AND expira > NOW()
- """, (token,))
- reset = cursor.fetchone()
- conn.close()
+    if request.method == "GET":
+        conn   = conectar_db()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT * FROM recuperar_contra
+            WHERE token=%s AND usado=0 AND expira > NOW()
+        """, (token,))
+        reset = cursor.fetchone()
+        conn.close()
 
- if not reset:
- flash("El enlace es inválido o ya expiró. Solicita uno nuevo.", "error")
- return redirect("/recuperar_contra")
+        if not reset:
+            flash("El enlace es inv??lido o ya expir??. Solicita uno nuevo.", "error")
+            return redirect("/recuperar_contra")
 
- return render_template("reset_password.html", token=token)
+        return render_template("reset_password.html", token=token)
 
- nueva = request.form.get("password_nueva", "").strip()
- confirmar = request.form.get("password_confirmar", "").strip()
+    nueva     = request.form.get("password_nueva", "").strip()
+    confirmar = request.form.get("password_confirmar", "").strip()
 
- if not nueva or not confirmar:
- flash("Completa todos los campos", "error")
- return redirect(f"/reset_password/{token}")
+    if not nueva or not confirmar:
+        flash("Completa todos los campos", "error")
+        return redirect(f"/reset_password/{token}")
 
- if nueva != confirmar:
- flash("Las contraseñas no coinciden", "error")
- return redirect(f"/reset_password/{token}")
+    if nueva != confirmar:
+        flash("Las contrase??as no coinciden", "error")
+        return redirect(f"/reset_password/{token}")
 
- es_valida, msg_error = validar_contrasena(nueva)
- if not es_valida:
- flash(msg_error, "error")
- return redirect(f"/reset_password/{token}")
+    es_valida, msg_error = validar_contrasena(nueva)
+    if not es_valida:
+        flash(msg_error, "error")
+        return redirect(f"/reset_password/{token}")
 
- conn = conectar_db()
- cursor = conn.cursor(dictionary=True)
- cursor.execute("""
- SELECT * FROM recuperar_contra
- WHERE token=%s AND usado=0 AND expira > NOW()
- """, (token,))
- reset = cursor.fetchone()
+    conn   = conectar_db()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("""
+        SELECT * FROM recuperar_contra
+        WHERE token=%s AND usado=0 AND expira > NOW()
+    """, (token,))
+    reset = cursor.fetchone()
 
- if not reset:
- conn.close()
- flash("El enlace expiró. Solicita uno nuevo.", "error")
- return redirect("/recuperar_contra")
+    if not reset:
+        conn.close()
+        flash("El enlace expir??. Solicita uno nuevo.", "error")
+        return redirect("/recuperar_contra")
 
- nuevo_hash = generate_password_hash(nueva)
- cursor = conn.cursor()
- cursor.execute("UPDATE usuarios SET password=%s WHERE cui=%s",
- (nuevo_hash, reset["cui_usuario"]))
- cursor.execute("UPDATE recuperar_contra SET usado=1 WHERE token=%s", (token,))
- conn.commit()
- conn.close()
+    nuevo_hash = generate_password_hash(nueva)
+    cursor = conn.cursor()
+    cursor.execute("UPDATE usuarios SET password=%s WHERE cui=%s",
+                   (nuevo_hash, reset["cui_usuario"]))
+    cursor.execute("UPDATE recuperar_contra SET usado=1 WHERE token=%s", (token,))
+    conn.commit()
+    conn.close()
 
- flash("¡Contraseña restablecida! Ya puedes iniciar sesión.", "success")
- return redirect("/login")
+    flash("??Contrase??a restablecida! Ya puedes iniciar sesi??n.", "success")
+    return redirect("/login")
 
 
-# 
+# ???????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
 # PANEL EMPLEADO
-# 
+# ???????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
 
 @app.route("/empleado")
 def empleado_panel():
- if "usuario_id" not in session or session.get("rol") not in ("admin", "empleado"):
- return redirect("/login")
+    if "usuario_id" not in session or session.get("rol") not in ("admin", "empleado"):
+        return redirect("/login")
 
- buscar = request.args.get("buscar", "")
- conn = conectar_db()
- cursor = conn.cursor(dictionary=True)
+    buscar = request.args.get("buscar", "")
+    conn   = conectar_db()
+    cursor = conn.cursor(dictionary=True)
 
- query = """
- SELECT u.cui, u.tipo_doc, u.nombre, u.apellido, u.estado,
- p.edad, p.peso, p.altura, p.objetivo, u.telefono,
- (SELECT MAX(fecha_vencimiento) FROM pagos WHERE cui_usuario = u.cui) AS ultimo_vencimiento
- FROM usuarios u
- JOIN roles r ON u.id_rol = r.id_rol
- LEFT JOIN perfiles p ON u.cui = p.cui_usuario
- WHERE u.id_rol = '03'
- """
- params = []
- if buscar:
- query += " AND (u.nombre LIKE %s OR u.apellido LIKE %s OR CAST(u.cui AS CHAR) LIKE %s)"
- params.extend([f"%{buscar}%", f"%{buscar}%", f"%{buscar}%"])
+    query = """
+        SELECT u.cui, u.tipo_doc, u.nombre, u.apellido, u.estado,
+               p.edad, p.peso, p.altura, p.objetivo, u.telefono,
+               (SELECT MAX(fecha_vencimiento) FROM pagos WHERE cui_usuario = u.cui) AS ultimo_vencimiento
+        FROM usuarios u
+        JOIN roles r ON u.id_rol = r.id_rol
+        LEFT JOIN perfiles p ON u.cui = p.cui_usuario
+        WHERE u.id_rol = '03'
+    """
+    params = []
+    if buscar:
+        query += " AND (u.nombre LIKE %s OR u.apellido LIKE %s OR CAST(u.cui AS CHAR) LIKE %s)"
+        params.extend([f"%{buscar}%", f"%{buscar}%", f"%{buscar}%"])
 
- query += " ORDER BY u.nombre"
- cursor.execute(query, params)
- usuarios = cursor.fetchall()
- cui_list = [u["cui"] for u in usuarios]
- periodos_pagados = periodos_pagados_por_usuario(cursor, cui_list)
- cargos_pendientes = cargos_pendientes_por_usuario(cursor, cui_list)
- conn.close()
+    query += " ORDER BY u.nombre"
+    cursor.execute(query, params)
+    usuarios = cursor.fetchall()
+    cui_list = [u["cui"] for u in usuarios]
+    periodos_pagados = periodos_pagados_por_usuario(cursor, cui_list)
+    cargos_pendientes = cargos_pendientes_por_usuario(cursor, cui_list)
+    conn.close()
 
- return render_template("empleado.html", usuarios=usuarios, fecha_hoy=date.today(),
- precio_mensual=obtener_precio_mensual(), buscar=buscar,
- periodos_pagados=periodos_pagados, cargos_pendientes=cargos_pendientes)
+    return render_template("empleado.html", usuarios=usuarios, fecha_hoy=date.today(),
+                           precio_mensual=obtener_precio_mensual(), buscar=buscar,
+                           periodos_pagados=periodos_pagados, cargos_pendientes=cargos_pendientes)
 
 
-# 
+# ???????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
 # PANEL USUARIO
-# 
+# ???????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
 
 @app.route("/panel")
 def panel():
- if "usuario_id" not in session:
- return redirect("/login")
- conn = conectar_db()
- cursor = conn.cursor(dictionary=True)
+    if "usuario_id" not in session:
+        return redirect("/login")
+    conn   = conectar_db()
+    cursor = conn.cursor(dictionary=True)
 
- cursor.execute("""
- SELECT u.nombre, u.apellido, u.email, u.fecha_registro, u.telefono,
- p.edad, p.peso, p.altura, p.objetivo
- FROM usuarios u
- LEFT JOIN perfiles p ON u.cui = p.cui_usuario
- WHERE u.cui=%s
- """, (session["usuario_id"],))
- perfil = cursor.fetchone()
+    cursor.execute("""
+        SELECT u.nombre, u.apellido, u.email, u.fecha_registro, u.telefono,
+               p.edad, p.peso, p.altura, p.objetivo
+        FROM usuarios u
+        LEFT JOIN perfiles p ON u.cui = p.cui_usuario
+        WHERE u.cui=%s
+    """, (session["usuario_id"],))
+    perfil = cursor.fetchone()
 
- imc = None
- imc_categoria = None
- imc_color = None
- imc_consejo = None
- if perfil and perfil["peso"] and perfil["altura"] and float(perfil["altura"]) > 0:
- peso_kg = float(perfil["peso"]) * 0.453592
- altura_m = float(perfil["altura"])
- imc = round(peso_kg / (altura_m ** 2), 1)
- if imc < 18.5:
- imc_categoria = "Bajo peso"
- imc_color = "blue"
- imc_consejo = "Tu peso está por debajo del rango saludable. Considera aumentar tu ingesta calórica con alimentos nutritivos."
- elif imc < 25:
- imc_categoria = "Peso normal"
- imc_color = "green"
- imc_consejo = "¡Excelente! Tu peso está en el rango saludable. Mantén tus hábitos de ejercicio y alimentación."
- elif imc < 30:
- imc_categoria = "Sobrepeso"
- imc_color = "yellow"
- imc_consejo = "Estás ligeramente por encima del rango saludable. El ejercicio regular y una dieta balanceada te ayudarán."
- else:
- imc_categoria = "Obesidad"
- imc_color = "red"
- imc_consejo = "Te recomendamos consultar con un especialista para un plan personalizado de ejercicio y nutrición."
+    imc = None
+    imc_categoria = None
+    imc_color = None
+    imc_consejo = None
+    if perfil and perfil["peso"] and perfil["altura"] and float(perfil["altura"]) > 0:
+        peso_kg = float(perfil["peso"]) * 0.453592
+        altura_m = float(perfil["altura"])
+        imc = round(peso_kg / (altura_m ** 2), 1)
+        if imc < 18.5:
+            imc_categoria = "Bajo peso"
+            imc_color = "blue"
+            imc_consejo = "Tu peso est?? por debajo del rango saludable. Considera aumentar tu ingesta cal??rica con alimentos nutritivos."
+        elif imc < 25:
+            imc_categoria = "Peso normal"
+            imc_color = "green"
+            imc_consejo = "??Excelente! Tu peso est?? en el rango saludable. Mant??n tus h??bitos de ejercicio y alimentaci??n."
+        elif imc < 30:
+            imc_categoria = "Sobrepeso"
+            imc_color = "yellow"
+            imc_consejo = "Est??s ligeramente por encima del rango saludable. El ejercicio regular y una dieta balanceada te ayudar??n."
+        else:
+            imc_categoria = "Obesidad"
+            imc_color = "red"
+            imc_consejo = "Te recomendamos consultar con un especialista para un plan personalizado de ejercicio y nutrici??n."
 
- cursor.execute("""
- SELECT COUNT(*) AS total_pagos,
- COALESCE(SUM(monto), 0) AS total_pagado,
- MAX(fecha_vencimiento) AS vencimiento
- FROM pagos WHERE cui_usuario=%s
- """, (session["usuario_id"],))
- stats = cursor.fetchone()
+    cursor.execute("""
+        SELECT COUNT(*) AS total_pagos,
+               COALESCE(SUM(monto), 0) AS total_pagado,
+               MAX(fecha_vencimiento) AS vencimiento
+        FROM pagos WHERE cui_usuario=%s
+    """, (session["usuario_id"],))
+    stats = cursor.fetchone()
 
- meses_miembro = 0
- if perfil and perfil["fecha_registro"]:
- hoy = date.today()
- reg = perfil["fecha_registro"]
- if hasattr(reg, 'date'):
- reg = reg.date()
- meses_miembro = (hoy.year - reg.year) * 12 + (hoy.month - reg.month)
+    meses_miembro = 0
+    if perfil and perfil["fecha_registro"]:
+        hoy = date.today()
+        reg = perfil["fecha_registro"]
+        if hasattr(reg, 'date'):
+            reg = reg.date()
+        meses_miembro = (hoy.year - reg.year) * 12 + (hoy.month - reg.month)
 
- cursor.execute("""
- SELECT id_pago, fecha_pago, fecha_vencimiento, monto, descripcion
- FROM pagos WHERE cui_usuario=%s
- ORDER BY fecha_pago DESC
- """, (session["usuario_id"],))
- historial_pagos = cursor.fetchall()
+    cursor.execute("""
+        SELECT id_pago, fecha_pago, fecha_vencimiento, monto, descripcion
+        FROM pagos WHERE cui_usuario=%s
+        ORDER BY fecha_pago DESC
+    """, (session["usuario_id"],))
+    historial_pagos = cursor.fetchall()
 
- hoy_date = date.today()
- cursor.execute("""
- SELECT YEAR(fecha_pago) as anio, MONTH(fecha_pago) as mes
- FROM pagos WHERE cui_usuario=%s
- ORDER BY fecha_pago DESC
- """, (session["usuario_id"],))
- pagos_meses = cursor.fetchall()
- streak = 0
- if pagos_meses:
- seen = set((r["anio"], r["mes"]) for r in pagos_meses)
- check_year, check_month = hoy_date.year, hoy_date.month
- for _ in range(120):
- if (check_year, check_month) in seen:
- streak += 1
- if check_month == 1:
- check_month = 12; check_year -= 1
- else:
- check_month -= 1
- dict_cargos = cargos_pendientes_por_usuario(cursor, [session["usuario_id"]])
- cargos_usuario = dict_cargos.get(session["usuario_id"], [])
- total_cargos_monto = sum(float(c["monto"]) for c in cargos_usuario)
+    hoy_date = date.today()
+    cursor.execute("""
+        SELECT YEAR(fecha_pago) as anio, MONTH(fecha_pago) as mes
+        FROM pagos WHERE cui_usuario=%s
+        ORDER BY fecha_pago DESC
+    """, (session["usuario_id"],))
+    pagos_meses = cursor.fetchall()
+    streak = 0
+    if pagos_meses:
+        seen = set((r["anio"], r["mes"]) for r in pagos_meses)
+        check_year, check_month = hoy_date.year, hoy_date.month
+        for _ in range(120):
+            if (check_year, check_month) in seen:
+                streak += 1
+                if check_month == 1:
+                    check_month = 12; check_year -= 1
+                else:
+                    check_month -= 1
+    dict_cargos = cargos_pendientes_por_usuario(cursor, [session["usuario_id"]])
+    cargos_usuario = dict_cargos.get(session["usuario_id"], [])
+    total_cargos_monto = sum(float(c["monto"]) for c in cargos_usuario)
 
- conn.close()
- return render_template("panel.html", perfil=perfil,
- imc=imc, imc_categoria=imc_categoria,
- imc_color=imc_color, imc_consejo=imc_consejo,
- stats=stats, meses_miembro=meses_miembro,
- historial_pagos=historial_pagos,
- streak=streak,
- cargos_pendientes=cargos_usuario,
- total_cargos_monto=total_cargos_monto)
+    conn.close()
+    return render_template("panel.html", perfil=perfil,
+                           imc=imc, imc_categoria=imc_categoria,
+                           imc_color=imc_color, imc_consejo=imc_consejo,
+                           stats=stats, meses_miembro=meses_miembro,
+                           historial_pagos=historial_pagos,
+                           streak=streak,
+                           cargos_pendientes=cargos_usuario,
+                           total_cargos_monto=total_cargos_monto)
 
 
 @app.route("/completar_perfil")
 def completar_perfil():
- if "usuario_id" not in session:
- return redirect("/login")
- return render_template("perfil.html")
+    if "usuario_id" not in session:
+        return redirect("/login")
+    return render_template("perfil.html")
 
 
 @app.route("/guardar_perfil", methods=["POST"])
 def guardar_perfil():
- if "usuario_id" not in session:
- return redirect("/login")
- edad = request.form.get("edad", "").strip()
- peso = request.form.get("peso", "").strip() or None
- altura = request.form.get("altura", "").strip() or None
- objetivo = request.form.get("objetivo", "").strip()
- conn = conectar_db(); cursor = conn.cursor()
- cursor.execute("UPDATE perfiles SET edad=%s, peso=%s, altura=%s, objetivo=%s WHERE cui_usuario=%s",
- (edad, peso, altura, objetivo, session["usuario_id"]))
- conn.commit(); conn.close()
- registrar_log("perfil", f"Completó perfil — Objetivo: {objetivo}")
- return redirect("/panel")
+    if "usuario_id" not in session:
+        return redirect("/login")
+    edad = request.form.get("edad", "").strip()
+    peso = request.form.get("peso", "").strip() or None
+    altura = request.form.get("altura", "").strip() or None
+    objetivo = request.form.get("objetivo", "").strip()
+    conn = conectar_db(); cursor = conn.cursor()
+    cursor.execute("UPDATE perfiles SET edad=%s, peso=%s, altura=%s, objetivo=%s WHERE cui_usuario=%s",
+                   (edad, peso, altura, objetivo, session["usuario_id"]))
+    conn.commit(); conn.close()
+    registrar_log("perfil", f"Complet?? perfil ??? Objetivo: {objetivo}")
+    return redirect("/panel")
 
 
 @app.route("/actualizar_info", methods=["POST"])
 def actualizar_info():
- if "usuario_id" not in session:
- return redirect("/login")
- nombre = request.form.get("nombre")
- apellido = request.form.get("apellido")
- email = request.form.get("email") or None # Vacío → NULL
- peso = request.form.get("peso")
- telefono = request.form.get("telefono", "").strip()
+    if "usuario_id" not in session:
+        return redirect("/login")
+    nombre   = request.form.get("nombre")
+    apellido = request.form.get("apellido")
+    email    = request.form.get("email") or None   # Vac??o ??? NULL
+    peso     = request.form.get("peso")
+    telefono = request.form.get("telefono", "").strip()
 
- if not telefono or not telefono.isdigit() or len(telefono) != 8:
- flash("El número de teléfono debe tener exactamente 8 dígitos", "error")
- return redirect("/panel")
+    if not telefono or not telefono.isdigit() or len(telefono) != 8:
+        flash("El n??mero de tel??fono debe tener exactamente 8 d??gitos", "error")
+        return redirect("/panel")
 
- conn = conectar_db(); cursor = conn.cursor()
- if nombre and apellido:
- cursor.execute("UPDATE usuarios SET nombre=%s, apellido=%s, email=%s, telefono=%s WHERE cui=%s",
- (nombre, apellido, email, telefono, session["usuario_id"]))
- if peso:
- cursor.execute("UPDATE perfiles SET peso=%s WHERE cui_usuario=%s", (peso, session["usuario_id"]))
- conn.commit(); conn.close()
- if nombre: session["nombre"] = nombre
- registrar_log("perfil", "Actualizó su información personal")
- flash("Información actualizada", "success")
- return redirect("/panel")
+    conn = conectar_db(); cursor = conn.cursor()
+    if nombre and apellido:
+        cursor.execute("UPDATE usuarios SET nombre=%s, apellido=%s, email=%s, telefono=%s WHERE cui=%s",
+                       (nombre, apellido, email, telefono, session["usuario_id"]))
+    if peso:
+        cursor.execute("UPDATE perfiles SET peso=%s WHERE cui_usuario=%s", (peso, session["usuario_id"]))
+    conn.commit(); conn.close()
+    if nombre: session["nombre"] = nombre
+    registrar_log("perfil", "Actualiz?? su informaci??n personal")
+    flash("Informaci??n actualizada", "success")
+    return redirect("/panel")
 
 
 @app.route("/actualizar_objetivo", methods=["POST"])
 def actualizar_objetivo():
- if "usuario_id" not in session:
- return redirect("/login")
- objetivo = request.form.get("objetivo")
- if objetivo:
- conn = conectar_db(); cursor = conn.cursor()
- cursor.execute("UPDATE perfiles SET objetivo=%s WHERE cui_usuario=%s",
- (objetivo, session["usuario_id"]))
- conn.commit(); conn.close()
- registrar_log("perfil", f"Cambió su objetivo a: {objetivo}")
- flash("Objetivo actualizado correctamente", "success")
- return redirect("/panel")
+    if "usuario_id" not in session:
+        return redirect("/login")
+    objetivo = request.form.get("objetivo")
+    if objetivo:
+        conn = conectar_db(); cursor = conn.cursor()
+        cursor.execute("UPDATE perfiles SET objetivo=%s WHERE cui_usuario=%s",
+                       (objetivo, session["usuario_id"]))
+        conn.commit(); conn.close()
+        registrar_log("perfil", f"Cambi?? su objetivo a: {objetivo}")
+        flash("Objetivo actualizado correctamente", "success")
+    return redirect("/panel")
 
 
-# 
+# ???????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
 # RECIBO PDF
-# 
+# ???????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
 
 @app.route("/recibo/<int:id_pago>")
 def generar_recibo(id_pago):
- if "usuario_id" not in session:
- return redirect("/login")
+    if "usuario_id" not in session:
+        return redirect("/login")
 
- conn = conectar_db()
- cursor = conn.cursor(dictionary=True)
- cursor.execute("""
- SELECT p.id_pago, p.monto, p.fecha_pago, p.fecha_vencimiento,
- p.metodo_pago, p.referencia, p.descripcion,
- u.cui, u.tipo_doc, u.nombre, u.apellido, u.email
- FROM pagos p
- JOIN usuarios u ON u.cui = p.cui_usuario
- WHERE p.id_pago = %s
- """, (id_pago,))
- pago = cursor.fetchone()
- conn.close()
+    conn   = conectar_db()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("""
+        SELECT p.id_pago, p.monto, p.fecha_pago, p.fecha_vencimiento,
+               p.metodo_pago, p.referencia, p.descripcion,
+               u.cui, u.tipo_doc, u.nombre, u.apellido, u.email
+        FROM pagos p
+        JOIN usuarios u ON u.cui = p.cui_usuario
+        WHERE p.id_pago = %s
+    """, (id_pago,))
+    pago = cursor.fetchone()
+    conn.close()
 
- if not pago:
- flash("Pago no encontrado", "error")
- return redirect("/panel")
+    if not pago:
+        flash("Pago no encontrado", "error")
+        return redirect("/panel")
 
- es_admin_emp = session.get("rol") in ("admin", "empleado")
- es_dueno = pago["cui"] == session.get("usuario_id")
- if not es_admin_emp and not es_dueno:
- return redirect("/panel")
+    es_admin_emp = session.get("rol") in ("admin", "empleado")
+    es_dueno     = pago["cui"] == session.get("usuario_id")
+    if not es_admin_emp and not es_dueno:
+        return redirect("/panel")
 
- buf = BytesIO()
- c = canvas.Canvas(buf, pagesize=letter)
- width, height = letter
+    buf = BytesIO()
+    c = canvas.Canvas(buf, pagesize=letter)
+    width, height = letter
 
- negro = HexColor("#0d0d0d")
- naranja = HexColor("#FF6B00")
- gris_dark = HexColor("#333333")
- gris = HexColor("#666666")
- blanco = HexColor("#ffffff")
- verde = HexColor("#22c55e")
+    negro     = HexColor("#0d0d0d")
+    naranja   = HexColor("#FF6B00")
+    gris_dark = HexColor("#333333")
+    gris      = HexColor("#666666")
+    blanco    = HexColor("#ffffff")
+    verde     = HexColor("#22c55e")
 
- c.setFillColor(negro)
- c.rect(0, height - 140, width, 140, fill=True, stroke=False)
+    c.setFillColor(negro)
+    c.rect(0, height - 140, width, 140, fill=True, stroke=False)
 
- logo_path = os.path.join(app.static_folder, 'logo.png')
- if os.path.exists(logo_path):
- c.drawImage(logo_path, 50, height - 95, width=55, height=55,
- preserveAspectRatio=True, mask='auto')
- c.setFillColor(blanco)
- c.setFont("Helvetica-Bold", 28)
- c.drawString(115, height - 60, "BODYFLEX")
- c.setFillColor(naranja)
- c.drawString(115 + c.stringWidth("BODYFLEX", "Helvetica-Bold", 28), height - 60, "GYM")
+    logo_path = os.path.join(app.static_folder, 'logo.png')
+    if os.path.exists(logo_path):
+        c.drawImage(logo_path, 50, height - 95, width=55, height=55,
+                    preserveAspectRatio=True, mask='auto')
+    c.setFillColor(blanco)
+    c.setFont("Helvetica-Bold", 28)
+    c.drawString(115, height - 60, "BODYFLEX")
+    c.setFillColor(naranja)
+    c.drawString(115 + c.stringWidth("BODYFLEX", "Helvetica-Bold", 28), height - 60, "GYM")
 
- c.setFillColor(HexColor("#aaaaaa"))
- c.setFont("Helvetica", 10)
- c.drawString(115, height - 80, "Recibo de pago de membresía")
+    c.setFillColor(HexColor("#aaaaaa"))
+    c.setFont("Helvetica", 10)
+    c.drawString(115, height - 80, "Recibo de pago de membres??a")
 
- c.setFillColor(naranja)
- c.setFont("Helvetica-Bold", 12)
- c.drawRightString(width - 50, height - 55, f"RECIBO #{pago['id_pago']:04d}")
+    c.setFillColor(naranja)
+    c.setFont("Helvetica-Bold", 12)
+    c.drawRightString(width - 50, height - 55, f"RECIBO #{pago['id_pago']:04d}")
 
- c.setFillColor(HexColor("#aaaaaa"))
- c.setFont("Helvetica", 10)
- fecha_str = pago['fecha_pago'].strftime('%d/%m/%Y') if pago['fecha_pago'] else 'N/A'
- c.drawRightString(width - 50, height - 75, f"Fecha: {fecha_str}")
+    c.setFillColor(HexColor("#aaaaaa"))
+    c.setFont("Helvetica", 10)
+    fecha_str = pago['fecha_pago'].strftime('%d/%m/%Y') if pago['fecha_pago'] else 'N/A'
+    c.drawRightString(width - 50, height - 75, f"Fecha: {fecha_str}")
 
- c.setStrokeColor(naranja)
- c.setLineWidth(3)
- c.line(50, height - 150, width - 50, height - 150)
+    c.setStrokeColor(naranja)
+    c.setLineWidth(3)
+    c.line(50, height - 150, width - 50, height - 150)
 
- y = height - 195
- c.setFillColor(gris)
- c.setFont("Helvetica", 9)
- c.drawString(50, y + 15, "DATOS DEL SOCIO")
+    y = height - 195
+    c.setFillColor(gris)
+    c.setFont("Helvetica", 9)
+    c.drawString(50, y + 15, "DATOS DEL SOCIO")
 
- c.setFillColor(negro)
- c.setFont("Helvetica-Bold", 13)
- c.drawString(50, y - 5, f"{pago['nombre']} {pago['apellido']}")
+    c.setFillColor(negro)
+    c.setFont("Helvetica-Bold", 13)
+    c.drawString(50, y - 5, f"{pago['nombre']} {pago['apellido']}")
 
- c.setFillColor(gris_dark)
- c.setFont("Helvetica", 10)
- if pago['email']:
- c.drawString(50, y - 22, f"Correo: {pago['email']}")
- c.drawString(50, y - 38, f"No. Socio: {pago['tipo_doc']}: {pago['cui']}")
- else:
- c.drawString(50, y - 22, f"No. Socio: {pago['tipo_doc']}: {pago['cui']}")
+    c.setFillColor(gris_dark)
+    c.setFont("Helvetica", 10)
+    if pago['email']:
+        c.drawString(50, y - 22, f"Correo: {pago['email']}")
+        c.drawString(50, y - 38, f"No. Socio: {pago['tipo_doc']}: {pago['cui']}")
+    else:
+        c.drawString(50, y - 22, f"No. Socio: {pago['tipo_doc']}: {pago['cui']}")
 
- y = height - 290
- c.setFillColor(HexColor("#f5f5f5"))
- c.rect(50, y - 5, width - 100, 28, fill=True, stroke=False)
+    y = height - 290
+    c.setFillColor(HexColor("#f5f5f5"))
+    c.rect(50, y - 5, width - 100, 28, fill=True, stroke=False)
 
- c.setFillColor(gris)
- c.setFont("Helvetica-Bold", 9)
- c.drawString(60, y + 3, "PAGO")
- c.drawString(280, y + 3, "FECHA PAGO")
- c.drawString(390, y + 3, "VENCIMIENTO")
- c.drawRightString(width - 60, y + 3, "MONTO")
+    c.setFillColor(gris)
+    c.setFont("Helvetica-Bold", 9)
+    c.drawString(60, y + 3, "PAGO")
+    c.drawString(280, y + 3, "FECHA PAGO")
+    c.drawString(390, y + 3, "VENCIMIENTO")
+    c.drawRightString(width - 60, y + 3, "MONTO")
 
- y -= 32
- c.setFillColor(negro)
- c.setFont("Helvetica", 11)
- if pago.get('descripcion'):
- concepto = str(pago['descripcion'])
- else:
- precio_mes = obtener_precio_mensual()
- meses = int(float(pago['monto']) / precio_mes) if precio_mes > 0 else 0
- concepto = f"Membresía ({meses} {'mes' if meses == 1 else 'meses'})"
- c.drawString(60, y + 3, concepto)
+    y -= 32
+    c.setFillColor(negro)
+    c.setFont("Helvetica", 11)
+    if pago.get('descripcion'):
+        concepto = str(pago['descripcion'])
+    else:
+        precio_mes = obtener_precio_mensual()
+        meses = int(float(pago['monto']) / precio_mes) if precio_mes > 0 else 0
+        concepto = f"Membres??a ({meses} {'mes' if meses == 1 else 'meses'})"
+    c.drawString(60, y + 3, concepto)
 
- c.setFont("Helvetica", 10)
- c.drawString(280, y + 3, fecha_str)
- venc_str = pago['fecha_vencimiento'].strftime('%d/%m/%Y') if pago['fecha_vencimiento'] else 'N/A'
- c.drawString(390, y + 3, venc_str)
+    c.setFont("Helvetica", 10)
+    c.drawString(280, y + 3, fecha_str)
+    venc_str = pago['fecha_vencimiento'].strftime('%d/%m/%Y') if pago['fecha_vencimiento'] else 'N/A'
+    c.drawString(390, y + 3, venc_str)
 
- c.setFont("Helvetica-Bold", 12)
- c.setFillColor(verde)
- c.drawRightString(width - 60, y + 3, f"Q{pago['monto']:.2f}")
+    c.setFont("Helvetica-Bold", 12)
+    c.setFillColor(verde)
+    c.drawRightString(width - 60, y + 3, f"Q{pago['monto']:.2f}")
 
- y -= 15
- c.setStrokeColor(HexColor("#e0e0e0"))
- c.setLineWidth(0.5)
- c.line(50, y, width - 50, y)
+    y -= 15
+    c.setStrokeColor(HexColor("#e0e0e0"))
+    c.setLineWidth(0.5)
+    c.line(50, y, width - 50, y)
 
- y -= 30
- c.setFillColor(negro)
- c.setFont("Helvetica-Bold", 10)
- c.drawString(60, y + 3, "TOTAL")
- c.setFont("Helvetica-Bold", 16)
- c.drawRightString(width - 60, y + 3, f"Q{pago['monto']:.2f}")
+    y -= 30
+    c.setFillColor(negro)
+    c.setFont("Helvetica-Bold", 10)
+    c.drawString(60, y + 3, "TOTAL")
+    c.setFont("Helvetica-Bold", 16)
+    c.drawRightString(width - 60, y + 3, f"Q{pago['monto']:.2f}")
 
- y -= 25
- c.setFillColor(gris)
- c.setFont("Helvetica", 9)
- metodo = str(pago.get('metodo_pago', 'efectivo')).capitalize()
- referencia = pago.get('referencia')
- if referencia:
- c.drawString(60, y, f"Método: {metodo} (Ref: {referencia})")
- else:
- c.drawString(60, y, f"Método: {metodo}")
+    y -= 25
+    c.setFillColor(gris)
+    c.setFont("Helvetica", 9)
+    metodo = str(pago.get('metodo_pago', 'efectivo')).capitalize()
+    referencia = pago.get('referencia')
+    if referencia:
+        c.drawString(60, y, f"M??todo: {metodo} (Ref: {referencia})")
+    else:
+        c.drawString(60, y, f"M??todo: {metodo}")
 
- y -= 70
- c.setStrokeColor(verde)
- c.setFillColor(verde)
- c.setLineWidth(2)
- c.roundRect(width / 2 - 60, y - 5, 120, 35, 6, fill=False, stroke=True)
- c.setFont("Helvetica-Bold", 18)
- c.drawCentredString(width / 2, y + 5, "PAGADO")
+    y -= 70
+    c.setStrokeColor(verde)
+    c.setFillColor(verde)
+    c.setLineWidth(2)
+    c.roundRect(width / 2 - 60, y - 5, 120, 35, 6, fill=False, stroke=True)
+    c.setFont("Helvetica-Bold", 18)
+    c.drawCentredString(width / 2, y + 5, "PAGADO")
 
- c.setFillColor(HexColor("#f8f8f8"))
- c.rect(0, 0, width, 60, fill=True, stroke=False)
- c.setStrokeColor(HexColor("#e0e0e0"))
- c.setLineWidth(0.5)
- c.line(0, 60, width, 60)
- c.setFillColor(gris)
- c.setFont("Helvetica", 8)
- c.drawCentredString(width / 2, 35, "Bodyflex Gym — Sistema de Gestión de Membresías")
- c.drawCentredString(width / 2, 22, f"Recibo generado automáticamente · {date.today().strftime('%d/%m/%Y')}")
+    c.setFillColor(HexColor("#f8f8f8"))
+    c.rect(0, 0, width, 60, fill=True, stroke=False)
+    c.setStrokeColor(HexColor("#e0e0e0"))
+    c.setLineWidth(0.5)
+    c.line(0, 60, width, 60)
+    c.setFillColor(gris)
+    c.setFont("Helvetica", 8)
+    c.drawCentredString(width / 2, 35, "Bodyflex Gym ??? Sistema de Gesti??n de Membres??as")
+    c.drawCentredString(width / 2, 22, f"Recibo generado autom??ticamente ?? {date.today().strftime('%d/%m/%Y')}")
 
- c.showPage()
- c.save()
- buf.seek(0)
+    c.showPage()
+    c.save()
+    buf.seek(0)
 
- response = make_response(buf.read())
- response.headers['Content-Type'] = 'application/pdf'
- response.headers['Content-Disposition'] = f'inline; filename=recibo_{pago["id_pago"]:04d}.pdf'
- return response
+    response = make_response(buf.read())
+    response.headers['Content-Type'] = 'application/pdf'
+    response.headers['Content-Disposition'] = f'inline; filename=recibo_{pago["id_pago"]:04d}.pdf'
+    return response
 
 
-# 
+# ???????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
 # RUTA DE PRUEBA DE CORREO
-# 
+# ???????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
 
 @app.route("/test_email")
 def test_email():
- if "usuario_id" not in session or session.get("rol") != "admin":
- return redirect("/login")
- try:
- gmail_user = GMAIL_USER
- gmail_pwd = GMAIL_PASSWORD.replace(" ", "") if GMAIL_PASSWORD else None
+    if "usuario_id" not in session or session.get("rol") != "admin":
+        return redirect("/login")
+    try:
+        gmail_user = GMAIL_USER
+        gmail_pwd  = GMAIL_PASSWORD.replace(" ", "") if GMAIL_PASSWORD else None
 
- if not gmail_user or not gmail_pwd:
- raise ValueError("GMAIL_USER o GMAIL_PASSWORD no están configuradas en Railway.")
+        if not gmail_user or not gmail_pwd:
+            raise ValueError("GMAIL_USER o GMAIL_PASSWORD no est??n configuradas en Railway.")
 
- contexto_ssl = ssl.create_default_context()
- with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=contexto_ssl) as server:
- server.login(gmail_user, gmail_pwd)
- msg = MIMEText(" Correo de prueba desde Bodyflex Gym — configuración correcta.")
- msg["Subject"] = "Prueba de correo — Bodyflex Gym"
- msg["From"] = gmail_user
- msg["To"] = gmail_user
- server.sendmail(gmail_user, gmail_user, msg.as_string())
+        contexto_ssl = ssl.create_default_context()
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=contexto_ssl) as server:
+            server.login(gmail_user, gmail_pwd)
+            msg = MIMEText("??? Correo de prueba desde Bodyflex Gym ??? configuraci??n correcta.")
+            msg["Subject"] = "Prueba de correo ??? Bodyflex Gym"
+            msg["From"]    = gmail_user
+            msg["To"]      = gmail_user
+            server.sendmail(gmail_user, gmail_user, msg.as_string())
 
- return f"""
- <div style='font-family:sans-serif;padding:40px;background:#0f0f0f;color:#f5f5f5;min-height:100vh;'>
- <h2 style='color:#22c55e;'> Correo enviado correctamente</h2>
- <p>Revisa tu bandeja de entrada en <strong>{gmail_user}</strong></p>
- <a href='/admin' style='color:#FF6B00;'>← Volver al panel</a>
- </div>"""
- except Exception as e:
- pwd_len = len(GMAIL_PASSWORD.replace(" ","")) if GMAIL_PASSWORD else 0
- return f"""
- <div style='font-family:sans-serif;padding:40px;background:#0f0f0f;color:#f5f5f5;min-height:100vh;'>
- <h2 style='color:#ef4444;'> Error al enviar</h2>
- <p style='background:#1a1a1a;padding:16px;border-radius:8px;color:#ef4444;font-family:monospace;'>{str(e)}</p>
- <a href='/admin' style='color:#FF6B00;'>← Volver al panel</a>
- </div>"""
+        return f"""
+        <div style='font-family:sans-serif;padding:40px;background:#0f0f0f;color:#f5f5f5;min-height:100vh;'>
+            <h2 style='color:#22c55e;'>??? Correo enviado correctamente</h2>
+            <p>Revisa tu bandeja de entrada en <strong>{gmail_user}</strong></p>
+            <a href='/admin' style='color:#FF6B00;'>??? Volver al panel</a>
+        </div>"""
+    except Exception as e:
+        pwd_len = len(GMAIL_PASSWORD.replace(" ","")) if GMAIL_PASSWORD else 0
+        return f"""
+        <div style='font-family:sans-serif;padding:40px;background:#0f0f0f;color:#f5f5f5;min-height:100vh;'>
+            <h2 style='color:#ef4444;'>??? Error al enviar</h2>
+            <p style='background:#1a1a1a;padding:16px;border-radius:8px;color:#ef4444;font-family:monospace;'>{str(e)}</p>
+            <a href='/admin' style='color:#FF6B00;'>??? Volver al panel</a>
+        </div>"""
 
 
-# 
+# ???????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
 # RUTAS SIMPLES
-# 
+# ???????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
 
 @app.route("/login")
 def login():
- return render_template("login.html")
+    return render_template("login.html")
 
 @app.route("/registro")
 def registro():
- return render_template("registro.html")
+    return render_template("registro.html")
 
 @app.route("/logout")
 def logout():
- # registrar_log("login", "Cerró sesión")
- session.clear()
- return redirect("/login")
+    # registrar_log("login", "Cerr?? sesi??n")
+    session.clear()
+    return redirect("/login")
 
 @app.route("/")
 def inicio():
- return render_template("inicio.html")
+    return render_template("inicio.html")
 
 
 @app.route("/contrato/<int:cui>")
 def generar_contrato_pdf(cui):
- if "usuario_id" not in session:
- return redirect("/login")
- 
- es_admin_emp = session.get("rol") in ("admin", "empleado")
- es_dueno = cui == session.get("usuario_id")
- if not es_admin_emp and not es_dueno:
- return redirect("/panel")
- 
- conn = conectar_db()
- cursor = conn.cursor(dictionary=True)
- cursor.execute("SELECT nombre, apellido, email, tipo_doc, cui, fecha_registro, telefono FROM usuarios WHERE cui = %s", (cui,))
- usuario = cursor.fetchone()
- conn.close()
- 
- if not usuario:
- flash("Socio no encontrado", "error")
- return redirect("/admin" if es_admin_emp else "/panel")
- 
- buf = BytesIO()
- from reportlab.lib.pagesizes import letter
- from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
- from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
- from reportlab.lib import colors
- 
- doc = SimpleDocTemplate(
- buf,
- pagesize=letter,
- leftMargin=54,
- rightMargin=54,
- topMargin=54,
- bottomMargin=54
- )
- story = []
- 
- styles = getSampleStyleSheet()
- 
- title_style = ParagraphStyle(
- 'DocTitle',
- parent=styles['Normal'],
- fontName='Helvetica-Bold',
- fontSize=14,
- alignment=1,
- spaceAfter=15,
- textColor=colors.HexColor('#1A1A1A')
- )
- section_style = ParagraphStyle(
- 'DocSection',
- parent=styles['Normal'],
- fontName='Helvetica-Bold',
- fontSize=11,
- spaceBefore=10,
- spaceAfter=5,
- textColor=colors.HexColor('#FF6B00')
- )
- body_style = ParagraphStyle(
- 'DocBody',
- parent=styles['Normal'],
- fontName='Helvetica',
- fontSize=9.5,
- leading=14,
- spaceAfter=8,
- textColor=colors.HexColor('#333333')
- )
- bullet_style = ParagraphStyle(
- 'DocBullet',
- parent=styles['Normal'],
- fontName='Helvetica',
- fontSize=9.5,
- leading=14,
- leftIndent=15,
- spaceAfter=4,
- textColor=colors.HexColor('#333333')
- )
- 
- story.append(Paragraph("CONTRATO DE MEMBRESÍA Y REGLAMENTO DE CONVIVENCIA", title_style))
- story.append(Paragraph("<b>BODYFLEX GYM</b>", ParagraphStyle('Sub', parent=title_style, fontSize=12, spaceAfter=20)))
- 
- reg_fecha = usuario["fecha_registro"].strftime("%d/%m/%Y") if usuario["fecha_registro"] else "—"
- detalles_texto = f"""
- <b>DATOS DEL SOCIO:</b><br/>
- <b>Nombre Completo:</b> {usuario['nombre']} {usuario['apellido']}<br/>
- <b>Identificación ({usuario['tipo_doc']}):</b> {usuario['cui']}<br/>
- <b>Teléfono:</b> {usuario['telefono'] or '—'}<br/>
- <b>Correo Electrónico:</b> {usuario['email'] or '—'}<br/>
- <b>Fecha de Registro:</b> {reg_fecha}
- """
- 
- t_data = [[Paragraph(detalles_texto, body_style)]]
- t = Table(t_data, colWidths=[letter[0] - 108])
- t.setStyle(TableStyle([
- ('BACKGROUND', (0,0), (-1,-1), colors.HexColor('#F9F9F9')),
- ('BORDER', (0,0), (-1,-1), 1, colors.HexColor('#E5E5E5')),
- ('PADDING', (0,0), (-1,-1), 12),
- ]))
- story.append(t)
- story.append(Spacer(1, 15))
- 
- story.append(Paragraph("DECLARACIONES Y CONDICIONES DEL SERVICIO", section_style))
- story.append(Paragraph(
- "Por medio del presente documento, el Socio arriba mencionado acepta y se adhiere formalmente al reglamento de "
- "convivencia y condiciones de membresía de <b>Bodyflex Gym</b>, de conformidad con las siguientes cláusulas:",
- body_style
- ))
- 
- story.append(Paragraph("<b>CLÁUSULA PRIMERA: DEL PAGO DE LA MEMBRESÍA Y DÍA DE COBRO</b>", body_style))
- story.append(Paragraph(
- "El socio se compromete expresamente a cancelar el monto correspondiente de su membresía mensualmente. "
- "A partir de la presente fecha, se establece el <b>día 3 de cada mes</b> como el día límite de pago estandarizado "
- "para todos los miembros activos. Los pagos se realizarán de manera anticipada por medio de efectivo, tarjeta de "
- "crédito o débito en recepción, o bien, a través del sistema de cargo automático a tarjeta (débito recurrente) cuando "
- "esta modalidad sea habilitada por la administración del gimnasio.",
- body_style
- ))
- 
- story.append(Paragraph("<b>CLÁUSULA SEGUNDA: REGLAMENTO INTERNO DE CONVIVENCIA Y SEGURIDAD</b>", body_style))
- story.append(Paragraph(
- "Para garantizar un ambiente seguro y agradable, el Socio se compromete a respetar estrictamente las normas del establecimiento:",
- body_style
- ))
- 
- rules = [
- "<b>1. Prohibición de Fumar:</b> Queda terminantemente prohibido fumar o consumir cualquier tipo de vaporizador o cigarrillo electrónico dentro de todas las áreas físicas de las instalaciones.",
- "<b>2. Cuidado del Equipo:</b> El Socio deberá utilizar las máquinas, mancuernas y accesorios de manera adecuada y segura, evitando azotar o dejar caer el peso bruscamente. Todo desperfecto provocado por negligencia será responsabilidad del Socio.",
- "<b>3. Orden en Sala:</b> Es obligatorio retornar las mancuernas, barras y discos a sus respectivos racks inmediatamente al finalizar cada ejercicio.",
- "<b>4. Higiene Personal:</b> Por respeto y salud, cada Socio debe traer una toalla personal para limpiar el sudor residual en las áreas de contacto de los equipos tras su uso.",
- "<b>5. Responsabilidad:</b> Bodyflex Gym no se hace responsable por la pérdida, robo u olvido de objetos de valor o artículos personales dejados dentro de las instalaciones."
- ]
- 
- for r in rules:
- story.append(Paragraph(r, bullet_style))
- 
- story.append(Spacer(1, 10))
- story.append(Paragraph(
- "El incumplimiento de cualquiera de las reglas descritas anteriormente dará derecho a la administración de "
- "cancelar temporal o definitivamente la membresía del Socio sin derecho a reembolso.",
- body_style
- ))
- 
- story.append(Spacer(1, 20))
- 
- sig_data = [
- [
- Paragraph("_______________________________<br/><b>Firma del Socio</b><br/>CUI: " + str(usuario['cui']), body_style),
- Paragraph("_______________________________<br/><b>Por la Administración</b><br/>Bodyflex Gym", body_style)
- ]
- ]
- sig_table = Table(sig_data, colWidths=[(letter[0] - 108)/2, (letter[0] - 108)/2])
- sig_table.setStyle(TableStyle([
- ('ALIGN', (0,0), (-1,-1), 'CENTER'),
- ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
- ('TOPPADDING', (0,0), (-1,-1), 20),
- ]))
- story.append(sig_table)
- 
- doc.build(story)
- buf.seek(0)
- 
- response = make_response(buf.read())
- response.headers['Content-Type'] = 'application/pdf'
- response.headers['Content-Disposition'] = f'inline; filename=contrato_{usuario["cui"]}.pdf'
- return response
+    if "usuario_id" not in session:
+        return redirect("/login")
+        
+    es_admin_emp = session.get("rol") in ("admin", "empleado")
+    es_dueno     = cui == session.get("usuario_id")
+    if not es_admin_emp and not es_dueno:
+        return redirect("/panel")
+        
+    conn = conectar_db()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("SELECT nombre, apellido, email, tipo_doc, cui, fecha_registro, telefono FROM usuarios WHERE cui = %s", (cui,))
+    usuario = cursor.fetchone()
+    conn.close()
+    
+    if not usuario:
+        flash("Socio no encontrado", "error")
+        return redirect("/admin" if es_admin_emp else "/panel")
+        
+    buf = BytesIO()
+    from reportlab.lib.pagesizes import letter
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib import colors
+    
+    doc = SimpleDocTemplate(
+        buf,
+        pagesize=letter,
+        leftMargin=54,
+        rightMargin=54,
+        topMargin=54,
+        bottomMargin=54
+    )
+    story = []
+    
+    styles = getSampleStyleSheet()
+    
+    title_style = ParagraphStyle(
+        'DocTitle',
+        parent=styles['Normal'],
+        fontName='Helvetica-Bold',
+        fontSize=14,
+        alignment=1,
+        spaceAfter=15,
+        textColor=colors.HexColor('#1A1A1A')
+    )
+    section_style = ParagraphStyle(
+        'DocSection',
+        parent=styles['Normal'],
+        fontName='Helvetica-Bold',
+        fontSize=11,
+        spaceBefore=10,
+        spaceAfter=5,
+        textColor=colors.HexColor('#FF6B00')
+    )
+    body_style = ParagraphStyle(
+        'DocBody',
+        parent=styles['Normal'],
+        fontName='Helvetica',
+        fontSize=9.5,
+        leading=14,
+        spaceAfter=8,
+        textColor=colors.HexColor('#333333')
+    )
+    bullet_style = ParagraphStyle(
+        'DocBullet',
+        parent=styles['Normal'],
+        fontName='Helvetica',
+        fontSize=9.5,
+        leading=14,
+        leftIndent=15,
+        spaceAfter=4,
+        textColor=colors.HexColor('#333333')
+    )
+    
+    story.append(Paragraph("CONTRATO DE MEMBRES??A Y REGLAMENTO DE CONVIVENCIA", title_style))
+    story.append(Paragraph("<b>BODYFLEX GYM</b>", ParagraphStyle('Sub', parent=title_style, fontSize=12, spaceAfter=20)))
+    
+    reg_fecha = usuario["fecha_registro"].strftime("%d/%m/%Y") if usuario["fecha_registro"] else "???"
+    detalles_texto = f"""
+    <b>DATOS DEL SOCIO:</b><br/>
+    <b>Nombre Completo:</b> {usuario['nombre']} {usuario['apellido']}<br/>
+    <b>Identificaci??n ({usuario['tipo_doc']}):</b> {usuario['cui']}<br/>
+    <b>Tel??fono:</b> {usuario['telefono'] or '???'}<br/>
+    <b>Correo Electr??nico:</b> {usuario['email'] or '???'}<br/>
+    <b>Fecha de Registro:</b> {reg_fecha}
+    """
+    
+    t_data = [[Paragraph(detalles_texto, body_style)]]
+    t = Table(t_data, colWidths=[letter[0] - 108])
+    t.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,-1), colors.HexColor('#F9F9F9')),
+        ('BORDER', (0,0), (-1,-1), 1, colors.HexColor('#E5E5E5')),
+        ('PADDING', (0,0), (-1,-1), 12),
+    ]))
+    story.append(t)
+    story.append(Spacer(1, 15))
+    
+    story.append(Paragraph("DECLARACIONES Y CONDICIONES DEL SERVICIO", section_style))
+    story.append(Paragraph(
+        "Por medio del presente documento, el Socio arriba mencionado acepta y se adhiere formalmente al reglamento de "
+        "convivencia y condiciones de membres??a de <b>Bodyflex Gym</b>, de conformidad con las siguientes cl??usulas:",
+        body_style
+    ))
+    
+    story.append(Paragraph("<b>CL??USULA PRIMERA: DEL PAGO DE LA MEMBRES??A Y D??A DE COBRO</b>", body_style))
+    story.append(Paragraph(
+        "El socio se compromete expresamente a cancelar el monto correspondiente de su membres??a mensualmente. "
+        "A partir de la presente fecha, se establece el <b>d??a 3 de cada mes</b> como el d??a l??mite de pago estandarizado "
+        "para todos los miembros activos. Los pagos se realizar??n de manera anticipada por medio de efectivo, tarjeta de "
+        "cr??dito o d??bito en recepci??n, o bien, a trav??s del sistema de cargo autom??tico a tarjeta (d??bito recurrente) cuando "
+        "esta modalidad sea habilitada por la administraci??n del gimnasio.",
+        body_style
+    ))
+    
+    story.append(Paragraph("<b>CL??USULA SEGUNDA: REGLAMENTO INTERNO DE CONVIVENCIA Y SEGURIDAD</b>", body_style))
+    story.append(Paragraph(
+        "Para garantizar un ambiente seguro y agradable, el Socio se compromete a respetar estrictamente las normas del establecimiento:",
+        body_style
+    ))
+    
+    rules = [
+        "<b>1. Prohibici??n de Fumar:</b> Queda terminantemente prohibido fumar o consumir cualquier tipo de vaporizador o cigarrillo electr??nico dentro de todas las ??reas f??sicas de las instalaciones.",
+        "<b>2. Cuidado del Equipo:</b> El Socio deber?? utilizar las m??quinas, mancuernas y accesorios de manera adecuada y segura, evitando azotar o dejar caer el peso bruscamente. Todo desperfecto provocado por negligencia ser?? responsabilidad del Socio.",
+        "<b>3. Orden en Sala:</b> Es obligatorio retornar las mancuernas, barras y discos a sus respectivos racks inmediatamente al finalizar cada ejercicio.",
+        "<b>4. Higiene Personal:</b> Por respeto y salud, cada Socio debe traer una toalla personal para limpiar el sudor residual en las ??reas de contacto de los equipos tras su uso.",
+        "<b>5. Responsabilidad:</b> Bodyflex Gym no se hace responsable por la p??rdida, robo u olvido de objetos de valor o art??culos personales dejados dentro de las instalaciones."
+    ]
+    
+    for r in rules:
+        story.append(Paragraph(r, bullet_style))
+        
+    story.append(Spacer(1, 10))
+    story.append(Paragraph(
+        "El incumplimiento de cualquiera de las reglas descritas anteriormente dar?? derecho a la administraci??n de "
+        "cancelar temporal o definitivamente la membres??a del Socio sin derecho a reembolso.",
+        body_style
+    ))
+    
+    story.append(Spacer(1, 20))
+    
+    sig_data = [
+        [
+            Paragraph("_______________________________<br/><b>Firma del Socio</b><br/>CUI: " + str(usuario['cui']), body_style),
+            Paragraph("_______________________________<br/><b>Por la Administraci??n</b><br/>Bodyflex Gym", body_style)
+        ]
+    ]
+    sig_table = Table(sig_data, colWidths=[(letter[0] - 108)/2, (letter[0] - 108)/2])
+    sig_table.setStyle(TableStyle([
+        ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+        ('TOPPADDING', (0,0), (-1,-1), 20),
+    ]))
+    story.append(sig_table)
+    
+    doc.build(story)
+    buf.seek(0)
+    
+    response = make_response(buf.read())
+    response.headers['Content-Type'] = 'application/pdf'
+    response.headers['Content-Disposition'] = f'inline; filename=contrato_{usuario["cui"]}.pdf'
+    return response
 
 
 
-# 
-# MÓDULO DE INVENTARIO Y TIENDA
-# 
+# ???????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+# M??DULO DE INVENTARIO Y TIENDA
+# ???????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
 
-ZONAS_EQUIPOS = ["Cardio", "Musculación", "Pesas Libres", "Funcional", "Estiramiento", "General / Vestuarios"]
+ZONAS_EQUIPOS = ["Cardio", "Musculaci??n", "Pesas Libres", "Funcional", "Estiramiento", "General / Vestuarios"]
 ESTADOS_EQUIPOS = ["Excelente", "Bueno", "En Mantenimiento", "Fuera de Servicio"]
 
 @app.route("/inventario")
 def inventario():
- if "usuario_id" not in session:
- return redirect("/login")
- if session.get("rol") not in ("admin", "empleado"):
- flash("Acceso denegado. Permisos de personal requeridos.", "error")
- return redirect("/panel")
+    if "usuario_id" not in session:
+        return redirect("/login")
+    if session.get("rol") not in ("admin", "empleado"):
+        flash("Acceso denegado. Permisos de personal requeridos.", "error")
+        return redirect("/panel")
 
- categoria_filtro = request.args.get("categoria", "").strip()
- zona_filtro = request.args.get("zona", "").strip()
- busqueda = request.args.get("q", "").strip()
- tab_activa = request.args.get("tab", "productos").strip()
+    categoria_filtro = request.args.get("categoria", "").strip()
+    zona_filtro = request.args.get("zona", "").strip()
+    busqueda = request.args.get("q", "").strip()
+    tab_activa = request.args.get("tab", "productos").strip()
 
- conn = conectar_db()
- cursor = conn.cursor(dictionary=True)
+    conn = conectar_db()
+    cursor = conn.cursor(dictionary=True)
 
- # 1. Obtener productos
- sql_prod = "SELECT * FROM productos WHERE 1=1"
- params_prod = []
- if categoria_filtro:
- sql_prod += " AND categoria = %s"
- params_prod.append(categoria_filtro)
- if busqueda and tab_activa != "equipos":
- sql_prod += " AND (nombre LIKE %s OR descripcion LIKE %s OR categoria LIKE %s)"
- busq_param = f"%{busqueda}%"
- params_prod.extend([busq_param, busq_param, busq_param])
+    # 1. Obtener productos
+    sql_prod = "SELECT * FROM productos WHERE 1=1"
+    params_prod = []
+    if categoria_filtro:
+        sql_prod += " AND categoria = %s"
+        params_prod.append(categoria_filtro)
+    if busqueda and tab_activa != "equipos":
+        sql_prod += " AND (nombre LIKE %s OR descripcion LIKE %s OR categoria LIKE %s)"
+        busq_param = f"%{busqueda}%"
+        params_prod.extend([busq_param, busq_param, busq_param])
 
- sql_prod += " ORDER BY id_producto DESC"
- cursor.execute(sql_prod, tuple(params_prod))
- productos = cursor.fetchall()
+    sql_prod += " ORDER BY id_producto DESC"
+    cursor.execute(sql_prod, tuple(params_prod))
+    productos = cursor.fetchall()
 
- # Estadísticas de productos
- cursor.execute("SELECT COUNT(*) AS total_prods, COALESCE(SUM(cantidad),0) AS total_stock, COALESCE(SUM(cantidad * precio_venta),0) AS valor_total, COALESCE(SUM(CASE WHEN cantidad < 5 THEN 1 ELSE 0 END),0) AS stock_bajo FROM productos")
- stats_prods = cursor.fetchone() or {}
+    # Estad??sticas de productos
+    cursor.execute("SELECT COUNT(*) AS total_prods, COALESCE(SUM(cantidad),0) AS total_stock, COALESCE(SUM(cantidad * precio_venta),0) AS valor_total, COALESCE(SUM(CASE WHEN cantidad < 5 THEN 1 ELSE 0 END),0) AS stock_bajo FROM productos")
+    stats_prods = cursor.fetchone() or {}
 
- cursor.execute("SELECT DISTINCT categoria FROM productos WHERE categoria IS NOT NULL AND categoria != '' ORDER BY categoria ASC")
- categorias = [r["categoria"] for r in cursor.fetchall()]
+    cursor.execute("SELECT DISTINCT categoria FROM productos WHERE categoria IS NOT NULL AND categoria != '' ORDER BY categoria ASC")
+    categorias = [r["categoria"] for r in cursor.fetchall()]
 
- # 2. Obtener maquinaria / equipos
- sql_maq = "SELECT * FROM maquinaria WHERE 1=1"
- params_maq = []
- if zona_filtro:
- sql_maq += " AND zona = %s"
- params_maq.append(zona_filtro)
- if busqueda and tab_activa == "equipos":
- sql_maq += " AND (nombre LIKE %s OR descripcion LIKE %s OR zona LIKE %s OR estado LIKE %s)"
- busq_param = f"%{busqueda}%"
- params_maq.extend([busq_param, busq_param, busq_param, busq_param])
+    # 2. Obtener maquinaria / equipos
+    sql_maq = "SELECT * FROM maquinaria WHERE 1=1"
+    params_maq = []
+    if zona_filtro:
+        sql_maq += " AND zona = %s"
+        params_maq.append(zona_filtro)
+    if busqueda and tab_activa == "equipos":
+        sql_maq += " AND (nombre LIKE %s OR descripcion LIKE %s OR zona LIKE %s OR estado LIKE %s)"
+        busq_param = f"%{busqueda}%"
+        params_maq.extend([busq_param, busq_param, busq_param, busq_param])
 
- sql_maq += " ORDER BY zona ASC, nombre ASC"
- cursor.execute(sql_maq, tuple(params_maq))
- equipos = cursor.fetchall()
+    sql_maq += " ORDER BY zona ASC, nombre ASC"
+    cursor.execute(sql_maq, tuple(params_maq))
+    equipos = cursor.fetchall()
 
- # Estadísticas de maquinaria
- cursor.execute("SELECT COUNT(*) AS total_equipos, COALESCE(SUM(cantidad),0) AS unidades_equipos, COALESCE(SUM(CASE WHEN estado IN ('En Mantenimiento', 'Fuera de Servicio') THEN cantidad ELSE 0 END),0) AS equipos_mantenimiento FROM maquinaria")
- stats_equipos = cursor.fetchone() or {}
+    # Estad??sticas de maquinaria
+    cursor.execute("SELECT COUNT(*) AS total_equipos, COALESCE(SUM(cantidad),0) AS unidades_equipos, COALESCE(SUM(CASE WHEN estado IN ('En Mantenimiento', 'Fuera de Servicio') THEN cantidad ELSE 0 END),0) AS equipos_mantenimiento FROM maquinaria")
+    stats_equipos = cursor.fetchone() or {}
 
- # Lista de usuarios activos para asignar cobros/ventas
- cursor.execute("SELECT cui, nombre, apellido, email FROM usuarios WHERE estado = 'activo' ORDER BY nombre ASC, apellido ASC")
- usuarios = cursor.fetchall()
+    # Lista de usuarios activos para asignar cobros/ventas
+    cursor.execute("SELECT cui, nombre, apellido, email FROM usuarios WHERE estado = 'activo' ORDER BY nombre ASC, apellido ASC")
+    usuarios = cursor.fetchall()
 
- conn.close()
+    conn.close()
 
- return render_template(
- "inventario.html",
- productos=productos,
- equipos=equipos,
- stats=stats_prods,
- stats_equipos=stats_equipos,
- categorias=categorias,
- zonas_equipos=ZONAS_EQUIPOS,
- estados_equipos=ESTADOS_EQUIPOS,
- usuarios=usuarios,
- categoria_actual=categoria_filtro,
- zona_actual=zona_filtro,
- busqueda=busqueda,
- tab_activa=tab_activa
- )
+    return render_template(
+        "inventario.html",
+        productos=productos,
+        equipos=equipos,
+        stats=stats_prods,
+        stats_equipos=stats_equipos,
+        categorias=categorias,
+        zonas_equipos=ZONAS_EQUIPOS,
+        estados_equipos=ESTADOS_EQUIPOS,
+        usuarios=usuarios,
+        categoria_actual=categoria_filtro,
+        zona_actual=zona_filtro,
+        busqueda=busqueda,
+        tab_activa=tab_activa
+    )
 
 
 @app.route("/inventario/agregar", methods=["POST"])
 @app.route("/inventario/producto/agregar", methods=["POST"])
 def inventario_agregar():
- if "usuario_id" not in session or session.get("rol") not in ("admin", "empleado"):
- flash("No tienes permiso para realizar esta acción", "error")
- return redirect("/login")
+    if "usuario_id" not in session or session.get("rol") not in ("admin", "empleado"):
+        flash("No tienes permiso para realizar esta acci??n", "error")
+        return redirect("/login")
 
- nombre = request.form.get("nombre", "").strip()
- descripcion = request.form.get("descripcion", "").strip()
- cantidad_raw = request.form.get("cantidad", "0").strip()
- precio_costo_raw = request.form.get("precio_costo", "").strip()
- precio_venta_raw = request.form.get("precio_venta", "").strip()
- categoria = request.form.get("categoria", "General").strip() or "General"
+    nombre = request.form.get("nombre", "").strip()
+    descripcion = request.form.get("descripcion", "").strip()
+    cantidad_raw = request.form.get("cantidad", "0").strip()
+    precio_costo_raw = request.form.get("precio_costo", "").strip()
+    precio_venta_raw = request.form.get("precio_venta", "").strip()
+    categoria = request.form.get("categoria", "General").strip() or "General"
 
- if not nombre or not precio_venta_raw:
- flash("El nombre y el precio de venta son obligatorios para productos", "error")
- return redirect("/inventario?tab=productos")
+    if not nombre or not precio_venta_raw:
+        flash("El nombre y el precio de venta son obligatorios para productos", "error")
+        return redirect("/inventario?tab=productos")
 
- try:
- cantidad = int(cantidad_raw)
- precio_venta = float(precio_venta_raw)
- precio_costo = float(precio_costo_raw) if precio_costo_raw else None
- if cantidad < 0 or precio_venta < 0 or (precio_costo is not None and precio_costo < 0):
- raise ValueError()
- except ValueError:
- flash("Los valores numéricos (cantidad, precio) no son válidos", "error")
- return redirect("/inventario?tab=productos")
+    try:
+        cantidad = int(cantidad_raw)
+        precio_venta = float(precio_venta_raw)
+        precio_costo = float(precio_costo_raw) if precio_costo_raw else None
+        if cantidad < 0 or precio_venta < 0 or (precio_costo is not None and precio_costo < 0):
+            raise ValueError()
+    except ValueError:
+        flash("Los valores num??ricos (cantidad, precio) no son v??lidos", "error")
+        return redirect("/inventario?tab=productos")
 
- foto_url = None
- if "foto" in request.files:
- file = request.files["foto"]
- if file and file.filename != "" and allowed_file(file.filename):
- filename = f"{uuid.uuid4().hex[:10]}_{secure_filename(file.filename)}"
- filepath = os.path.join(app.config["UPLOAD_FOLDER"], filename)
- file.save(filepath)
- foto_url = f"/static/uploads/productos/{filename}"
+    foto_url = None
+    if "foto" in request.files:
+        file = request.files["foto"]
+        if file and file.filename != "" and allowed_file(file.filename):
+            filename = f"{uuid.uuid4().hex[:10]}_{secure_filename(file.filename)}"
+            filepath = os.path.join(app.config["UPLOAD_FOLDER"], filename)
+            file.save(filepath)
+            foto_url = f"/static/uploads/productos/{filename}"
 
- conn = conectar_db()
- cursor = conn.cursor()
- cursor.execute("""
- INSERT INTO productos (nombre, descripcion, cantidad, precio_costo, precio_venta, categoria, foto_url)
- VALUES (%s, %s, %s, %s, %s, %s, %s)
- """, (nombre, descripcion or None, cantidad, precio_costo, precio_venta, categoria, foto_url))
- conn.commit()
- conn.close()
+    conn = conectar_db()
+    cursor = conn.cursor()
+    cursor.execute("""
+        INSERT INTO productos (nombre, descripcion, cantidad, precio_costo, precio_venta, categoria, foto_url)
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
+    """, (nombre, descripcion or None, cantidad, precio_costo, precio_venta, categoria, foto_url))
+    conn.commit()
+    conn.close()
 
- registrar_log("INVENTARIO_AGREGAR", f"Producto '{nombre}' agregado (Stock: {cantidad}, Precio Venta: Q{precio_venta:.2f})")
- flash(f"Producto '{nombre}' agregado exitosamente al inventario.", "success")
- return redirect("/inventario?tab=productos")
+    registrar_log("INVENTARIO_AGREGAR", f"Producto '{nombre}' agregado (Stock: {cantidad}, Precio Venta: Q{precio_venta:.2f})")
+    flash(f"Producto '{nombre}' agregado exitosamente al inventario.", "success")
+    return redirect("/inventario?tab=productos")
 
 
 @app.route("/inventario/editar/<int:id_producto>", methods=["POST"])
 @app.route("/inventario/producto/editar/<int:id_producto>", methods=["POST"])
 def inventario_editar(id_producto):
- if "usuario_id" not in session or session.get("rol") not in ("admin", "empleado"):
- flash("No tienes permiso para realizar esta acción", "error")
- return redirect("/login")
+    if "usuario_id" not in session or session.get("rol") not in ("admin", "empleado"):
+        flash("No tienes permiso para realizar esta acci??n", "error")
+        return redirect("/login")
 
- nombre = request.form.get("nombre", "").strip()
- descripcion = request.form.get("descripcion", "").strip()
- cantidad_raw = request.form.get("cantidad", "0").strip()
- precio_costo_raw = request.form.get("precio_costo", "").strip()
- precio_venta_raw = request.form.get("precio_venta", "").strip()
- categoria = request.form.get("categoria", "General").strip() or "General"
+    nombre = request.form.get("nombre", "").strip()
+    descripcion = request.form.get("descripcion", "").strip()
+    cantidad_raw = request.form.get("cantidad", "0").strip()
+    precio_costo_raw = request.form.get("precio_costo", "").strip()
+    precio_venta_raw = request.form.get("precio_venta", "").strip()
+    categoria = request.form.get("categoria", "General").strip() or "General"
 
- if not nombre or not precio_venta_raw:
- flash("El nombre y precio de venta son requeridos", "error")
- return redirect("/inventario?tab=productos")
+    if not nombre or not precio_venta_raw:
+        flash("El nombre y precio de venta son requeridos", "error")
+        return redirect("/inventario?tab=productos")
 
- try:
- cantidad = int(cantidad_raw)
- precio_venta = float(precio_venta_raw)
- precio_costo = float(precio_costo_raw) if precio_costo_raw else None
- if cantidad < 0 or precio_venta < 0:
- raise ValueError()
- except ValueError:
- flash("Valores numéricos inválidos", "error")
- return redirect("/inventario?tab=productos")
+    try:
+        cantidad = int(cantidad_raw)
+        precio_venta = float(precio_venta_raw)
+        precio_costo = float(precio_costo_raw) if precio_costo_raw else None
+        if cantidad < 0 or precio_venta < 0:
+            raise ValueError()
+    except ValueError:
+        flash("Valores num??ricos inv??lidos", "error")
+        return redirect("/inventario?tab=productos")
 
- conn = conectar_db()
- cursor = conn.cursor(dictionary=True)
- cursor.execute("SELECT foto_url FROM productos WHERE id_producto = %s", (id_producto,))
- prod_actual = cursor.fetchone()
+    conn = conectar_db()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("SELECT foto_url FROM productos WHERE id_producto = %s", (id_producto,))
+    prod_actual = cursor.fetchone()
 
- if not prod_actual:
- conn.close()
- flash("Producto no encontrado", "error")
- return redirect("/inventario?tab=productos")
+    if not prod_actual:
+        conn.close()
+        flash("Producto no encontrado", "error")
+        return redirect("/inventario?tab=productos")
 
- foto_url = prod_actual["foto_url"]
- if "foto" in request.files:
- file = request.files["foto"]
- if file and file.filename != "" and allowed_file(file.filename):
- filename = f"{uuid.uuid4().hex[:10]}_{secure_filename(file.filename)}"
- filepath = os.path.join(app.config["UPLOAD_FOLDER"], filename)
- file.save(filepath)
- foto_url = f"/static/uploads/productos/{filename}"
+    foto_url = prod_actual["foto_url"]
+    if "foto" in request.files:
+        file = request.files["foto"]
+        if file and file.filename != "" and allowed_file(file.filename):
+            filename = f"{uuid.uuid4().hex[:10]}_{secure_filename(file.filename)}"
+            filepath = os.path.join(app.config["UPLOAD_FOLDER"], filename)
+            file.save(filepath)
+            foto_url = f"/static/uploads/productos/{filename}"
 
- cursor.execute("""
- UPDATE productos
- SET nombre = %s, descripcion = %s, cantidad = %s, precio_costo = %s, precio_venta = %s, categoria = %s, foto_url = %s
- WHERE id_producto = %s
- """, (nombre, descripcion or None, cantidad, precio_costo, precio_venta, categoria, foto_url, id_producto))
- conn.commit()
- conn.close()
+    cursor.execute("""
+        UPDATE productos
+        SET nombre = %s, descripcion = %s, cantidad = %s, precio_costo = %s, precio_venta = %s, categoria = %s, foto_url = %s
+        WHERE id_producto = %s
+    """, (nombre, descripcion or None, cantidad, precio_costo, precio_venta, categoria, foto_url, id_producto))
+    conn.commit()
+    conn.close()
 
- registrar_log("INVENTARIO_EDITAR", f"Producto ID {id_producto} ('{nombre}') actualizado.")
- flash(f"Producto '{nombre}' actualizado con éxito.", "success")
- return redirect("/inventario?tab=productos")
+    registrar_log("INVENTARIO_EDITAR", f"Producto ID {id_producto} ('{nombre}') actualizado.")
+    flash(f"Producto '{nombre}' actualizado con ??xito.", "success")
+    return redirect("/inventario?tab=productos")
 
 
 @app.route("/inventario/eliminar/<int:id_producto>", methods=["POST"])
 @app.route("/inventario/producto/eliminar/<int:id_producto>", methods=["POST"])
 def inventario_eliminar(id_producto):
- if "usuario_id" not in session or session.get("rol") not in ("admin", "empleado"):
- flash("No tienes permiso para realizar esta acción", "error")
- return redirect("/login")
+    if "usuario_id" not in session or session.get("rol") not in ("admin", "empleado"):
+        flash("No tienes permiso para realizar esta acci??n", "error")
+        return redirect("/login")
 
- conn = conectar_db()
- cursor = conn.cursor(dictionary=True)
- cursor.execute("SELECT nombre FROM productos WHERE id_producto = %s", (id_producto,))
- prod = cursor.fetchone()
+    conn = conectar_db()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("SELECT nombre FROM productos WHERE id_producto = %s", (id_producto,))
+    prod = cursor.fetchone()
 
- if prod:
- cursor.execute("DELETE FROM productos WHERE id_producto = %s", (id_producto,))
- conn.commit()
- registrar_log("INVENTARIO_ELIMINAR", f"Producto ID {id_producto} ('{prod['nombre']}') eliminado.")
- flash(f"Producto '{prod['nombre']}' eliminado del inventario.", "info")
+    if prod:
+        cursor.execute("DELETE FROM productos WHERE id_producto = %s", (id_producto,))
+        conn.commit()
+        registrar_log("INVENTARIO_ELIMINAR", f"Producto ID {id_producto} ('{prod['nombre']}') eliminado.")
+        flash(f"Producto '{prod['nombre']}' eliminado del inventario.", "info")
 
- conn.close()
- return redirect("/inventario?tab=productos")
+    conn.close()
+    return redirect("/inventario?tab=productos")
 
 
-# Rutas para Maquinaria y Equipos 
+# ?????? Rutas para Maquinaria y Equipos ??????
 
 @app.route("/inventario/equipo/agregar", methods=["POST"])
 def equipo_agregar():
- if "usuario_id" not in session or session.get("rol") not in ("admin", "empleado"):
- flash("No tienes permiso para realizar esta acción", "error")
- return redirect("/login")
+    if "usuario_id" not in session or session.get("rol") not in ("admin", "empleado"):
+        flash("No tienes permiso para realizar esta acci??n", "error")
+        return redirect("/login")
 
- nombre = request.form.get("nombre", "").strip()
- descripcion = request.form.get("descripcion", "").strip()
- cantidad_raw = request.form.get("cantidad", "1").strip()
- zona = request.form.get("zona", "Cardio").strip() or "Cardio"
- estado = request.form.get("estado", "Excelente").strip() or "Excelente"
+    nombre = request.form.get("nombre", "").strip()
+    descripcion = request.form.get("descripcion", "").strip()
+    cantidad_raw = request.form.get("cantidad", "1").strip()
+    zona = request.form.get("zona", "Cardio").strip() or "Cardio"
+    estado = request.form.get("estado", "Excelente").strip() or "Excelente"
 
- if not nombre:
- flash("El nombre del equipo es obligatorio", "error")
- return redirect("/inventario?tab=equipos")
+    if not nombre:
+        flash("El nombre del equipo es obligatorio", "error")
+        return redirect("/inventario?tab=equipos")
 
- try:
- cantidad = int(cantidad_raw)
- if cantidad < 0:
- raise ValueError()
- except ValueError:
- flash("La cantidad de equipos debe ser un número válido", "error")
- return redirect("/inventario?tab=equipos")
+    try:
+        cantidad = int(cantidad_raw)
+        if cantidad < 0:
+            raise ValueError()
+    except ValueError:
+        flash("La cantidad de equipos debe ser un n??mero v??lido", "error")
+        return redirect("/inventario?tab=equipos")
 
- foto_url = None
- if "foto" in request.files:
- file = request.files["foto"]
- if file and file.filename != "" and allowed_file(file.filename):
- filename = f"{uuid.uuid4().hex[:10]}_{secure_filename(file.filename)}"
- filepath = os.path.join(app.config["UPLOAD_FOLDER"], filename)
- file.save(filepath)
- foto_url = f"/static/uploads/productos/{filename}"
+    foto_url = None
+    if "foto" in request.files:
+        file = request.files["foto"]
+        if file and file.filename != "" and allowed_file(file.filename):
+            filename = f"{uuid.uuid4().hex[:10]}_{secure_filename(file.filename)}"
+            filepath = os.path.join(app.config["UPLOAD_FOLDER"], filename)
+            file.save(filepath)
+            foto_url = f"/static/uploads/productos/{filename}"
 
- conn = conectar_db()
- cursor = conn.cursor()
- cursor.execute("""
- INSERT INTO maquinaria (nombre, descripcion, cantidad, zona, estado, foto_url)
- VALUES (%s, %s, %s, %s, %s, %s)
- """, (nombre, descripcion or None, cantidad, zona, estado, foto_url))
- conn.commit()
- conn.close()
+    conn = conectar_db()
+    cursor = conn.cursor()
+    cursor.execute("""
+        INSERT INTO maquinaria (nombre, descripcion, cantidad, zona, estado, foto_url)
+        VALUES (%s, %s, %s, %s, %s, %s)
+    """, (nombre, descripcion or None, cantidad, zona, estado, foto_url))
+    conn.commit()
+    conn.close()
 
- registrar_log("EQUIPO_AGREGAR", f"Equipo '{nombre}' registrado en Zona '{zona}' (Cantidad: {cantidad}, Estado: {estado})")
- flash(f"Equipo '{nombre}' registrado exitosamente en la zona {zona}.", "success")
- return redirect("/inventario?tab=equipos")
+    registrar_log("EQUIPO_AGREGAR", f"Equipo '{nombre}' registrado en Zona '{zona}' (Cantidad: {cantidad}, Estado: {estado})")
+    flash(f"Equipo '{nombre}' registrado exitosamente en la zona {zona}.", "success")
+    return redirect("/inventario?tab=equipos")
 
 
 @app.route("/inventario/equipo/editar/<int:id_equipo>", methods=["POST"])
 def equipo_editar(id_equipo):
- if "usuario_id" not in session or session.get("rol") not in ("admin", "empleado"):
- flash("No tienes permiso para realizar esta acción", "error")
- return redirect("/login")
+    if "usuario_id" not in session or session.get("rol") not in ("admin", "empleado"):
+        flash("No tienes permiso para realizar esta acci??n", "error")
+        return redirect("/login")
 
- nombre = request.form.get("nombre", "").strip()
- descripcion = request.form.get("descripcion", "").strip()
- cantidad_raw = request.form.get("cantidad", "1").strip()
- zona = request.form.get("zona", "Cardio").strip() or "Cardio"
- estado = request.form.get("estado", "Excelente").strip() or "Excelente"
+    nombre = request.form.get("nombre", "").strip()
+    descripcion = request.form.get("descripcion", "").strip()
+    cantidad_raw = request.form.get("cantidad", "1").strip()
+    zona = request.form.get("zona", "Cardio").strip() or "Cardio"
+    estado = request.form.get("estado", "Excelente").strip() or "Excelente"
 
- if not nombre:
- flash("El nombre del equipo es obligatorio", "error")
- return redirect("/inventario?tab=equipos")
+    if not nombre:
+        flash("El nombre del equipo es obligatorio", "error")
+        return redirect("/inventario?tab=equipos")
 
- try:
- cantidad = int(cantidad_raw)
- if cantidad < 0:
- raise ValueError()
- except ValueError:
- flash("Cantidad inválida", "error")
- return redirect("/inventario?tab=equipos")
+    try:
+        cantidad = int(cantidad_raw)
+        if cantidad < 0:
+            raise ValueError()
+    except ValueError:
+        flash("Cantidad inv??lida", "error")
+        return redirect("/inventario?tab=equipos")
 
- conn = conectar_db()
- cursor = conn.cursor(dictionary=True)
- cursor.execute("SELECT foto_url FROM maquinaria WHERE id_equipo = %s", (id_equipo,))
- eq_actual = cursor.fetchone()
+    conn = conectar_db()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("SELECT foto_url FROM maquinaria WHERE id_equipo = %s", (id_equipo,))
+    eq_actual = cursor.fetchone()
 
- if not eq_actual:
- conn.close()
- flash("Equipo no encontrado", "error")
- return redirect("/inventario?tab=equipos")
+    if not eq_actual:
+        conn.close()
+        flash("Equipo no encontrado", "error")
+        return redirect("/inventario?tab=equipos")
 
- foto_url = eq_actual["foto_url"]
- if "foto" in request.files:
- file = request.files["foto"]
- if file and file.filename != "" and allowed_file(file.filename):
- filename = f"{uuid.uuid4().hex[:10]}_{secure_filename(file.filename)}"
- filepath = os.path.join(app.config["UPLOAD_FOLDER"], filename)
- file.save(filepath)
- foto_url = f"/static/uploads/productos/{filename}"
+    foto_url = eq_actual["foto_url"]
+    if "foto" in request.files:
+        file = request.files["foto"]
+        if file and file.filename != "" and allowed_file(file.filename):
+            filename = f"{uuid.uuid4().hex[:10]}_{secure_filename(file.filename)}"
+            filepath = os.path.join(app.config["UPLOAD_FOLDER"], filename)
+            file.save(filepath)
+            foto_url = f"/static/uploads/productos/{filename}"
 
- cursor.execute("""
- UPDATE maquinaria
- SET nombre = %s, descripcion = %s, cantidad = %s, zona = %s, estado = %s, foto_url = %s
- WHERE id_equipo = %s
- """, (nombre, descripcion or None, cantidad, zona, estado, foto_url, id_equipo))
- conn.commit()
- conn.close()
+    cursor.execute("""
+        UPDATE maquinaria
+        SET nombre = %s, descripcion = %s, cantidad = %s, zona = %s, estado = %s, foto_url = %s
+        WHERE id_equipo = %s
+    """, (nombre, descripcion or None, cantidad, zona, estado, foto_url, id_equipo))
+    conn.commit()
+    conn.close()
 
- registrar_log("EQUIPO_EDITAR", f"Equipo ID {id_equipo} ('{nombre}') actualizado.")
- flash(f"Equipo '{nombre}' actualizado con éxito.", "success")
- return redirect("/inventario?tab=equipos")
+    registrar_log("EQUIPO_EDITAR", f"Equipo ID {id_equipo} ('{nombre}') actualizado.")
+    flash(f"Equipo '{nombre}' actualizado con ??xito.", "success")
+    return redirect("/inventario?tab=equipos")
 
 
 @app.route("/inventario/equipo/eliminar/<int:id_equipo>", methods=["POST"])
 def equipo_eliminar(id_equipo):
- if "usuario_id" not in session or session.get("rol") not in ("admin", "empleado"):
- flash("No tienes permiso para realizar esta acción", "error")
- return redirect("/login")
+    if "usuario_id" not in session or session.get("rol") not in ("admin", "empleado"):
+        flash("No tienes permiso para realizar esta acci??n", "error")
+        return redirect("/login")
 
- conn = conectar_db()
- cursor = conn.cursor(dictionary=True)
- cursor.execute("SELECT nombre FROM maquinaria WHERE id_equipo = %s", (id_equipo,))
- eq = cursor.fetchone()
+    conn = conectar_db()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("SELECT nombre FROM maquinaria WHERE id_equipo = %s", (id_equipo,))
+    eq = cursor.fetchone()
 
- if eq:
- cursor.execute("DELETE FROM maquinaria WHERE id_equipo = %s", (id_equipo,))
- conn.commit()
- registrar_log("EQUIPO_ELIMINAR", f"Equipo ID {id_equipo} ('{eq['nombre']}') eliminado.")
- flash(f"Equipo '{eq['nombre']}' eliminado de maquinaria.", "info")
+    if eq:
+        cursor.execute("DELETE FROM maquinaria WHERE id_equipo = %s", (id_equipo,))
+        conn.commit()
+        registrar_log("EQUIPO_ELIMINAR", f"Equipo ID {id_equipo} ('{eq['nombre']}') eliminado.")
+        flash(f"Equipo '{eq['nombre']}' eliminado de maquinaria.", "info")
 
- conn.close()
- return redirect("/inventario?tab=equipos")
+    conn.close()
+    return redirect("/inventario?tab=equipos")
 
 
 @app.route("/inventario/vender", methods=["POST"])
 def inventario_vender():
- if "usuario_id" not in session:
- flash("Debes iniciar sesión", "error")
- return redirect("/login")
+    if "usuario_id" not in session:
+        flash("Debes iniciar sesi??n", "error")
+        return redirect("/login")
 
- rol_actual = session.get("rol")
- cui_sesion = session.get("usuario_id")
+    rol_actual = session.get("rol")
+    cui_sesion = session.get("usuario_id")
 
- id_producto = request.form.get("id_producto")
- cantidad_venta_raw = request.form.get("cantidad_venta", "1").strip()
- tipo_venta = request.form.get("tipo_venta", "directa").strip()
- cui_usuario_target = request.form.get("cui_usuario", "").strip()
+    id_producto = request.form.get("id_producto")
+    cantidad_venta_raw = request.form.get("cantidad_venta", "1").strip()
+    tipo_venta = request.form.get("tipo_venta", "directa").strip()
+    cui_usuario_target = request.form.get("cui_usuario", "").strip()
 
- if rol_actual not in ("admin", "empleado") or not cui_usuario_target:
- cui_usuario_target = cui_sesion
+    if rol_actual not in ("admin", "empleado") or not cui_usuario_target:
+        cui_usuario_target = cui_sesion
 
- try:
- id_producto = int(id_producto)
- cantidad_venta = int(cantidad_venta_raw)
- cui_usuario_target = int(cui_usuario_target)
- if cantidad_venta <= 0:
- raise ValueError()
- except (TypeError, ValueError):
- flash("Datos de compra no válidos", "error")
- return redirect(request.referrer or "/tienda")
+    try:
+        id_producto = int(id_producto)
+        cantidad_venta = int(cantidad_venta_raw)
+        cui_usuario_target = int(cui_usuario_target)
+        if cantidad_venta <= 0:
+            raise ValueError()
+    except (TypeError, ValueError):
+        flash("Datos de compra no v??lidos", "error")
+        return redirect(request.referrer or "/tienda")
 
- conn = conectar_db()
- cursor = conn.cursor(dictionary=True)
+    conn = conectar_db()
+    cursor = conn.cursor(dictionary=True)
 
- cursor.execute("SELECT cui, nombre, apellido FROM usuarios WHERE cui = %s", (cui_usuario_target,))
- usuario_dest = cursor.fetchone()
- if not usuario_dest:
- conn.close()
- flash("El socio especificado no existe", "error")
- return redirect(request.referrer or "/inventario")
+    cursor.execute("SELECT cui, nombre, apellido FROM usuarios WHERE cui = %s", (cui_usuario_target,))
+    usuario_dest = cursor.fetchone()
+    if not usuario_dest:
+        conn.close()
+        flash("El socio especificado no existe", "error")
+        return redirect(request.referrer or "/inventario")
 
- cursor.execute("SELECT id_producto, nombre, cantidad, precio_venta FROM productos WHERE id_producto = %s", (id_producto,))
- prod = cursor.fetchone()
+    cursor.execute("SELECT id_producto, nombre, cantidad, precio_venta FROM productos WHERE id_producto = %s", (id_producto,))
+    prod = cursor.fetchone()
 
- if not prod:
- conn.close()
- flash("El producto seleccionado no existe", "error")
- return redirect(request.referrer or "/tienda")
+    if not prod:
+        conn.close()
+        flash("El producto seleccionado no existe", "error")
+        return redirect(request.referrer or "/tienda")
 
- if prod["cantidad"] < cantidad_venta:
- conn.close()
- flash(f"Stock insuficiente para '{prod['nombre']}'. Disponible: {prod['cantidad']} unidades.", "error")
- return redirect(request.referrer or "/tienda")
+    if prod["cantidad"] < cantidad_venta:
+        conn.close()
+        flash(f"Stock insuficiente para '{prod['nombre']}'. Disponible: {prod['cantidad']} unidades.", "error")
+        return redirect(request.referrer or "/tienda")
 
- # Restar stock atómicamente
- cursor.execute("""
- UPDATE productos
- SET cantidad = cantidad - %s
- WHERE id_producto = %s AND cantidad >= %s
- """, (cantidad_venta, id_producto, cantidad_venta))
+    # Restar stock at??micamente
+    cursor.execute("""
+        UPDATE productos
+        SET cantidad = cantidad - %s
+        WHERE id_producto = %s AND cantidad >= %s
+    """, (cantidad_venta, id_producto, cantidad_venta))
 
- if cursor.rowcount == 0:
- conn.close()
- flash("No se pudo completar la transacción debido a un cambio en el inventario. Inténtalo de nuevo.", "error")
- return redirect(request.referrer or "/tienda")
+    if cursor.rowcount == 0:
+        conn.close()
+        flash("No se pudo completar la transacci??n debido a un cambio en el inventario. Int??ntalo de nuevo.", "error")
+        return redirect(request.referrer or "/tienda")
 
- monto_total = float(prod["precio_venta"]) * cantidad_venta
- estado_cargo = "pagado" if tipo_venta == "directa" else "pendiente"
- descripcion_cargo = f"Compra: {cantidad_venta}x {prod['nombre']}"
- fecha_hoy = date.today()
+    monto_total = float(prod["precio_venta"]) * cantidad_venta
+    estado_cargo = "pagado" if tipo_venta == "directa" else "pendiente"
+    descripcion_cargo = f"Compra: {cantidad_venta}x {prod['nombre']}"
+    fecha_hoy = date.today()
 
- cursor.execute("""
- INSERT INTO cargos (cui_usuario, descripcion, monto, fecha_emision, estado, id_producto)
- VALUES (%s, %s, %s, %s, %s, %s)
- """, (cui_usuario_target, descripcion_cargo, monto_total, fecha_hoy, estado_cargo, id_producto))
+    cursor.execute("""
+        INSERT INTO cargos (cui_usuario, descripcion, monto, fecha_emision, estado, id_producto)
+        VALUES (%s, %s, %s, %s, %s, %s)
+    """, (cui_usuario_target, descripcion_cargo, monto_total, fecha_hoy, estado_cargo, id_producto))
 
- conn.commit()
- conn.close()
+    conn.commit()
+    conn.close()
 
- log_msg = f"Venta de {cantidad_venta}x '{prod['nombre']}' a {usuario_dest['nombre']} {usuario_dest['apellido']} (CUI: {cui_usuario_target}) por Q{monto_total:.2f}. Estado: {estado_cargo}"
- registrar_log("INVENTARIO_VENTA", log_msg, afectado_id=cui_usuario_target, afectado_nombre=f"{usuario_dest['nombre']} {usuario_dest['apellido']}")
+    log_msg = f"Venta de {cantidad_venta}x '{prod['nombre']}' a {usuario_dest['nombre']} {usuario_dest['apellido']} (CUI: {cui_usuario_target}) por Q{monto_total:.2f}. Estado: {estado_cargo}"
+    registrar_log("INVENTARIO_VENTA", log_msg, afectado_id=cui_usuario_target, afectado_nombre=f"{usuario_dest['nombre']} {usuario_dest['apellido']}")
 
- msg_exito = f"¡Venta realizada exitosamente! Se descontaron {cantidad_venta} unidades de '{prod['nombre']}' del inventario."
- if estado_cargo == "pendiente":
- msg_exito += " El cargo quedó registrado como PENDIENTE de pago."
+    msg_exito = f"??Venta realizada exitosamente! Se descontaron {cantidad_venta} unidades de '{prod['nombre']}' del inventario."
+    if estado_cargo == "pendiente":
+        msg_exito += " El cargo qued?? registrado como PENDIENTE de pago."
 
- flash(msg_exito, "success")
- return redirect(request.referrer or "/inventario")
+    flash(msg_exito, "success")
+    return redirect(request.referrer or "/inventario")
 
 
 @app.route("/tienda")
 def tienda():
- if "usuario_id" not in session:
- return redirect("/login")
+    if "usuario_id" not in session:
+        return redirect("/login")
 
- categoria_filtro = request.args.get("categoria", "").strip()
- busqueda = request.args.get("q", "").strip()
+    categoria_filtro = request.args.get("categoria", "").strip()
+    busqueda = request.args.get("q", "").strip()
 
- conn = conectar_db()
- cursor = conn.cursor(dictionary=True)
+    conn = conectar_db()
+    cursor = conn.cursor(dictionary=True)
 
- sql = "SELECT * FROM productos WHERE 1=1"
- params = []
+    sql = "SELECT * FROM productos WHERE 1=1"
+    params = []
 
- if categoria_filtro:
- sql += " AND categoria = %s"
- params.append(categoria_filtro)
- if busqueda:
- sql += " AND (nombre LIKE %s OR descripcion LIKE %s OR categoria LIKE %s)"
- busq_param = f"%{busqueda}%"
- params.extend([busq_param, busq_param, busq_param])
+    if categoria_filtro:
+        sql += " AND categoria = %s"
+        params.append(categoria_filtro)
+    if busqueda:
+        sql += " AND (nombre LIKE %s OR descripcion LIKE %s OR categoria LIKE %s)"
+        busq_param = f"%{busqueda}%"
+        params.extend([busq_param, busq_param, busq_param])
 
- sql += " ORDER BY cantidad DESC, nombre ASC"
- cursor.execute(sql, tuple(params))
- productos = cursor.fetchall()
+    sql += " ORDER BY cantidad DESC, nombre ASC"
+    cursor.execute(sql, tuple(params))
+    productos = cursor.fetchall()
 
- cursor.execute("SELECT DISTINCT categoria FROM productos WHERE categoria IS NOT NULL AND categoria != '' ORDER BY categoria ASC")
- categorias = [r["categoria"] for r in cursor.fetchall()]
+    cursor.execute("SELECT DISTINCT categoria FROM productos WHERE categoria IS NOT NULL AND categoria != '' ORDER BY categoria ASC")
+    categorias = [r["categoria"] for r in cursor.fetchall()]
 
- conn.close()
+    conn.close()
 
- return render_template(
- "tienda.html",
- productos=productos,
- categorias=categorias,
- categoria_actual=categoria_filtro,
- busqueda=busqueda
- )
+    return render_template(
+        "tienda.html",
+        productos=productos,
+        categorias=categorias,
+        categoria_actual=categoria_filtro,
+        busqueda=busqueda
+    )
 
 
 if __name__ == "__main__":
- port = int(os.environ.get("PORT", 5000))
- app.run(host="0.0.0.0", port=port, debug=False)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port, debug=False)
 
