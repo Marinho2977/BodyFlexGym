@@ -1244,13 +1244,15 @@ def pagar_cargo(id_cargo):
         VALUES (%s, %s, %s, %s, %s, %s)
     """, (cargo['cui_usuario'], hoy, vencimiento_actual, cargo['monto'], f"Cargo: {cargo['descripcion']}", id_cargo))
     
+    nuevo_id_pago = cursor.lastrowid
     conn.commit()
     conn.close()
     
     nombre_socio = f"{cargo['nombre']} {cargo['apellido']}"
     registrar_log("pago", f"Pagó cargo manual '{cargo['descripcion']}' (Q{cargo['monto']})", afectado_id=cargo['cui_usuario'], afectado_nombre=nombre_socio)
     
-    flash(f"El cargo '{cargo['descripcion']}' ha sido pagado", "success")
+    msg_exito = f"El cargo '{cargo['descripcion']}' ha sido pagado exitosamente. <a href='/recibo/{nuevo_id_pago}' target='_blank' style='color:#22c55e; font-weight:700; text-decoration:underline; margin-left:8px;'>📄 Descargar Recibo PDF</a>"
+    flash(msg_exito, "success")
     return redirect(origen)# ─────────────────────────────────────────────
 # AUDITORÍA
 # ─────────────────────────────────────────────
@@ -2289,7 +2291,7 @@ def generar_recibo(id_pago):
     cursor = conn.cursor(dictionary=True)
     cursor.execute("""
         SELECT p.id_pago, p.monto, p.fecha_pago, p.fecha_vencimiento,
-               p.metodo_pago, p.referencia,
+               p.metodo_pago, p.referencia, p.descripcion,
                u.cui, u.tipo_doc, u.nombre, u.apellido, u.email
         FROM pagos p
         JOIN usuarios u ON u.cui = p.cui_usuario
@@ -2379,9 +2381,12 @@ def generar_recibo(id_pago):
     y -= 32
     c.setFillColor(negro)
     c.setFont("Helvetica", 11)
-    precio_mes = obtener_precio_mensual()
-    meses = int(float(pago['monto']) / precio_mes) if precio_mes > 0 else 0
-    concepto = f"Membresía ({meses} {'mes' if meses == 1 else 'meses'})"
+    if pago.get('descripcion'):
+        concepto = str(pago['descripcion'])
+    else:
+        precio_mes = obtener_precio_mensual()
+        meses = int(float(pago['monto']) / precio_mes) if precio_mes > 0 else 0
+        concepto = f"Membresía ({meses} {'mes' if meses == 1 else 'meses'})"
     c.drawString(60, y + 3, concepto)
 
     c.setFont("Helvetica", 10)

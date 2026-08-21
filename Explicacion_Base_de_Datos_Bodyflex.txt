@@ -1,0 +1,98 @@
+================================================================================
+                    BODYFLEX GYM — EXPLICACIÓN DE LA BASE DE DATOS
+================================================================================
+
+--------------------------------------------------------------------------------
+1. RESUMEN RÁPIDO (EXPLICACIÓN DE 1 MINUTO)
+--------------------------------------------------------------------------------
+La base de datos de Bodyflex Gym está diseñada en torno al CUI/DPI del socio 
+como identificador único en Guatemala. Se divide en 4 bloques lógicos principales:
+
+  1. Usuarios y Perfiles: Identifica si eres Socio, Empleado o Administrador y 
+     guarda los datos físicos (peso, altura, objetivo).
+  2. Finanzas y Cobros: Registra mensualidades (pagos), promociones (planes) 
+     y consumos extra (cargos).
+  3. Inventario: Separa los artículos de venta (productos) del equipo de 
+     entrenamiento (maquinaria).
+  4. Seguridad y Auditoría: Registra la bitácora de actividad de los empleados 
+     y administradores para evitar fraudes, además de la recuperación de claves.
+
+
+--------------------------------------------------------------------------------
+2. ESTRUCTURA DETALLADA DE LAS TABLAS
+--------------------------------------------------------------------------------
+
+[BLOQUE 1: GESTIÓN DE PERSONAS Y PERFILES]
+
+• usuarios (Tabla Principal)
+  - Llave Primaria: cui (BIGINT UNSIGNED - CUI/DPI del usuario).
+  - Campos clave: nombre, apellido, email, password (cifrado), telefono, 
+                  estado ('activo' / 'inactivo'), rol ('user', 'empleado', 'admin').
+  - Propósito: Columna vertebral del sistema. Cada persona que accede a la app 
+    (socio, empleado o admin) existe aquí.
+
+• perfiles (Ficha Física del Socio)
+  - Llave Foránea: cui_usuario -> usuarios(cui) [Relación 1 a 1].
+  - Campos clave: edad, peso (lb), altura (m), objetivo ('Bajar de peso', etc.).
+  - Propósito: Almacena el perfil físico y los objetivos del socio para dar 
+    seguimiento a su avance deportivo.
+
+
+[BLOQUE 2: CONTROL FINANCIERO Y MEMBRESÍAS]
+
+• planes_membresia (Catálogo de Tarifas)
+  - Campos clave: nombre ('Mensualidad', 'Promoción Trimestral'), precio, 
+                  duracion_meses, estado.
+  - Propósito: Define las tarifas estándar y promociones vigentes en el gimnasio.
+
+• pagos (Historial de Ingresos)
+  - Llave Foránea: cui_usuario -> usuarios(cui) [Relación 1 a N].
+  - Campos clave: fecha_pago, fecha_vencimiento, monto, mes_pagado, 
+                  metodo_pago ('efectivo', 'tarjeta', 'transferencia').
+  - Propósito: Registra cada mensualidad pagada. Con la fecha_vencimiento el 
+    sistema determina si el socio está 'Al día' o 'Vencido'.
+
+• cargos (Cuentas por Cobrar y Consumos Adicionales)
+  - Llaves Foráneas: cui_usuario -> usuarios(cui), id_producto -> productos(id_producto).
+  - Campos clave: descripcion, monto, fecha_emision, estado ('pendiente' / 'pagado').
+  - Propósito: Registra cobros pendientes (ej. agua, suplementos, inscripción) 
+    para ser liquidados en caja.
+
+
+[BLOQUE 3: INVENTARIO Y ACTIVOS DEL GIMNASIO]
+
+• productos (Tienda de Venta)
+  - Campos clave: nombre, descripcion, cantidad (stock), precio_costo, 
+                  precio_venta, categoria, foto_url.
+  - Propósito: Controla el catálogo y la existencia de productos a la venta 
+    (bebidas, ropa, suplementos).
+
+• maquinaria (Equipamiento de Gimnasio)
+  - Campos clave: nombre, descripcion, cantidad, zona ('Cardio', 'Pesas'), 
+                  estado ('Excelente', 'Mantenimiento'), foto_url.
+  - Propósito: Control patrimonial y mantenimiento del equipo del gimnasio.
+
+
+[BLOQUE 4: AUDITORÍA Y SEGURIDAD]
+
+• auditoria (Bitácora de Control)
+  - Campos clave: fecha, tipo ('login', 'pago', 'rol', 'desactivar'), 
+                  actor_id, actor_nombre, actor_rol, afectado_id, afectado_nombre, detalle.
+  - Propósito: Registra quién ejecutó cada acción en el sistema para auditoría, 
+    transparencia y prevención de fraude.
+
+• recuperar_contra (Restablecimiento de Contraseñas)
+  - Llave Foránea: cui_usuario -> usuarios(cui).
+  - Campos clave: token, expira, usado.
+  - Propósito: Gestiona los tokens de seguridad enviados por correo para 
+    recuperar contraseñas.
+
+
+--------------------------------------------------------------------------------
+3. RESUMEN DE RELACIONES (FOREIGN KEYS)
+--------------------------------------------------------------------------------
+  - 1 Usuario -> 1 Perfil físico
+  - 1 Usuario -> Muchos Pagos
+  - 1 Usuario -> Muchos Cargos
+  - 1 Usuario -> Muchos registros en Auditoría (como actor o afectado)
+================================================================================
