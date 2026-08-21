@@ -3099,7 +3099,7 @@ def inventario_vender():
     conn.close()
 
     log_msg = f"Venta de {cantidad_venta}x '{prod['nombre']}' a {usuario_dest['nombre']} {usuario_dest['apellido']} (CUI: {cui_usuario_target}) por Q{monto_total:.2f}. Estado: {estado_cargo}"
-    registrar_log("INVENTARIO_VENTA", log_msg, afectado_id=cui_usuario_target, afectado_nombre=f"{usuario_dest['nombre']} {usuario_dest['apellido']}")
+    registrar_log("venta", log_msg, afectado_id=cui_usuario_target, afectado_nombre=f"{usuario_dest['nombre']} {usuario_dest['apellido']}")
 
     msg_exito = f"??Venta realizada exitosamente! Se descontaron {cantidad_venta} unidades de '{prod['nombre']}' del inventario."
     if estado_cargo == "pendiente":

@@ -95,6 +95,7 @@
  .tipo-rol { background: rgba(250,204,21,0.15); color: var(--yellow); border: 1px solid rgba(250,204,21,0.3); }
  .tipo-login { background: rgba(156,163,175,0.1); color: var(--muted); border: 1px solid rgba(156,163,175,0.2); }
  .tipo-perfil { background: rgba(255,107,0,0.15); color: var(--accent); border: 1px solid rgba(255,107,0,0.3); }
+ .tipo-venta { background: rgba(168,85,247,0.15); color: #a855f7; border: 1px solid rgba(168,85,247,0.3); }
  .tipo-otro { background: rgba(156,163,175,0.1); color: var(--muted); border: 1px solid rgba(156,163,175,0.2); }
 
  .actor-nombre { font-weight: 500; font-size: 13px; }
@@ -186,6 +187,7 @@
  <option value="rol" {% if tipo_filtro == 'rol' %}selected{% endif %}> Cambios de rol</option>
  <option value="perfil" {% if tipo_filtro == 'perfil' %}selected{% endif %}> Perfil</option>
  <option value="login" {% if tipo_filtro == 'login' %}selected{% endif %}> Inicios sesión</option>
+ <option value="venta" {% if tipo_filtro == 'venta' %}selected{% endif %}> Ventas en Tienda</option>
  </select>
  <label style="display:flex; align-items:center; gap:6px; font-size:13px; color:var(--muted); cursor:pointer;">
  <input type="checkbox" name="solo_importantes" value="1" {% if solo_importantes == '1' %}checked{% endif %} style="width:14px;height:14px;accent-color:var(--accent);">
@@ -235,6 +237,8 @@
  <span class="tipo-badge tipo-login"> Login</span>
  {% elif t == 'perfil' %}
  <span class="tipo-badge tipo-perfil"> Perfil</span>
+ {% elif t == 'venta' %}
+ <span class="tipo-badge tipo-venta"> Venta Tienda</span>
  {% else %}
  <span class="tipo-badge tipo-otro"> {{ t }}</span>
  {% endif %}
