@@ -261,7 +261,7 @@
  </td>
  <td><span class="monto-val">Q{{ "{:,.0f}".format(p.monto|float) }}</span></td>
  <td>
- <a href="/recibo/{{ p.id_pago }}" target="_blank" class="btn-pdf">
+ <a href="/recibo/pago/{{ p.id_pago }}" target="_blank" class="btn-pdf">
  Descargar PDF
  </a>
  </td>
@@ -270,7 +270,7 @@
 
  {% if not pagos %}
  <tr>
- <td colspan="5" class="empty">Este socio no tiene pagos registrados.</td>
+ <td colspan="6" class="empty">Este socio no tiene pagos registrados.</td>
  </tr>
  {% endif %}
  </tbody>
