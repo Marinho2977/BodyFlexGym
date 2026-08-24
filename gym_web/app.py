@@ -3143,7 +3143,8 @@ def inventario_vender():
 
 @app.route("/tienda")
 def tienda():
-    if "usuario_id" not in session:
+    if "usuario_id" not in session or session.get("rol") not in ("admin", "empleado"):
+        flash("La tienda es de uso exclusivo para empleados y administradores.", "error")
         return redirect("/login")
 
     categoria_filtro = request.args.get("categoria", "").strip()
