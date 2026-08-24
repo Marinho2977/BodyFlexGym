@@ -191,11 +191,19 @@
 <!-- TOPBAR -->
 <div class="topbar">
  <div class="topbar-left">
- <div class="logo">BODYFLEX<span>GYM</span></div>
+ <a href="/" class="logo" style="text-decoration:none;">BODYFLEX<span>GYM</span></a>
+ {% if session.get('rol') == 'empleado' %}
+ <div class="badge-admin" style="background:#2e1a0d; color:#ffa560; border-color:#4e2a1a;">Empleado</div>
+ {% else %}
  <div class="badge-admin">Admin</div>
+ {% endif %}
  </div>
  <div class="topbar-right">
+ {% if session.get('rol') == 'empleado' %}
+ <a href="/empleado" class="btn-back">← Volver al panel</a>
+ {% else %}
  <a href="/admin" class="btn-back">← Volver al panel</a>
+ {% endif %}
  </div>
 </div>
 

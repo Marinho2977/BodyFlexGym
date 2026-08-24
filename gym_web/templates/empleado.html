@@ -561,7 +561,7 @@
 <body>
 <header class="topbar">
  <div class="brand">
- <div class="logo">BODYFLEX<span>GYM</span></div>
+ <a href="/" class="logo" style="text-decoration:none;">BODYFLEX<span>GYM</span></a>
  <div class="role-chip">Empleado</div>
  </div>
  <div class="topbar-actions">
@@ -725,6 +725,7 @@
  </div>
  {% endif %}
  <a href="/contrato/{{ u.cui }}" target="_blank" class="btn-limpiar" style="margin-top:8px; padding: 4px 8px; min-height: 28px; font-size: 12px; display: inline-flex;" title="Descargar Contrato"> Contrato</a>
+ <a href="/admin/pagos/{{ u.cui }}" class="btn-limpiar" style="margin-top:8px; margin-left:4px; padding: 4px 8px; min-height: 28px; font-size: 12px; display: inline-flex;" title="Ver Historial de Pagos"> Historial Pagos</a>
  </td>
  </tr>
  {% endfor %}

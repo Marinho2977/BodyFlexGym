@@ -946,7 +946,7 @@ def exportar_pagos_excel(cui):
     return response
 
 
-@app.route("/admin/pagos/<int:cui>/pdf")
+@app.route("/admin/pagos/<string:cui>/pdf")
 def exportar_pagos_pdf(cui):
     if "usuario_id" not in session or session.get("rol") not in ("admin", "empleado"):
         return redirect("/login")
@@ -1041,12 +1041,13 @@ def reactivar_usuario(cui):
     return redirect("/admin")
 
 
+@app.route("/admin/eliminar_usuario/<cui>", methods=["POST"])
 @app.route("/admin/eliminar_usuario/<int:cui>", methods=["POST"])
 def eliminar_usuario(cui):
     if "usuario_id" not in session or session.get("rol") != "admin":
         return redirect("/login")
     
-    if cui == session["usuario_id"]:
+    if str(cui) == str(session.get("usuario_id")):
         flash("No puedes eliminarte a ti mismo", "error")
         return redirect(request.referrer or "/admin")
         
@@ -1062,20 +1063,25 @@ def eliminar_usuario(cui):
         nombre_completo = f"{u[0]} {u[1]}"
         rol = u[2]
         
-        # Eliminar dependencias
+        # Desactivar temporalmente verificaciones de clave foránea para eliminar limpiamente en cascada
+        cursor.execute("SET FOREIGN_KEY_CHECKS=0")
+        
         cursor.execute("DELETE FROM pagos WHERE cui_usuario=%s", (cui,))
+        cursor.execute("DELETE FROM cargos WHERE cui_usuario=%s", (cui,))
+        cursor.execute("DELETE FROM perfiles WHERE cui_usuario=%s", (cui,))
         cursor.execute("DELETE FROM recuperar_contra WHERE cui_usuario=%s", (cui,))
         
         try:
             cursor.execute("DELETE FROM asistencia WHERE cui_usuario=%s", (cui,))
-        except:
+        except Exception:
             pass
         try:
             cursor.execute("DELETE FROM metas WHERE cui_usuario=%s", (cui,))
-        except:
+        except Exception:
             pass
             
         cursor.execute("DELETE FROM usuarios WHERE cui=%s", (cui,))
+        cursor.execute("SET FOREIGN_KEY_CHECKS=1")
         
         registrar_log("eliminacion", f"Eliminó cuenta de {rol}", afectado_id=cui, afectado_nombre=nombre_completo)
         
@@ -2522,13 +2528,13 @@ def inicio():
     return render_template("inicio.html")
 
 
-@app.route("/contrato/<int:cui>")
+@app.route("/contrato/<string:cui>")
 def generar_contrato_pdf(cui):
     if "usuario_id" not in session:
         return redirect("/login")
         
     es_admin_emp = session.get("rol") in ("admin", "empleado")
-    es_dueno     = cui == session.get("usuario_id")
+    es_dueno     = str(cui) == str(session.get("usuario_id"))
     if not es_admin_emp and not es_dueno:
         return redirect("/panel")
         
