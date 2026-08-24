@@ -1346,8 +1346,7 @@ def auditoria():
         buscar=buscar,
         tipo_filtro=tipo_filtro,
         pagina=pagina,
-        total_paginas=total_paginas,
-        solo_importantes=solo_importantes,
+        total_paginas=total_paginas
     )
 
 
