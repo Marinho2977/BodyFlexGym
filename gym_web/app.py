@@ -1054,7 +1054,12 @@ def eliminar_usuario(cui):
     conn = conectar_db()
     cursor = conn.cursor()
     try:
-        cursor.execute("SELECT nombre, apellido, rol FROM usuarios WHERE cui=%s", (cui,))
+        cursor.execute("""
+            SELECT u.nombre, u.apellido, COALESCE(r.descripcion, 'socio') AS rol
+            FROM usuarios u
+            LEFT JOIN roles r ON u.id_rol = r.id_rol
+            WHERE u.cui = %s
+        """, (cui,))
         u = cursor.fetchone()
         if not u:
             flash("Usuario no encontrado", "error")
