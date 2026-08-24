@@ -206,7 +206,6 @@
   <!-- TOPBAR -->
   <header class="topbar">
     <a href="/" class="logo">BODYFLEX<span>GYM</span></a>
-    <a href="/" class="nav-btn">← Volver al inicio</a>
   </header>
 
   <!-- MAIN ERROR -->
@@ -220,17 +219,6 @@
 
     <div class="actions-grid">
       <a href="/" class="btn-primary">Ir a la Página Principal</a>
-      {% if session.get('usuario_id') %}
-        {% if session.get('rol') == 'admin' %}
-          <a href="/admin" class="btn-secondary">Panel Admin</a>
-        {% elif session.get('rol') == 'empleado' %}
-          <a href="/empleado" class="btn-secondary">Panel Empleado</a>
-        {% else %}
-          <a href="/panel" class="btn-secondary">Mi Panel Socio</a>
-        {% endif %}
-      {% else %}
-        <a href="/login" class="btn-secondary">Iniciar Sesión</a>
-      {% endif %}
     </div>
   </main>
 
