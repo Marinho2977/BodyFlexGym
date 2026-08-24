@@ -164,18 +164,6 @@
  </div>
  </div>
 
- <!-- STATS -->
- <div class="stats-row">
- <div class="stat-card">
- <div class="stat-label">Pagos hoy</div>
- <div class="stat-value green">{{ pagos_hoy }}</div>
- </div>
- <div class="stat-card">
- <div class="stat-label">Cambios de rol</div>
- <div class="stat-value blue">{{ cambios_rol }}</div>
- </div>
- </div>
-
  <!-- FILTROS -->
  <form method="GET" action="/admin/auditoria" class="filtros">
  <input type="text" name="buscar" placeholder="Buscar por nombre o detalle..." value="{{ buscar }}">
@@ -189,10 +177,6 @@
  <option value="login" {% if tipo_filtro == 'login' %}selected{% endif %}> Inicios sesión</option>
  <option value="venta" {% if tipo_filtro == 'venta' %}selected{% endif %}> Ventas en Tienda</option>
  </select>
- <label style="display:flex; align-items:center; gap:6px; font-size:13px; color:var(--muted); cursor:pointer;">
- <input type="checkbox" name="solo_importantes" value="1" {% if solo_importantes == '1' %}checked{% endif %} style="width:14px;height:14px;accent-color:var(--accent);">
- Solo importantes
- </label>
  <input type="date" name="fecha_inicio" value="{{ request.args.get('fecha_inicio', '') }}" title="Desde" style="max-width:160px;">
  <input type="date" name="fecha_fin" value="{{ request.args.get('fecha_fin', '') }}" title="Hasta" style="max-width:160px;">
  <button type="submit" class="btn btn-yellow">Filtrar</button>

@@ -1292,11 +1292,6 @@ def auditoria():
     por_pagina   = 30
     offset       = (pagina - 1) * por_pagina
 
-    # Por defecto, si es primera carga sin argumentos, solo mostrar importantes (ocultar login y perfil)
-    solo_importantes = request.args.get("solo_importantes", "0")
-    if not request.args:
-        solo_importantes = "1"
-
     conn   = conectar_db()
     cursor = conn.cursor(dictionary=True)
 
@@ -1310,8 +1305,6 @@ def auditoria():
     if tipo_filtro:
         condiciones.append("tipo = %s")
         params.append(tipo_filtro)
-    elif solo_importantes == "1":
-        condiciones.append("tipo NOT IN ('login', 'perfil')")
 
     if fecha_inicio:
         condiciones.append("DATE(fecha) >= %s")
