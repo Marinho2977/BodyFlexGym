@@ -197,7 +197,6 @@
  <th>Realizado por</th>
  <th>Detalle</th>
  <th>Afectado</th>
- <th>Acciones</th>
  </tr>
  </thead>
  <tbody>
@@ -237,18 +236,12 @@
  <td>
  <div class="detalle-sub">{{ registro.afectado_nombre or '—' }}</div>
  </td>
- <td>
- <form action="/admin/auditoria/borrar_log/{{ registro.id }}" method="POST" style="margin:0;" onsubmit="return confirm('¿Eliminar este registro de auditoría?')">
- <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
- <button type="submit" class="btn btn-ghost" style="padding: 6px 10px; min-height: 0; font-size: 14px;" title="Borrar log"></button>
- </form>
- </td>
  </tr>
  {% endfor %}
 
  {% if not auditoria %}
  <tr>
- <td colspan="6" class="empty">
+ <td colspan="5" class="empty">
  {% if buscar or tipo_filtro %}
  No se encontraron registros con ese filtro
  {% else %}
