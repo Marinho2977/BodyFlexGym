@@ -1706,13 +1706,15 @@ def admin_reportes():
     ingresos_data   = [float(r['total']) for r in ingresos_raw]
 
     fecha_hoy = gt_today()
+    mes_actual_nombre = f"{MESES_NOMBRES[fecha_hoy.month - 1]} {fecha_hoy.year}"
 
     return render_template("reportes.html", 
                            total_ingresos_global=total_ingresos_global,
                            ingresos_mes_actual=ingresos_mes_actual,
                            ingresos_labels=ingresos_labels,
                            ingresos_data=ingresos_data,
-                           fecha_hoy=fecha_hoy)
+                           fecha_hoy=fecha_hoy,
+                           mes_actual_nombre=mes_actual_nombre)
 
 # 
 # MÓDULO DE INVENTARIO

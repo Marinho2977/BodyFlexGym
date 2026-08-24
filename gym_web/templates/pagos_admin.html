@@ -262,10 +262,10 @@
  <td style="color:var(--muted); font-size:13px;">{{ loop.index }}</td>
  <td style="font-weight:600; color:var(--text);">{{ p.descripcion or '—' }}</td>
  <td>
- <div class="date-val">{{ p.fecha_pago.strftime('%d %b %Y') if p.fecha_pago else p.fecha_pago }}</div>
+ <div class="date-val">{{ p.fecha_pago.strftime('%d/%m/%Y') if p.fecha_pago else p.fecha_pago }}</div>
  </td>
  <td>
- <div class="date-val">{{ p.fecha_vencimiento.strftime('%d %b %Y') if p.fecha_vencimiento else p.fecha_vencimiento }}</div>
+ <div class="date-val">{{ p.fecha_vencimiento.strftime('%d/%m/%Y') if p.fecha_vencimiento else p.fecha_vencimiento }}</div>
  </td>
  <td><span class="monto-val">Q{{ "{:,.0f}".format(p.monto|float) }}</span></td>
  <td>
