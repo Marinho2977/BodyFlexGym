@@ -2533,8 +2533,8 @@ def generar_contrato_pdf(cui):
         return redirect("/login")
         
     es_admin_emp = session.get("rol") in ("admin", "empleado")
-    es_dueno     = str(cui) == str(session.get("usuario_id"))
-    if not es_admin_emp and not es_dueno:
+    if not es_admin_emp:
+        flash("La generación de contratos está reservada exclusivamente para administradores y empleados.", "error")
         return redirect("/panel")
         
     conn = conectar_db()
@@ -3261,6 +3261,15 @@ def generar_pdf_pago_unico(id_pago):
     response.headers['Content-Type'] = 'application/pdf'
     response.headers['Content-Disposition'] = f'attachment; filename=recibo_pago_{id_pago}.pdf'
     return response
+
+
+@app.errorhandler(404)
+def pagina_no_encontrada(e):
+    return render_template("404.html"), 404
+
+@app.errorhandler(500)
+def error_servidor(e):
+    return render_template("404.html"), 500
 
 
 if __name__ == "__main__":
