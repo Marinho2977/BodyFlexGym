@@ -931,12 +931,15 @@ def exportar_pagos_excel(cui):
     headers = ["ID Pago", "Fecha Pago", "Periodo Pagado", "Monto", "Fecha Vencimiento"]
     rows = []
     for p in pagos:
+        desc_lower = (p.get("descripcion") or "").lower()
+        es_no_membresia = p.get("id_cargo") or any(kw in desc_lower for kw in ['cargo', 'venta', 'compra', 'agua', 'botella', 'producto'])
+        venc_val = "—" if es_no_membresia or not p.get("fecha_vencimiento") else (p["fecha_vencimiento"].strftime('%d/%m/%Y') if hasattr(p["fecha_vencimiento"], 'strftime') else str(p["fecha_vencimiento"]))
         rows.append([
             p["id_pago"],
             p["fecha_pago"],
             p["descripcion"] or "—",
             float(p["monto"]),
-            p["fecha_vencimiento"]
+            venc_val
         ])
 
     excel_bytes = generar_reporte_excel(headers, rows, f"Historial Pagos — {nombre_socio}")
@@ -991,11 +994,14 @@ def exportar_pagos_pdf(cui):
     headers = ["No.", "Fecha Pago", "Mes Pagado", "Vencimiento", "Monto"]
     rows = []
     for idx, p in enumerate(pagos):
+        desc_lower = (p.get("descripcion") or "").lower()
+        es_no_membresia = p.get("id_cargo") or any(kw in desc_lower for kw in ['cargo', 'venta', 'compra', 'agua', 'botella', 'producto'])
+        venc_val = "—" if es_no_membresia or not p.get("fecha_vencimiento") else (p["fecha_vencimiento"].strftime('%d/%m/%Y') if hasattr(p["fecha_vencimiento"], 'strftime') else str(p["fecha_vencimiento"]))
         rows.append([
             idx + 1,
             p["fecha_pago"],
             p["descripcion"] or "—",
-            p["fecha_vencimiento"],
+            venc_val,
             float(p["monto"])
         ])
 
@@ -2407,7 +2413,9 @@ def generar_recibo(id_pago):
 
     c.setFont("Helvetica", 10)
     c.drawString(280, y + 3, fecha_str)
-    venc_str = pago['fecha_vencimiento'].strftime('%d/%m/%Y') if pago['fecha_vencimiento'] else 'N/A'
+    desc_lower = (pago.get('descripcion') or '').lower()
+    es_no_membresia = pago.get('id_cargo') or any(kw in desc_lower for kw in ['cargo', 'venta', 'compra', 'agua', 'botella', 'producto'])
+    venc_str = '—' if es_no_membresia or not pago.get('fecha_vencimiento') else (pago['fecha_vencimiento'].strftime('%d/%m/%Y') if hasattr(pago['fecha_vencimiento'], 'strftime') else str(pago['fecha_vencimiento']))
     c.drawString(390, y + 3, venc_str)
 
     c.setFont("Helvetica-Bold", 12)
